@@ -1,0 +1,541 @@
+// Docker inventory per server — containers, networks, volumes
+// Designed to feel real: ports, bind mounts vs named volumes, drivers, sizes.
+
+window.DOCKER_DATA = {
+  hosts: [
+    {
+      id: 'nyx',
+      engine: 'Docker 27.3.1',
+      compose: 'docker compose v2.30.1',
+      containers: [
+        {
+          id: 'a1b2c3d4',
+          name: 'jellyfin',
+          image: 'jellyfin/jellyfin',
+          tag: '10.9.8',
+          state: 'running',
+          health: 'healthy',
+          uptime: '18d 4h',
+          ports: ['8096:8096/tcp', '8920:8920/tcp'],
+          mounts: [
+            { type: 'bind',   host: '/mnt/media',           container: '/media', mode: 'ro' },
+            { type: 'bind',   host: '/etc/jellyfin/config', container: '/config' },
+            { type: 'volume', name: 'jellyfin_cache',       container: '/cache' },
+          ],
+          networks: ['proxy_net', 'media_net'],
+          size: '142 MB',
+          cpu: 14, mem: 1820,
+        },
+        {
+          id: 'b2c3d4e5',
+          name: 'navidrome',
+          image: 'deluan/navidrome', tag: '0.53.3',
+          state: 'running', health: 'healthy', uptime: '32d 2h',
+          ports: ['4533:4533/tcp'],
+          mounts: [
+            { type: 'bind',   host: '/mnt/media/music',      container: '/music', mode: 'ro' },
+            { type: 'volume', name: 'navidrome_data',        container: '/data' },
+          ],
+          networks: ['proxy_net'],
+          size: '78 MB', cpu: 2, mem: 312,
+        },
+        {
+          id: 'c3d4e5f6',
+          name: 'plex',
+          image: 'plexinc/pms-docker', tag: '1.40.4',
+          state: 'exited', health: 'stopped', uptime: '—',
+          ports: [],
+          mounts: [
+            { type: 'bind',   host: '/etc/plex/config', container: '/config' },
+            { type: 'bind',   host: '/mnt/media',       container: '/media', mode: 'ro' },
+          ],
+          networks: ['proxy_net'],
+          size: '1.2 GB', cpu: 0, mem: 0,
+        },
+        {
+          id: 'd4e5f6g7',
+          name: 'grafana',
+          image: 'grafana/grafana', tag: '11.2.1',
+          state: 'running', health: 'healthy', uptime: '127d 4h',
+          ports: ['3000:3000/tcp'],
+          mounts: [
+            { type: 'volume', name: 'grafana_data', container: '/var/lib/grafana' },
+            { type: 'bind',   host: '/etc/grafana/provisioning', container: '/etc/grafana/provisioning', mode: 'ro' },
+          ],
+          networks: ['obs_net', 'proxy_net'],
+          size: '184 MB', cpu: 1, mem: 412,
+        },
+        {
+          id: 'e5f6g7h8',
+          name: 'prometheus',
+          image: 'prom/prometheus', tag: 'v2.54.0',
+          state: 'running', health: 'healthy', uptime: '127d 4h',
+          ports: ['9090:9090/tcp'],
+          mounts: [
+            { type: 'bind',   host: '/etc/prometheus/prometheus.yml', container: '/etc/prometheus/prometheus.yml', mode: 'ro' },
+            { type: 'volume', name: 'prom_tsdb', container: '/prometheus' },
+          ],
+          networks: ['obs_net'],
+          size: '244 MB', cpu: 3, mem: 1124,
+        },
+        {
+          id: 'f6g7h8i9',
+          name: 'loki',
+          image: 'grafana/loki', tag: '3.2.0',
+          state: 'running', health: 'healthy', uptime: '127d 4h',
+          ports: ['3100:3100/tcp'],
+          mounts: [
+            { type: 'bind',   host: '/etc/loki/config.yml', container: '/etc/loki/config.yml', mode: 'ro' },
+            { type: 'volume', name: 'loki_data',           container: '/loki' },
+          ],
+          networks: ['obs_net'],
+          size: '212 MB', cpu: 2, mem: 1382,
+        },
+        {
+          id: 'g7h8i9j0',
+          name: 'alertmanager',
+          image: 'prom/alertmanager', tag: 'v0.27.0',
+          state: 'running', health: 'healthy', uptime: '127d 4h',
+          ports: ['9093:9093/tcp'],
+          mounts: [
+            { type: 'bind', host: '/etc/alertmanager.yml', container: '/etc/alertmanager.yml', mode: 'ro' },
+            { type: 'volume', name: 'am_data', container: '/alertmanager' },
+          ],
+          networks: ['obs_net'],
+          size: '64 MB', cpu: 0, mem: 84,
+        },
+        {
+          id: 'h8i9j0k1',
+          name: 'caddy',
+          image: 'caddy', tag: '2.8.4',
+          state: 'running', health: 'healthy', uptime: '127d 4h',
+          ports: ['80:80/tcp', '443:443/tcp', '443:443/udp'],
+          mounts: [
+            { type: 'bind',   host: '/etc/caddy/Caddyfile', container: '/etc/caddy/Caddyfile', mode: 'ro' },
+            { type: 'volume', name: 'caddy_data',           container: '/data' },
+            { type: 'volume', name: 'caddy_config',         container: '/config' },
+          ],
+          networks: ['proxy_net'],
+          size: '52 MB', cpu: 1, mem: 142,
+        },
+      ],
+      networks: [
+        { name: 'proxy_net', driver: 'bridge', subnet: '172.20.0.0/16', gateway: '172.20.0.1', scope: 'local', attached: 6 },
+        { name: 'obs_net',   driver: 'bridge', subnet: '172.21.0.0/16', gateway: '172.21.0.1', scope: 'local', attached: 4 },
+        { name: 'media_net', driver: 'bridge', subnet: '172.22.0.0/16', gateway: '172.22.0.1', scope: 'local', attached: 3 },
+        { name: 'bridge',    driver: 'bridge', subnet: '172.17.0.0/16', gateway: '172.17.0.1', scope: 'local', attached: 0 },
+        { name: 'host',      driver: 'host',   subnet: '—',             gateway: '—',          scope: 'local', attached: 1 },
+      ],
+      volumes: [
+        { name: 'jellyfin_cache', driver: 'local', size: '4.2 GB', mount: '/var/lib/docker/volumes/jellyfin_cache/_data',  usedBy: ['jellyfin'] },
+        { name: 'navidrome_data', driver: 'local', size: '184 MB', mount: '/var/lib/docker/volumes/navidrome_data/_data',  usedBy: ['navidrome'] },
+        { name: 'grafana_data',   driver: 'local', size: '412 MB', mount: '/var/lib/docker/volumes/grafana_data/_data',    usedBy: ['grafana'] },
+        { name: 'prom_tsdb',      driver: 'local', size: '18.4 GB', mount: '/var/lib/docker/volumes/prom_tsdb/_data',       usedBy: ['prometheus'] },
+        { name: 'loki_data',      driver: 'local', size: '184 GB', mount: '/var/lib/docker/volumes/loki_data/_data',       usedBy: ['loki'] },
+        { name: 'am_data',        driver: 'local', size: '12 MB',  mount: '/var/lib/docker/volumes/am_data/_data',         usedBy: ['alertmanager'] },
+        { name: 'caddy_data',     driver: 'local', size: '24 MB',  mount: '/var/lib/docker/volumes/caddy_data/_data',      usedBy: ['caddy'] },
+        { name: 'caddy_config',   driver: 'local', size: '2 MB',   mount: '/var/lib/docker/volumes/caddy_config/_data',    usedBy: ['caddy'] },
+      ],
+    },
+
+    {
+      id: 'helios',
+      engine: 'Docker 27.3.1',
+      compose: 'docker compose v2.30.1',
+      containers: [
+        {
+          id: 'nx01v01a', name: 'nextcloud', image: 'nextcloud', tag: '29.0.4-fpm',
+          state: 'running', health: 'healthy', uptime: '94d 12h',
+          ports: ['9000:9000/tcp'],
+          mounts: [
+            { type: 'bind',   host: '/tank/nextcloud/data',   container: '/var/www/html/data' },
+            { type: 'bind',   host: '/tank/nextcloud/config', container: '/var/www/html/config' },
+            { type: 'volume', name: 'nc_apps', container: '/var/www/html/custom_apps' },
+          ],
+          networks: ['cloud_net'],
+          size: '1.4 GB', cpu: 4, mem: 612,
+        },
+        {
+          id: 'nx02v01b', name: 'nextcloud-db', image: 'postgres', tag: '16.4-alpine',
+          state: 'running', health: 'healthy', uptime: '94d 12h',
+          ports: [],
+          mounts: [
+            { type: 'volume', name: 'nc_postgres', container: '/var/lib/postgresql/data' },
+          ],
+          networks: ['cloud_net'],
+          size: '184 MB', cpu: 2, mem: 412,
+        },
+        {
+          id: 'nx03v01c', name: 'paperless-ngx', image: 'ghcr.io/paperless-ngx/paperless-ngx', tag: '2.10.1',
+          state: 'running', health: 'healthy', uptime: '44d 6h',
+          ports: ['8000:8000/tcp'],
+          mounts: [
+            { type: 'bind',   host: '/tank/paperless/consume', container: '/usr/src/paperless/consume' },
+            { type: 'bind',   host: '/tank/paperless/media',   container: '/usr/src/paperless/media' },
+            { type: 'volume', name: 'paperless_data', container: '/usr/src/paperless/data' },
+          ],
+          networks: ['cloud_net'],
+          size: '1.8 GB', cpu: 1, mem: 484,
+        },
+        {
+          id: 'nx04v01d', name: 'vaultwarden', image: 'vaultwarden/server', tag: '1.32.5',
+          state: 'running', health: 'healthy', uptime: '127d 4h',
+          ports: ['8222:80/tcp'],
+          mounts: [
+            { type: 'volume', name: 'vw_data', container: '/data' },
+          ],
+          networks: ['cloud_net'],
+          size: '64 MB', cpu: 0, mem: 92,
+        },
+        {
+          id: 'nx05v01e', name: 'restic-server', image: 'restic/rest-server', tag: '0.13.0',
+          state: 'running', health: 'healthy', uptime: '127d 4h',
+          ports: ['8000:8000/tcp'],
+          mounts: [
+            { type: 'bind', host: '/tank/restic-repo', container: '/data' },
+          ],
+          networks: ['backup_net'],
+          size: '32 MB', cpu: 1, mem: 124,
+        },
+        {
+          id: 'nx06v01f', name: 'minio', image: 'minio/minio', tag: 'RELEASE.2024-10-13',
+          state: 'running', health: 'healthy', uptime: '64d 8h',
+          ports: ['9001:9000/tcp', '9090:9090/tcp'],
+          mounts: [
+            { type: 'bind', host: '/tank/minio/data', container: '/data' },
+          ],
+          networks: ['backup_net', 'cloud_net'],
+          size: '184 MB', cpu: 2, mem: 612,
+        },
+      ],
+      networks: [
+        { name: 'cloud_net',  driver: 'bridge', subnet: '172.23.0.0/16', gateway: '172.23.0.1', scope: 'local', attached: 5 },
+        { name: 'backup_net', driver: 'bridge', subnet: '172.24.0.0/16', gateway: '172.24.0.1', scope: 'local', attached: 2 },
+        { name: 'bridge',     driver: 'bridge', subnet: '172.17.0.0/16', gateway: '172.17.0.1', scope: 'local', attached: 0 },
+      ],
+      volumes: [
+        { name: 'nc_apps',         driver: 'local', size: '42 MB',  mount: '/var/lib/docker/volumes/nc_apps/_data',         usedBy: ['nextcloud'] },
+        { name: 'nc_postgres',     driver: 'local', size: '1.2 GB', mount: '/var/lib/docker/volumes/nc_postgres/_data',     usedBy: ['nextcloud-db'] },
+        { name: 'paperless_data',  driver: 'local', size: '124 MB', mount: '/var/lib/docker/volumes/paperless_data/_data',  usedBy: ['paperless-ngx'] },
+        { name: 'vw_data',         driver: 'local', size: '62 MB',  mount: '/var/lib/docker/volumes/vw_data/_data',         usedBy: ['vaultwarden'] },
+      ],
+    },
+
+    {
+      id: 'aether',
+      engine: 'Docker 27.3.1 · k3s 1.30',
+      compose: 'kubectl · k3s embedded',
+      containers: [
+        {
+          id: 'k8s01ha', name: 'home-assistant', image: 'ghcr.io/home-assistant/home-assistant', tag: '2025.5.2',
+          state: 'running', health: 'healthy', uptime: '18d 22h',
+          ports: ['8123:8123/tcp'],
+          mounts: [
+            { type: 'bind', host: '/etc/home-assistant/config', container: '/config' },
+            { type: 'bind', host: '/etc/localtime',             container: '/etc/localtime', mode: 'ro' },
+          ],
+          networks: ['iot_net', 'proxy_net'],
+          size: '412 MB', cpu: 4, mem: 612,
+        },
+        {
+          id: 'k8s02fr', name: 'frigate', image: 'ghcr.io/blakeblackshear/frigate', tag: '0.14.1',
+          state: 'running', health: 'unhealthy', uptime: '14h 22m',
+          ports: ['5000:5000/tcp', '1935:1935/tcp', '8554:8554/tcp'],
+          mounts: [
+            { type: 'bind',   host: '/etc/frigate/config.yml', container: '/config/config.yml', mode: 'ro' },
+            { type: 'bind',   host: '/mnt/frigate-recordings', container: '/media/frigate' },
+            { type: 'volume', name: 'frigate_clips',           container: '/clips' },
+          ],
+          networks: ['iot_net'],
+          size: '1.4 GB', cpu: 18, mem: 2412,
+        },
+        {
+          id: 'k8s03mq', name: 'mosquitto', image: 'eclipse-mosquitto', tag: '2.0.18',
+          state: 'running', health: 'healthy', uptime: '127d 4h',
+          ports: ['1883:1883/tcp', '9883:9001/tcp'],
+          mounts: [
+            { type: 'bind',   host: '/etc/mosquitto/mosquitto.conf', container: '/mosquitto/config/mosquitto.conf', mode: 'ro' },
+            { type: 'volume', name: 'mosquitto_data',                container: '/mosquitto/data' },
+          ],
+          networks: ['iot_net'],
+          size: '12 MB', cpu: 0, mem: 28,
+        },
+        {
+          id: 'k8s04z2', name: 'zigbee2mqtt', image: 'koenkk/zigbee2mqtt', tag: '1.39.0',
+          state: 'running', health: 'healthy', uptime: '64d 8h',
+          ports: ['8080:8080/tcp'],
+          mounts: [
+            { type: 'bind',   host: '/etc/zigbee2mqtt/data', container: '/app/data' },
+            { type: 'bind',   host: '/dev/ttyACM0',          container: '/dev/ttyACM0' },
+          ],
+          networks: ['iot_net'],
+          size: '184 MB', cpu: 1, mem: 124,
+        },
+        {
+          id: 'k8s05gt', name: 'gitea', image: 'gitea/gitea', tag: '1.22.3',
+          state: 'running', health: 'healthy', uptime: '94d 12h',
+          ports: ['3232:3000/tcp', '2222:22/tcp'],
+          mounts: [
+            { type: 'volume', name: 'gitea_data',  container: '/data' },
+            { type: 'bind',   host: '/etc/timezone', container: '/etc/timezone', mode: 'ro' },
+          ],
+          networks: ['dev_net', 'proxy_net'],
+          size: '184 MB', cpu: 2, mem: 412,
+        },
+        {
+          id: 'k8s06dr', name: 'drone-ci', image: 'drone/drone', tag: '2.21.0',
+          state: 'running', health: 'healthy', uptime: '64d 8h',
+          ports: ['8089:80/tcp'],
+          mounts: [
+            { type: 'volume', name: 'drone_data', container: '/data' },
+          ],
+          networks: ['dev_net'],
+          size: '64 MB', cpu: 1, mem: 184,
+        },
+        {
+          id: 'k8s07rt', name: 'forgejo-runner', image: 'data.forgejo.org/forgejo/runner', tag: '4.1.0',
+          state: 'exited', health: 'failed', uptime: '—',
+          ports: [],
+          mounts: [
+            { type: 'bind', host: '/etc/forgejo/runner.yml', container: '/data/config.yml', mode: 'ro' },
+            { type: 'bind', host: '/var/run/docker.sock',    container: '/var/run/docker.sock' },
+          ],
+          networks: ['dev_net'],
+          size: '124 MB', cpu: 0, mem: 0,
+        },
+        {
+          id: 'k8s08th', name: 'traefik', image: 'traefik', tag: '3.1.5',
+          state: 'running', health: 'healthy', uptime: '127d 4h',
+          ports: ['80:80/tcp', '443:443/tcp', '8081:8080/tcp'],
+          mounts: [
+            { type: 'bind', host: '/var/run/docker.sock',         container: '/var/run/docker.sock', mode: 'ro' },
+            { type: 'bind', host: '/etc/traefik/traefik.yml',     container: '/etc/traefik/traefik.yml', mode: 'ro' },
+            { type: 'bind', host: '/etc/traefik/dynamic',         container: '/dynamic', mode: 'ro' },
+            { type: 'volume', name: 'traefik_acme',               container: '/letsencrypt' },
+          ],
+          networks: ['proxy_net'],
+          size: '124 MB', cpu: 2, mem: 184,
+        },
+        {
+          id: 'k8s09im', name: 'immich-server', image: 'ghcr.io/immich-app/immich-server', tag: 'v1.118.2',
+          state: 'running', health: 'healthy', uptime: '18d 22h',
+          ports: ['2283:3001/tcp'],
+          mounts: [
+            { type: 'bind',   host: '/mnt/photos',  container: '/usr/src/app/upload' },
+            { type: 'volume', name: 'immich_model_cache', container: '/cache' },
+          ],
+          networks: ['media_net', 'proxy_net'],
+          size: '824 MB', cpu: 8, mem: 1812,
+        },
+        {
+          id: 'k8s10ml', name: 'immich-ml', image: 'ghcr.io/immich-app/immich-machine-learning', tag: 'v1.118.2',
+          state: 'running', health: 'degraded', uptime: '18d 22h',
+          ports: [],
+          mounts: [
+            { type: 'volume', name: 'immich_model_cache', container: '/cache' },
+          ],
+          networks: ['media_net'],
+          size: '4.2 GB', cpu: 24, mem: 6242,
+        },
+        {
+          id: 'k8s11ph', name: 'pihole', image: 'pihole/pihole', tag: '2024.07.0',
+          state: 'running', health: 'healthy', uptime: '127d 4h',
+          ports: ['53:53/tcp', '53:53/udp', '8053:80/tcp'],
+          mounts: [
+            { type: 'volume', name: 'pihole_data',     container: '/etc/pihole' },
+            { type: 'volume', name: 'pihole_dnsmasq',  container: '/etc/dnsmasq.d' },
+          ],
+          networks: ['net_net'],
+          size: '184 MB', cpu: 1, mem: 142,
+        },
+        {
+          id: 'k8s12wg', name: 'wireguard', image: 'linuxserver/wireguard', tag: '1.0.20',
+          state: 'running', health: 'healthy', uptime: '127d 4h',
+          ports: ['51820:51820/udp'],
+          mounts: [
+            { type: 'bind', host: '/etc/wireguard', container: '/config' },
+            { type: 'bind', host: '/lib/modules',   container: '/lib/modules', mode: 'ro' },
+          ],
+          networks: ['net_net'],
+          size: '42 MB', cpu: 0, mem: 32,
+        },
+      ],
+      networks: [
+        { name: 'proxy_net',    driver: 'bridge', subnet: '10.42.0.0/16',  gateway: '10.42.0.1',  scope: 'local', attached: 8 },
+        { name: 'iot_net',      driver: 'bridge', subnet: '172.25.0.0/16', gateway: '172.25.0.1', scope: 'local', attached: 4 },
+        { name: 'media_net',    driver: 'bridge', subnet: '172.26.0.0/16', gateway: '172.26.0.1', scope: 'local', attached: 3 },
+        { name: 'dev_net',      driver: 'bridge', subnet: '172.27.0.0/16', gateway: '172.27.0.1', scope: 'local', attached: 4 },
+        { name: 'net_net',      driver: 'bridge', subnet: '172.28.0.0/16', gateway: '172.28.0.1', scope: 'local', attached: 2 },
+        { name: 'cni0',         driver: 'cni',    subnet: '10.42.1.0/24',  gateway: '10.42.1.1',  scope: 'local', attached: 47 },
+      ],
+      volumes: [
+        { name: 'gitea_data',          driver: 'local',         size: '4.2 GB', mount: '/var/lib/docker/volumes/gitea_data/_data',          usedBy: ['gitea'] },
+        { name: 'drone_data',          driver: 'local',         size: '184 MB', mount: '/var/lib/docker/volumes/drone_data/_data',          usedBy: ['drone-ci'] },
+        { name: 'traefik_acme',        driver: 'local',         size: '4 MB',   mount: '/var/lib/docker/volumes/traefik_acme/_data',        usedBy: ['traefik'] },
+        { name: 'immich_model_cache',  driver: 'local',         size: '8.4 GB', mount: '/var/lib/docker/volumes/immich_model_cache/_data',  usedBy: ['immich-server', 'immich-ml'] },
+        { name: 'frigate_clips',       driver: 'local',         size: '184 GB', mount: '/var/lib/docker/volumes/frigate_clips/_data',       usedBy: ['frigate'] },
+        { name: 'pihole_data',         driver: 'local',         size: '84 MB',  mount: '/var/lib/docker/volumes/pihole_data/_data',         usedBy: ['pihole'] },
+        { name: 'pihole_dnsmasq',      driver: 'local',         size: '2 MB',   mount: '/var/lib/docker/volumes/pihole_dnsmasq/_data',      usedBy: ['pihole'] },
+        { name: 'mosquitto_data',      driver: 'local',         size: '12 MB',  mount: '/var/lib/docker/volumes/mosquitto_data/_data',      usedBy: ['mosquitto'] },
+      ],
+    },
+
+    {
+      id: 'vega',
+      engine: 'Docker 27.3.1 · NVIDIA runtime',
+      compose: 'docker compose v2.30.1',
+      containers: [
+        {
+          id: 'vg01oll', name: 'ollama', image: 'ollama/ollama', tag: '0.5.1',
+          state: 'running', health: 'healthy', uptime: '6d 18h',
+          ports: ['11434:11434/tcp'],
+          mounts: [
+            { type: 'volume', name: 'ollama_models', container: '/root/.ollama' },
+            { type: 'bind',   host: '/dev/nvidia0',  container: '/dev/nvidia0' },
+            { type: 'bind',   host: '/dev/nvidia1',  container: '/dev/nvidia1' },
+          ],
+          networks: ['ai_net'],
+          size: '4.8 GB', cpu: 12, mem: 8412, gpu: 73,
+        },
+        {
+          id: 'vg02own', name: 'open-webui', image: 'ghcr.io/open-webui/open-webui', tag: 'v0.4.7',
+          state: 'running', health: 'healthy', uptime: '6d 18h',
+          ports: ['3001:8080/tcp'],
+          mounts: [
+            { type: 'volume', name: 'webui_data', container: '/app/backend/data' },
+          ],
+          networks: ['ai_net', 'proxy_net'],
+          size: '824 MB', cpu: 2, mem: 412,
+        },
+        {
+          id: 'vg03cf', name: 'comfyui', image: 'yanwk/comfyui-boot', tag: 'cu124-latest',
+          state: 'updating', health: 'pulling', uptime: '—',
+          ports: ['8188:8188/tcp'],
+          mounts: [
+            { type: 'bind',   host: '/mnt/models/comfy',  container: '/root/ComfyUI/models' },
+            { type: 'bind',   host: '/mnt/comfy/output',  container: '/root/ComfyUI/output' },
+            { type: 'volume', name: 'comfy_input',        container: '/root/ComfyUI/input' },
+          ],
+          networks: ['ai_net'],
+          size: '7.2 GB', cpu: 0, mem: 0, gpu: 0,
+        },
+        {
+          id: 'vg04wx', name: 'whisperx', image: 'jim60105/whisperx', tag: '3.3.4',
+          state: 'running', health: 'idle', uptime: '6d 18h',
+          ports: ['9000:9000/tcp'],
+          mounts: [
+            { type: 'volume', name: 'whisperx_models', container: '/models' },
+            { type: 'bind',   host: '/mnt/audio-inbox',  container: '/inbox' },
+          ],
+          networks: ['ai_net'],
+          size: '2.4 GB', cpu: 1, mem: 184,
+        },
+        {
+          id: 'vg05tx', name: 'text-generation-webui', image: 'atinoda/text-generation-webui', tag: 'snapshot-2024-11-03',
+          state: 'exited', health: 'stopped', uptime: '—',
+          ports: [],
+          mounts: [
+            { type: 'bind', host: '/mnt/models/text', container: '/app/models' },
+          ],
+          networks: ['ai_net'],
+          size: '6.1 GB', cpu: 0, mem: 0,
+        },
+      ],
+      networks: [
+        { name: 'ai_net',    driver: 'bridge', subnet: '172.29.0.0/16', gateway: '172.29.0.1', scope: 'local', attached: 5 },
+        { name: 'proxy_net', driver: 'bridge', subnet: '172.30.0.0/16', gateway: '172.30.0.1', scope: 'local', attached: 2 },
+        { name: 'bridge',    driver: 'bridge', subnet: '172.17.0.0/16', gateway: '172.17.0.1', scope: 'local', attached: 0 },
+      ],
+      volumes: [
+        { name: 'ollama_models',    driver: 'local', size: '38.4 GB', mount: '/var/lib/docker/volumes/ollama_models/_data',    usedBy: ['ollama'] },
+        { name: 'webui_data',       driver: 'local', size: '184 MB',  mount: '/var/lib/docker/volumes/webui_data/_data',       usedBy: ['open-webui'] },
+        { name: 'comfy_input',      driver: 'local', size: '824 MB',  mount: '/var/lib/docker/volumes/comfy_input/_data',      usedBy: ['comfyui'] },
+        { name: 'whisperx_models',  driver: 'local', size: '4.2 GB',  mount: '/var/lib/docker/volumes/whisperx_models/_data',  usedBy: ['whisperx'] },
+      ],
+    },
+  ],
+};
+
+// ============================================================
+// Bot topology data — bots, their host server, MCP sidecars,
+// the projects they manage, and delegation lines to other bots.
+// ============================================================
+window.TOPOLOGY_DATA = {
+  bots: [
+    {
+      id: 'lab-bot', label: 'lab-bot', role: 'orchestrator',
+      host: 'nyx', model: 'claude-sonnet-4',
+      desc: 'concierge · plans + delegates · synthesises summaries',
+      avatar: 'LB', status: 'idle',
+      mcps: [
+        { id: 'orch-mcp',     label: 'orchestrator-mcp', ver: '0.3.1', kind: 'native', desc: 'fan-out / fan-in across bots' },
+        { id: 'calendar-mcp', label: 'calendar-mcp',     ver: '0.2.0', kind: 'remote', desc: 'caldav · maintenance windows' },
+        { id: 'slack-mcp',    label: 'slack-mcp',        ver: '0.4.2', kind: 'remote', desc: 'post to #lab + mention you' },
+        { id: 'notes-mcp',    label: 'notes-mcp',        ver: '0.1.4', kind: 'native', desc: 'persistent runbook · markdown' },
+      ],
+      // delegation edges (bot -> bot)
+      delegates: ['ops-bot', 'watch-bot', 'sync-bot'],
+      // projects this bot doesn't directly manage; it surfaces summaries
+      manages: [],
+    },
+    {
+      id: 'ops-bot', label: 'ops-bot', role: 'sudoer',
+      host: 'nyx', model: 'claude-sonnet-4',
+      desc: 'infra ops · containerd / systemd · gated approvals',
+      avatar: 'OP', status: 'busy',
+      mcps: [
+        { id: 'docker-mcp',  label: 'docker-mcp',  ver: '0.5.0', kind: 'native', desc: 'compose · inspect · logs' },
+        { id: 'ssh-mcp',     label: 'ssh-mcp',     ver: '0.6.2', kind: 'native', desc: 'multi-host shell · audited' },
+        { id: 'systemd-mcp', label: 'systemd-mcp', ver: '0.2.0', kind: 'native', desc: 'unit start/stop · journalctl' },
+        { id: 'secrets-mcp', label: 'secrets-mcp', ver: '0.3.4', kind: 'remote', desc: 'sops + age · read-only' },
+      ],
+      delegates: [],
+      manages: [
+        { name: 'traefik',   host: 'aether', port: '443'  },
+        { name: 'caddy',     host: 'nyx',    port: '80'   },
+        { name: 'registry',  host: 'aether', port: '5000' },
+        { name: 'gitea',     host: 'aether', port: '3232' },
+        { name: 'drone-ci',  host: 'aether', port: '8089' },
+        { name: 'comfyui',   host: 'vega',   port: '8188' },
+      ],
+    },
+    {
+      id: 'watch-bot', label: 'watch-bot', role: 'alerts',
+      host: 'aether', model: 'claude-haiku-4',
+      desc: 'reads metrics · raises anomalies · escalates',
+      avatar: 'WB', status: 'ok',
+      mcps: [
+        { id: 'prometheus-mcp',   label: 'prometheus-mcp',   ver: '0.4.0', kind: 'native', desc: 'promql · alert rules' },
+        { id: 'loki-mcp',         label: 'loki-mcp',         ver: '0.3.1', kind: 'native', desc: 'logql · stream tail' },
+        { id: 'alertmanager-mcp', label: 'alertmanager-mcp', ver: '0.2.0', kind: 'native', desc: 'silence · escalate · group' },
+      ],
+      delegates: [],
+      manages: [
+        { name: 'grafana',      host: 'nyx',    port: '3000' },
+        { name: 'prometheus',   host: 'nyx',    port: '9090' },
+        { name: 'loki',         host: 'nyx',    port: '3100' },
+        { name: 'alertmanager', host: 'nyx',    port: '9093' },
+      ],
+    },
+    {
+      id: 'sync-bot', label: 'sync-bot', role: 'backup',
+      host: 'helios', model: 'claude-haiku-4',
+      desc: 'snapshots · integrity · cold storage',
+      avatar: 'SB', status: 'ok',
+      mcps: [
+        { id: 'restic-mcp', label: 'restic-mcp', ver: '0.6.1', kind: 'native', desc: 'restic backup · prune · check' },
+        { id: 'zfs-mcp',    label: 'zfs-mcp',    ver: '0.2.0', kind: 'native', desc: 'snapshot · send · receive' },
+        { id: 's3-mcp',     label: 's3-mcp',     ver: '0.4.0', kind: 'remote', desc: 'backblaze b2 · sync up' },
+      ],
+      delegates: [],
+      manages: [
+        { name: 'restic-server', host: 'helios', port: '8000' },
+        { name: 'minio',         host: 'helios', port: '9001' },
+        { name: 'nextcloud',     host: 'helios', port: '9000' },
+        { name: 'paperless-ngx', host: 'helios', port: '8000' },
+        { name: 'vaultwarden',   host: 'helios', port: '8222' },
+      ],
+    },
+  ],
+  hosts: ['nyx', 'helios', 'aether', 'vega'],
+};
