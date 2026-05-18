@@ -181,11 +181,6 @@ fastify.post<{ Params: { botId: string } }>('/api/chat/:botId', async (request, 
       return;
     }
 
-    // Set up SSE response headers
-    reply.header('Content-Type', 'text/event-stream');
-    reply.header('Cache-Control', 'no-cache');
-    reply.header('Connection', 'keep-alive');
-
     const phoneHomeUrl = `${config.phoneHomeChatUrl}/${botId}`;
 
     const response = await fetchWithTimeout(phoneHomeUrl, {
@@ -208,6 +203,11 @@ fastify.post<{ Params: { botId: string } }>('/api/chat/:botId', async (request, 
       reply.status(500).send({ error: 'No response body' });
       return;
     }
+
+    // Set up SSE response headers only when streaming is confirmed to start
+    reply.header('Content-Type', 'text/event-stream');
+    reply.header('Cache-Control', 'no-cache');
+    reply.header('Connection', 'keep-alive');
 
     while (true) {
       const { done, value } = await reader.read();
