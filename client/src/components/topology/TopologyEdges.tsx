@@ -77,7 +77,7 @@ export const TopologyEdges: React.FC<TopologyEdgesProps> = ({ bots, botLayout })
             width={56}
             height={16}
             rx={3}
-            fill="var(--canvas-card)"
+            fill="rgb(var(--canvas-card))"
             stroke="color-mix(in oklab, rgb(var(--accent-cyan)) 30%, transparent)"
           />
           <text x={p.midX} y={p.midY + 3.5} textAnchor="middle" fill="rgb(var(--accent-cyan-deep))">
