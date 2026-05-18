@@ -35,8 +35,8 @@ COPY --from=server-builder /workspace/server/dist ./server/dist
 COPY --from=server-builder /workspace/server/package.json ./server/
 COPY package.json package-lock.json ./
 
-# Install production dependencies only
-RUN npm ci --omit=dev --ignore-scripts
+# Install production dependencies only for server workspace
+RUN npm ci --omit=dev --ignore-scripts --workspace=server
 
 # Copy shared module for types/runtime
 COPY --from=base /workspace/shared ./shared
@@ -54,4 +54,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
 EXPOSE 3000
 
 # Start the server
-CMD ["node", "server/index.js"]
+CMD ["node", "server/dist/index.js"]
