@@ -72,6 +72,13 @@ export interface App {
   meta: string;
 }
 
+export interface Alert {
+  name: string;
+  severity: string;
+  state: string;
+  labels: Record<string, string>;
+}
+
 export interface Bot {
   id: string;
   label: string;

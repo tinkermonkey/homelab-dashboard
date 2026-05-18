@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect, type ReactNode } from 'react';
 import type { LAB_DATA } from '@homelab/shared';
 
 interface StatusbarProps {
   clusterData?: LAB_DATA & { degraded?: string[] };
 }
 
-export const StatusbarContent: React.FC<StatusbarProps> = ({ clusterData }) => {
+export const StatusbarContent = ({ clusterData }: StatusbarProps): { left: ReactNode; right: ReactNode } => {
   const getInitialTicker = () => ({
     cpu: clusterData?.servers[0]?.cpu.v || 0,
     ping: clusterData?.gateway?.pingMs || 0,
@@ -61,7 +61,7 @@ export const StatusbarContent: React.FC<StatusbarProps> = ({ clusterData }) => {
     return () => clearInterval(interval);
   }, [clusterData]);
 
-  return (
+  const leftMetrics = (
     <>
       <div style={{ fontSize: '11px', color: 'rgb(var(--shell-fg-2))' }}>
         CPU: <span style={{ fontFamily: 'var(--font-mono)', color: 'rgb(var(--shell-fg-1))' }}>{ticker.cpu}%</span>
@@ -69,13 +69,18 @@ export const StatusbarContent: React.FC<StatusbarProps> = ({ clusterData }) => {
       <div style={{ fontSize: '11px', color: 'rgb(var(--shell-fg-2))' }}>
         Ping: <span style={{ fontFamily: 'var(--font-mono)', color: 'rgb(var(--shell-fg-1))' }}>{ticker.ping}ms</span>
       </div>
-      <div style={{ fontSize: '11px', color: 'rgb(var(--shell-fg-2))', marginLeft: 'auto' }}>
-        ↓ <span style={{ fontFamily: 'var(--font-mono)', color: 'rgb(var(--shell-fg-1))' }}>{ticker.down}</span>
-        <span style={{ color: 'rgb(var(--shell-fg-3))', margin: '0 6px' }}>|</span>
-        ↑ <span style={{ fontFamily: 'var(--font-mono)', color: 'rgb(var(--shell-fg-1))' }}>{ticker.up}</span>
-        <span style={{ color: 'rgb(var(--shell-fg-3))', margin: '0 6px' }}>|</span>
-        Cluster: <span style={{ color, fontWeight: 500 }}>{status}</span>
-      </div>
     </>
   );
+
+  const rightMetrics = (
+    <div style={{ fontSize: '11px', color: 'rgb(var(--shell-fg-2))' }}>
+      ↓ <span style={{ fontFamily: 'var(--font-mono)', color: 'rgb(var(--shell-fg-1))' }}>{ticker.down}</span>
+      <span style={{ color: 'rgb(var(--shell-fg-3))', margin: '0 6px' }}>|</span>
+      ↑ <span style={{ fontFamily: 'var(--font-mono)', color: 'rgb(var(--shell-fg-1))' }}>{ticker.up}</span>
+      <span style={{ color: 'rgb(var(--shell-fg-3))', margin: '0 6px' }}>|</span>
+      Cluster: <span style={{ color, fontWeight: 500 }}>{status}</span>
+    </div>
+  );
+
+  return { left: leftMetrics, right: rightMetrics };
 };

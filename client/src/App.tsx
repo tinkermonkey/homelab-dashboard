@@ -4,8 +4,8 @@ import {
   ShellLayout,
   Icon as HeimdallIcon,
   Button,
+  type IconName,
 } from '@tinkermonkey/heimdall-ui';
-import '@tinkermonkey/heimdall-ui';
 import './styles/heimdall.css';
 import './styles/globals.css';
 import { usePersistedState } from './utils/localStorage';
@@ -94,14 +94,14 @@ const AppContent: React.FC = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [commandPaletteOpen]);
 
-  const iconMap: Record<string, string> = {
+  const iconMap: Record<string, IconName> = {
     dashboard: 'dashboard',
     layers: 'layout',
     globe: 'graph',
-    cpu: 'settings',
+    cpu: 'info',
     link: 'link',
     zap: 'alert',
-    database: 'settings',
+    database: 'data',
     bot: 'user',
     history: 'reload',
     settings: 'settings',
@@ -113,7 +113,7 @@ const AppContent: React.FC = () => {
       items: NAV_ITEMS.map(item => ({
         id: item.id,
         label: item.label,
-        icon: (iconMap[item.icon] || 'dashboard') as any,
+        icon: iconMap[item.icon] || 'dashboard',
       })),
     },
   ];
@@ -140,8 +140,7 @@ const AppContent: React.FC = () => {
   );
 
   return (
-    <>
-      <ShellLayout
+    <ShellLayout
         appTitle={{
           title: 'Homelab',
           version: 'asgard',
@@ -170,7 +169,7 @@ const AppContent: React.FC = () => {
                 title="Toggle alerts visibility"
               >
                 <HeimdallIcon name="bell" size={16} />
-                {!sidebarCollapsed && 'Alerts'}
+                Alerts
               </Button>
               <Button
                 variant="secondary"
@@ -179,7 +178,7 @@ const AppContent: React.FC = () => {
                 title="Toggle compact density"
               >
                 <HeimdallIcon name="layout" size={16} />
-                {!sidebarCollapsed && 'Density'}
+                Density
               </Button>
               <Button
                 variant={chatVisible ? 'primary' : 'secondary'}
@@ -188,7 +187,7 @@ const AppContent: React.FC = () => {
                 title="Toggle bot console"
               >
                 <HeimdallIcon name="user" size={16} />
-                {!sidebarCollapsed && 'Bot'}
+                Bot
               </Button>
               <Button
                 variant="secondary"
@@ -197,14 +196,12 @@ const AppContent: React.FC = () => {
                 title="Toggle dark/light mode"
               >
                 <HeimdallIcon name={darkCanvas ? 'sun' : 'moon'} size={16} />
-                {!sidebarCollapsed && (darkCanvas ? 'Light' : 'Dark')}
+                {darkCanvas ? 'Light' : 'Dark'}
               </Button>
             </div>
           ),
         }}
-        statusbar={{
-          left: <StatusbarContent clusterData={clusterData} />,
-        }}
+        statusbar={StatusbarContent({ clusterData })}
       >
         <CommandPalette
           isOpen={commandPaletteOpen}
@@ -238,7 +235,6 @@ const AppContent: React.FC = () => {
           )}
         </div>
       </ShellLayout>
-    </>
   );
 };
 

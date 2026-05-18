@@ -1,4 +1,4 @@
-import type { LAB_DATA, DOCKER_DATA, TOPOLOGY_DATA, STATUS_DATA } from '@homelab/shared';
+import type { LAB_DATA, DOCKER_DATA, TOPOLOGY_DATA, STATUS_DATA, Alert } from '@homelab/shared';
 
 // 24h history (48 points = 30-min buckets)
 function seedHist(seed: number, base: number, amp: number, drift = 0): number[] {
@@ -462,12 +462,7 @@ export function getStatusData(): STATUS_DATA {
   };
 }
 
-export function getActiveAlerts(): Array<{
-  name: string;
-  severity: string;
-  state: string;
-  labels: Record<string, string>;
-}> {
+export function getActiveAlerts(): Alert[] {
   return [
     {
       name: 'HighMemoryUsage',

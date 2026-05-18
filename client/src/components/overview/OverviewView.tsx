@@ -1,6 +1,7 @@
 import React from 'react';
 import type { LAB_DATA } from '@homelab/shared';
 import { Icon } from '../shared/Icon';
+import { useAlerts } from '../../hooks/useAPI';
 import { ServerCard } from './ServerCard';
 import { AlertsStrip } from './AlertsStrip';
 import { GatewayPanel } from './GatewayPanel';
@@ -13,6 +14,7 @@ interface OverviewViewProps {
 }
 
 export const OverviewView: React.FC<OverviewViewProps> = ({ data, showAlerts = true }) => {
+  const { data: alerts = [] } = useAlerts();
 
   return (
     <div className="overview-view">
@@ -67,8 +69,8 @@ export const OverviewView: React.FC<OverviewViewProps> = ({ data, showAlerts = t
       )}
 
       {/* Alerts Strip */}
-      {showAlerts && data.cluster.activeAlerts > 0 && (
-        <AlertsStrip activeAlerts={data.cluster.activeAlerts} />
+      {showAlerts && alerts.length > 0 && (
+        <AlertsStrip alerts={alerts} />
       )}
 
       {/* Cluster Stats */}

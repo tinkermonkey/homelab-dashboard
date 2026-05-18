@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import type { LAB_DATA, DOCKER_DATA, TOPOLOGY_DATA, STATUS_DATA } from '@homelab/shared';
+import type { LAB_DATA, DOCKER_DATA, TOPOLOGY_DATA, STATUS_DATA, Alert } from '@homelab/shared';
 
 const API_BASE = import.meta.env.VITE_API_BASE || '/api';
 
@@ -88,5 +88,23 @@ export function useTopology(enabled = true) {
     enabled,
     staleTime: 60000,
     gcTime: 10 * 60 * 1000,
+  });
+}
+
+// Alerts hook (5s polling)
+export function useAlerts() {
+  return useQuery({
+    queryKey: ['alerts'],
+    queryFn: async () => {
+      const response = await fetch(`${API_BASE}/alerts`);
+      if (!response.ok) {
+        throw new Error(`API error: ${response.status}`);
+      }
+      const data = await response.json();
+      return data as Alert[];
+    },
+    refetchInterval: 5000,
+    staleTime: 2000,
+    gcTime: 5 * 60 * 1000,
   });
 }

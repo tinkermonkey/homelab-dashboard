@@ -1,4 +1,5 @@
 import { config } from '../config.js';
+import type { Alert } from '@homelab/shared';
 
 interface PromQLResponse {
   status: string;
@@ -197,12 +198,7 @@ export class SigNozClient {
   }
 
   // Fetch active alerts from Alertmanager
-  async getActiveAlerts(): Promise<Array<{
-    name: string;
-    severity: string;
-    state: string;
-    labels: Record<string, string>;
-  }>> {
+  async getActiveAlerts(): Promise<Alert[]> {
     const url = new URL(`${this.baseUrl}/api/v1/alerts`);
     url.searchParams.set('state', 'active');
 
