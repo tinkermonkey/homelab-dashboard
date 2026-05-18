@@ -71,8 +71,6 @@ interface ShellLayoutProps {
   setSidebarCollapsed: (value: boolean) => void;
   darkCanvas: boolean;
   setDarkCanvas: (value: boolean) => void;
-  density: 'compact' | 'regular';
-  setDensity: (value: 'compact' | 'regular') => void;
   children: React.ReactNode;
 }
 
@@ -81,14 +79,11 @@ const ShellLayout: React.FC<ShellLayoutProps> = ({
   setSidebarCollapsed,
   darkCanvas,
   setDarkCanvas,
-  density: _density,
-  setDensity: _setDensity,
   children,
 }) => {
   const location = useLocation();
   const navigate = useNavigate();
 
-  const sidebarWidth = sidebarCollapsed ? 64 : 256;
   const currentRoute = ROUTES.find(r => r.path === location.pathname) || ROUTES[0];
 
   const handleNavClick = (path: string) => {
@@ -96,69 +91,31 @@ const ShellLayout: React.FC<ShellLayoutProps> = ({
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
+    <div className="shell-layout">
       <Titlebar title="Homelab" />
 
-      <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+      <div className="shell-layout__main">
         {/* Sidebar */}
-        <nav
-          style={{
-            width: `${sidebarWidth}px`,
-            background: `rgb(var(--shell-bg))`,
-            borderRight: `1px solid rgb(var(--shell-border))`,
-            display: 'flex',
-            flexDirection: 'column',
-            padding: '12px 0',
-            overflow: 'auto',
-            transition: 'width 0.2s ease',
-          }}
-        >
-          {NAV_ITEMS.map(item => (
-            <button
-              key={item.id}
-              onClick={() => handleNavClick(item.path)}
-              style={{
-                flex: 'none',
-                padding: sidebarCollapsed ? '8px 12px' : '12px 16px',
-                background: location.pathname === item.path ? 'rgba(34, 211, 238, 0.1)' : 'transparent',
-                border: 'none',
-                color: location.pathname === item.path ? `rgb(var(--accent-primary))` : `rgb(var(--shell-fg-2))`,
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: sidebarCollapsed ? 0 : 12,
-                fontSize: '14px',
-                fontWeight: 500,
-                borderLeft: location.pathname === item.path ? `2px solid rgb(var(--accent-primary))` : '2px solid transparent',
-                transition: 'all 0.2s ease',
-                whiteSpace: 'nowrap',
-              }}
-              title={sidebarCollapsed ? item.label : undefined}
-            >
-              <span style={{ display: 'inline-flex', width: '24px', height: '24px', alignItems: 'center', justifyContent: 'center' }}>
-                <Icon name={item.icon} size={20} />
-              </span>
-              {!sidebarCollapsed && <span>{item.label}</span>}
-            </button>
-          ))}
-
-          <div style={{ flex: 1 }} />
+        <nav className={`sidebar ${sidebarCollapsed ? 'sidebar--collapsed' : ''}`}>
+          <div className="sidebar__nav">
+            {NAV_ITEMS.map(item => (
+              <button
+                key={item.id}
+                onClick={() => handleNavClick(item.path)}
+                className={`nav-item ${location.pathname === item.path ? 'nav-item--active' : ''}`}
+                title={sidebarCollapsed ? item.label : undefined}
+              >
+                <span className="nav-item__icon">
+                  <Icon name={item.icon} size={20} />
+                </span>
+                {!sidebarCollapsed && <span className="nav-item__label">{item.label}</span>}
+              </button>
+            ))}
+          </div>
 
           <button
             onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-            style={{
-              padding: '8px 12px',
-              background: 'transparent',
-              border: 'none',
-              color: `rgb(var(--shell-fg-2))`,
-              cursor: 'pointer',
-              fontSize: '12px',
-              borderTop: `1px solid rgb(var(--shell-border))`,
-              transition: 'all 0.2s ease',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
+            className="sidebar__toggle"
             title="Toggle sidebar"
           >
             {sidebarCollapsed ? '▶' : '◀'}
@@ -166,38 +123,17 @@ const ShellLayout: React.FC<ShellLayoutProps> = ({
         </nav>
 
         {/* Main content */}
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        <div className="shell-layout__content">
           {/* Topbar */}
-          <div
-            style={{
-              height: '44px',
-              borderBottom: `1px solid rgb(var(--shell-border))`,
-              background: `rgb(var(--shell-bg))`,
-              padding: '0 16px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-            }}
-          >
+          <div className="topbar">
             <div style={{ fontSize: '14px', fontWeight: 500, color: `rgb(var(--canvas-fg-1))` }}>
               {currentRoute.display}
             </div>
 
             <button
               onClick={() => setDarkCanvas(!darkCanvas)}
-              style={{
-                padding: '6px 12px',
-                background: `rgb(var(--accent-primary))`,
-                color: 'white',
-                border: 'none',
-                borderRadius: '4px',
-                cursor: 'pointer',
-                fontSize: '12px',
-                fontWeight: 500,
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-              }}
+              className="btn btn--primary btn--sm"
+              style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
             >
               <Icon name={darkCanvas ? 'sun' : 'moon'} size={16} />
               {darkCanvas ? 'Light' : 'Dark'}
@@ -205,34 +141,14 @@ const ShellLayout: React.FC<ShellLayoutProps> = ({
           </div>
 
           {/* Canvas content */}
-          <div
-            style={{
-              flex: 1,
-              overflow: 'auto',
-              background: `rgb(var(--canvas-bg))`,
-              color: `rgb(var(--canvas-fg-1))`,
-              borderTopLeftRadius: '8px',
-            }}
-          >
+          <div className="shell-layout__canvas">
             {children}
           </div>
 
           {/* Statusbar */}
-          <div
-            style={{
-              height: '32px',
-              borderTop: `1px solid rgb(var(--shell-border))`,
-              background: `rgb(var(--shell-bg))`,
-              padding: '0 16px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              fontSize: '12px',
-              color: `rgb(var(--shell-fg-2))`,
-            }}
-          >
-            <div>Ready</div>
-            <div>Cluster Status: OK</div>
+          <div className="statusbar">
+            <div className="statusbar__slot statusbar__slot--left">Ready</div>
+            <div className="statusbar__slot statusbar__slot--right">Cluster Status: OK</div>
           </div>
         </div>
       </div>
@@ -243,7 +159,6 @@ const ShellLayout: React.FC<ShellLayoutProps> = ({
 const AppContent: React.FC = () => {
   const [sidebarCollapsed, setSidebarCollapsed] = usePersistedState('sidebarCollapsed', false);
   const [darkCanvas, setDarkCanvas] = usePersistedState('darkCanvas', true);
-  const [density, setDensity] = usePersistedState<'compact' | 'regular'>('density', 'regular');
 
   useEffect(() => {
     document.body.classList.toggle('dark-canvas', darkCanvas);
@@ -255,8 +170,6 @@ const AppContent: React.FC = () => {
       setSidebarCollapsed={setSidebarCollapsed}
       darkCanvas={darkCanvas}
       setDarkCanvas={setDarkCanvas}
-      density={density}
-      setDensity={setDensity}
     >
       <Routes>
         <Route path="/" element={<Navigate to="/cluster/overview" replace />} />
