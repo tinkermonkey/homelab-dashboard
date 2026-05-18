@@ -19,6 +19,7 @@ function isValidTopologyData(data: unknown): data is TOPOLOGY_DATA {
   if (!data || typeof data !== 'object') return false;
   const obj = data as Record<string, unknown>;
   return Array.isArray(obj.hosts) &&
+         obj.hosts.every((h: unknown) => typeof h === 'string') &&
          Array.isArray(obj.bots) &&
          obj.bots.every((bot: unknown) => {
            if (!bot || typeof bot !== 'object') return false;

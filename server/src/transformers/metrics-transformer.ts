@@ -117,25 +117,44 @@ export async function transformMetrics(
     const dnsStatsResult = gatewayResults[1];
     const vpnPeersResult = gatewayResults[2];
 
-    if (wanStatsResult.status === 'rejected' || dnsStatsResult.status === 'rejected' || vpnPeersResult.status === 'rejected') {
-      console.error('One or more gateway metrics failed');
-      degraded.push('ntopng');
-    } else {
-      const wanStats = wanStatsResult.value;
-      const dnsStats = dnsStatsResult.value;
-      const vpnPeers = vpnPeersResult.value;
+    let hasGatewayFailure = false;
+    const gatewayUpdates: Partial<typeof result.gateway> = {};
 
+    if (wanStatsResult.status === 'fulfilled') {
+      const wanStats = wanStatsResult.value;
+      gatewayUpdates.pingMs = wanStats.ping;
+      gatewayUpdates.jitterMs = wanStats.jitter;
+      gatewayUpdates.lossPct = wanStats.loss;
+      gatewayUpdates.downMbps = wanStats.downMbps;
+      gatewayUpdates.upMbps = wanStats.upMbps;
+    } else {
+      hasGatewayFailure = true;
+    }
+
+    if (dnsStatsResult.status === 'fulfilled') {
+      const dnsStats = dnsStatsResult.value;
+      gatewayUpdates.dnsResolved = dnsStats.resolved;
+      gatewayUpdates.dnsBlocked = dnsStats.blocked;
+    } else {
+      hasGatewayFailure = true;
+    }
+
+    if (vpnPeersResult.status === 'fulfilled') {
+      const vpnPeers = vpnPeersResult.value;
+      gatewayUpdates.vpnPeers = vpnPeers;
+    } else {
+      hasGatewayFailure = true;
+    }
+
+    if (Object.keys(gatewayUpdates).length > 0) {
       result.gateway = {
         ...result.gateway,
-        pingMs: wanStats.ping,
-        jitterMs: wanStats.jitter,
-        lossPct: wanStats.loss,
-        dnsResolved: dnsStats.resolved,
-        dnsBlocked: dnsStats.blocked,
-        vpnPeers,
-        downMbps: wanStats.downMbps,
-        upMbps: wanStats.upMbps,
+        ...gatewayUpdates,
       };
+    }
+
+    if (hasGatewayFailure) {
+      degraded.push('ntopng');
     }
   } catch (error) {
     console.error('Error transforming gateway metrics:', error);

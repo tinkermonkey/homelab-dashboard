@@ -14,7 +14,8 @@ interface OverviewViewProps {
 }
 
 export const OverviewView: React.FC<OverviewViewProps> = ({ data, showAlerts = true }) => {
-  const { data: alerts = [] } = useAlerts();
+  const { data: alertsData } = useAlerts();
+  const alerts = alertsData?.alerts ?? [];
 
   return (
     <div className="overview-view">
