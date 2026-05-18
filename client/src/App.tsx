@@ -11,7 +11,7 @@ import './styles/globals.css';
 import { usePersistedState } from './utils/localStorage';
 import { useCluster } from './hooks/useAPI';
 import { CommandPalette } from './components/shell/CommandPalette';
-import { StatusbarContent } from './components/shell/Statusbar';
+import { useStatusbarContent } from './components/shell/Statusbar';
 import { OverviewView } from './components/overview/OverviewView';
 import { ContainersView } from './components/containers/ContainersView';
 import { TopologyView } from './components/topology/TopologyView';
@@ -61,6 +61,7 @@ const AppContent: React.FC = () => {
   const [showAlerts, setShowAlerts] = usePersistedState('showAlerts', true);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const { data: clusterData, isLoading, error } = useCluster();
+  const statusbarContent = useStatusbarContent(clusterData);
 
   const currentRoute = ROUTES.find(r => r.path === location.pathname) || ROUTES[0];
 
@@ -201,7 +202,7 @@ const AppContent: React.FC = () => {
             </div>
           ),
         }}
-        statusbar={StatusbarContent({ clusterData })}
+        statusbar={statusbarContent}
       >
         <CommandPalette
           isOpen={commandPaletteOpen}

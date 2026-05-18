@@ -1,11 +1,7 @@
 import { useState, useEffect, type ReactNode } from 'react';
 import type { LAB_DATA } from '@homelab/shared';
 
-interface StatusbarProps {
-  clusterData?: LAB_DATA & { degraded?: string[] };
-}
-
-export const StatusbarContent = ({ clusterData }: StatusbarProps): { left: ReactNode; right: ReactNode } => {
+export const useStatusbarContent = (clusterData?: LAB_DATA & { degraded?: string[] }): { left: ReactNode; right: ReactNode } => {
   const getInitialTicker = () => ({
     cpu: clusterData?.servers[0]?.cpu.v || 0,
     ping: clusterData?.gateway?.pingMs || 0,
