@@ -61,12 +61,49 @@ export class MCPClient {
 
   // Fetch Docker inventory data
   async getDockerInventory(): Promise<unknown> {
-    return this.call('DOCKER_DATA');
+    return this.callTool('DOCKER_DATA');
   }
 
   // Fetch bot topology data
   async getTopologyData(): Promise<unknown> {
-    return this.call('TOPOLOGY_DATA');
+    return this.callTool('TOPOLOGY_DATA');
+  }
+
+  private async callTool(toolName: string, params?: Record<string, unknown>): Promise<unknown> {
+    const request: MCPRequest = {
+      jsonrpc: '2.0',
+      id: `${toolName}-${Date.now()}`,
+      method: 'tools/call',
+      params: {
+        name: toolName,
+        arguments: params || {},
+      },
+    };
+
+    try {
+      const response = await fetch(this.baseUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(request),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const data = (await response.json()) as MCPResponse;
+
+      if (data.error) {
+        throw new Error(`MCP Error: ${data.error.message}`);
+      }
+
+      return data.result;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      throw new Error(`MCP tool call failed (${toolName}): ${message}`);
+    }
   }
 }
 

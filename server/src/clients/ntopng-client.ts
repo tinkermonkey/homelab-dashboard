@@ -57,34 +57,28 @@ export class NtopngClient {
     }
   }
 
-  async getWanPing(): Promise<number> {
+  private async getInterfaceData(): Promise<Record<string, unknown>> {
     try {
       const data = await this.fetchWithAuth('/lua/get_interface_data.lua?ifid=0');
-      const iface = data as Record<string, unknown>;
-      return (iface.ping || 0) as number;
+      return data as Record<string, unknown>;
     } catch {
-      return 0;
+      return {};
     }
+  }
+
+  async getWanPing(): Promise<number> {
+    const iface = await this.getInterfaceData();
+    return (iface.ping || 0) as number;
   }
 
   async getWanJitter(): Promise<number> {
-    try {
-      const data = await this.fetchWithAuth('/lua/get_interface_data.lua?ifid=0');
-      const iface = data as Record<string, unknown>;
-      return (iface.jitter || 0) as number;
-    } catch {
-      return 0;
-    }
+    const iface = await this.getInterfaceData();
+    return (iface.jitter || 0) as number;
   }
 
   async getWanLoss(): Promise<number> {
-    try {
-      const data = await this.fetchWithAuth('/lua/get_interface_data.lua?ifid=0');
-      const iface = data as Record<string, unknown>;
-      return (iface.loss || 0) as number;
-    } catch {
-      return 0;
-    }
+    const iface = await this.getInterfaceData();
+    return (iface.loss || 0) as number;
   }
 
   async getDNSStats(): Promise<{ resolved: number; blocked: number }> {
@@ -111,16 +105,28 @@ export class NtopngClient {
   }
 
   async getThroughput(): Promise<{ down: number; up: number }> {
-    try {
-      const data = await this.fetchWithAuth('/lua/get_interface_data.lua?ifid=0');
-      const iface = data as Record<string, unknown>;
-      return {
-        down: (iface.throughput_down || 0) as number,
-        up: (iface.throughput_up || 0) as number,
-      };
-    } catch {
-      return { down: 0, up: 0 };
-    }
+    const iface = await this.getInterfaceData();
+    return {
+      down: (iface.throughput_down || 0) as number,
+      up: (iface.throughput_up || 0) as number,
+    };
+  }
+
+  async getWanInterfaceStats(): Promise<{
+    ping: number;
+    jitter: number;
+    loss: number;
+    downMbps: number;
+    upMbps: number;
+  }> {
+    const iface = await this.getInterfaceData();
+    return {
+      ping: (iface.ping || 0) as number,
+      jitter: (iface.jitter || 0) as number,
+      loss: (iface.loss || 0) as number,
+      downMbps: (iface.throughput_down || 0) as number,
+      upMbps: (iface.throughput_up || 0) as number,
+    };
   }
 }
 

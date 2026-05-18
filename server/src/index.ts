@@ -161,10 +161,8 @@ fastify.get('/', async (request, reply) => {
 
 const start = async () => {
   try {
-    const port = parseInt(process.env.PORT || '3001', 10);
-    const host = process.env.HOST || 'localhost';
-    await fastify.listen({ port, host });
-    console.log(`Server running at http://${host}:${port}`);
+    await fastify.listen({ port: config.port, host: config.host });
+    console.log(`Server running at http://${config.host}:${config.port}`);
   } catch (err) {
     fastify.log.error(err);
     process.exit(1);

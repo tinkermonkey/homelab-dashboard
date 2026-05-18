@@ -51,9 +51,9 @@ export async function transformMetrics(
 
     const results = await Promise.allSettled(promises);
 
-    results.forEach((result, idx) => {
-      if (result.status === 'fulfilled' && result.value) {
-        const metrics = result.value;
+    results.forEach((settled, idx) => {
+      if (settled.status === 'fulfilled' && settled.value) {
+        const metrics = settled.value;
         const server = labData.servers.find((s) => s.id === metrics.hostname);
         if (server) {
           if (metrics.cpu.length > 0) {
@@ -68,7 +68,7 @@ export async function transformMetrics(
           server.temp = metrics.temp;
           server.load = metrics.load;
         }
-      } else if (result.status === 'rejected') {
+      } else if (settled.status === 'rejected') {
         degraded.push('signoz');
       }
     });
@@ -79,25 +79,22 @@ export async function transformMetrics(
 
   // Try to fetch and transform gateway metrics
   try {
-    const [ping, jitter, loss, dnsStats, vpnPeers, throughput] = await Promise.all([
-      ntopngClient.getWanPing(),
-      ntopngClient.getWanJitter(),
-      ntopngClient.getWanLoss(),
+    const [wanStats, dnsStats, vpnPeers] = await Promise.all([
+      ntopngClient.getWanInterfaceStats(),
       ntopngClient.getDNSStats(),
       ntopngClient.getVpnPeers(),
-      ntopngClient.getThroughput(),
     ]);
 
     result.gateway = {
       ...result.gateway,
-      pingMs: ping,
-      jitterMs: jitter,
-      lossPct: loss,
+      pingMs: wanStats.ping,
+      jitterMs: wanStats.jitter,
+      lossPct: wanStats.loss,
       dnsResolved: dnsStats.resolved,
       dnsBlocked: dnsStats.blocked,
       vpnPeers,
-      downMbps: throughput.down,
-      upMbps: throughput.up,
+      downMbps: wanStats.downMbps,
+      upMbps: wanStats.upMbps,
     };
   } catch (error) {
     console.error('Error transforming gateway metrics:', error);

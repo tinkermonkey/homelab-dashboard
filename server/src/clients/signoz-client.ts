@@ -141,13 +141,15 @@ export class SigNozClient {
 
   // Fetch load average for a host
   async getLoadAverage(hostname: string): Promise<string> {
-    const response = await this.query(
-      `node_load1{hostname="${hostname}"}, node_load5{hostname="${hostname}"}, node_load15{hostname="${hostname}"}`
-    );
+    const [resp1, resp5, resp15] = await Promise.all([
+      this.query(`node_load1{hostname="${hostname}"}`),
+      this.query(`node_load5{hostname="${hostname}"}`),
+      this.query(`node_load15{hostname="${hostname}"}`),
+    ]);
 
-    const load1 = response.data.result[0]?.value?.[1];
-    const load5 = response.data.result[1]?.value?.[1];
-    const load15 = response.data.result[2]?.value?.[1];
+    const load1 = resp1.data.result[0]?.value?.[1];
+    const load5 = resp5.data.result[0]?.value?.[1];
+    const load15 = resp15.data.result[0]?.value?.[1];
 
     return `${load1} / ${load5} / ${load15}`;
   }
@@ -186,7 +188,8 @@ export class SigNozClient {
       '1d'
     );
 
-    const value = response.data.result[0]?.value?.[1];
+    const values = response.data.result[0]?.values || [];
+    const value = values[values.length - 1]?.[1];
     if (value) {
       return Math.round(parseFloat(value) / (1024 * 1024 * 1024) * 10) / 10;
     }
