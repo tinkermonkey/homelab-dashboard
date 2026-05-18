@@ -15,7 +15,7 @@ describe('useAPI - fetchJSON', () => {
         json: async () => ({ servers: [] }),
       });
 
-      const result = await fetchJSON('/api/cluster');
+      const result = await fetchJSON<{ servers: unknown[] }>('/api/cluster');
 
       expect(result.data).toEqual({ servers: [] });
       expect(result.degraded).toBeUndefined();
@@ -31,7 +31,7 @@ describe('useAPI - fetchJSON', () => {
         }),
       });
 
-      const result = await fetchJSON('/api/cluster');
+      const result = await fetchJSON<{ servers: unknown[]; degraded: string[] }>('/api/cluster');
 
       expect(result.data).toEqual({
         servers: [],
@@ -53,7 +53,7 @@ describe('useAPI - fetchJSON', () => {
         json: async () => mockData,
       });
 
-      const result = await fetchJSON('/api/test');
+      const result = await fetchJSON<typeof mockData>('/api/test');
 
       expect(result.data).toEqual(mockData);
     });
@@ -66,7 +66,7 @@ describe('useAPI - fetchJSON', () => {
       });
       global.fetch = fetchMock;
 
-      await fetchJSON('/api/custom/path');
+      await fetchJSON<Record<string, never>>('/api/custom/path');
 
       expect(fetchMock).toHaveBeenCalledWith('/api/custom/path');
     });
@@ -79,7 +79,7 @@ describe('useAPI - fetchJSON', () => {
         status: 404,
       });
 
-      await expect(fetchJSON('/api/notfound')).rejects.toThrow('API error: 404');
+      await expect(fetchJSON<unknown>('/api/notfound')).rejects.toThrow('API error: 404');
     });
 
     it('throws error for 500 response', async () => {
@@ -88,7 +88,7 @@ describe('useAPI - fetchJSON', () => {
         status: 500,
       });
 
-      await expect(fetchJSON('/api/error')).rejects.toThrow('API error: 500');
+      await expect(fetchJSON<unknown>('/api/error')).rejects.toThrow('API error: 500');
     });
 
     it('throws error for 401 response', async () => {
@@ -97,7 +97,7 @@ describe('useAPI - fetchJSON', () => {
         status: 401,
       });
 
-      await expect(fetchJSON('/api/protected')).rejects.toThrow('API error: 401');
+      await expect(fetchJSON<unknown>('/api/protected')).rejects.toThrow('API error: 401');
     });
 
     it('does not throw for 206 status (partial content)', async () => {
@@ -107,7 +107,7 @@ describe('useAPI - fetchJSON', () => {
         json: async () => ({ data: 'partial', degraded: ['source'] }),
       });
 
-      const result = await fetchJSON('/api/partial');
+      const result = await fetchJSON<{ data: string; degraded: string[] }>('/api/partial');
 
       expect(result.degraded).toEqual(['source']);
     });
@@ -115,7 +115,7 @@ describe('useAPI - fetchJSON', () => {
     it('throws error when fetch itself fails', async () => {
       global.fetch = vi.fn().mockRejectedValue(new Error('Network error'));
 
-      await expect(fetchJSON('/api/test')).rejects.toThrow('Network error');
+      await expect(fetchJSON<unknown>('/api/test')).rejects.toThrow('Network error');
     });
 
     it('throws error with status code for various HTTP errors', async () => {
@@ -127,7 +127,7 @@ describe('useAPI - fetchJSON', () => {
           status,
         });
 
-        await expect(fetchJSON('/api/test')).rejects.toThrow(`API error: ${status}`);
+        await expect(fetchJSON<unknown>('/api/test')).rejects.toThrow(`API error: ${status}`);
       }
     });
   });
@@ -143,7 +143,7 @@ describe('useAPI - fetchJSON', () => {
         }),
       });
 
-      const result = await fetchJSON('/api/cluster');
+      const result = await fetchJSON<{ servers: unknown[]; degraded: string[] }>('/api/cluster');
 
       expect(result.data.servers).toBeDefined();
       expect(result.degraded).toEqual(['signoz']);
@@ -156,7 +156,7 @@ describe('useAPI - fetchJSON', () => {
         json: async () => ({ servers: [] }),
       });
 
-      const result = await fetchJSON('/api/cluster');
+      const result = await fetchJSON<{ servers: unknown[] }>('/api/cluster');
 
       expect(result.degraded).toBeUndefined();
     });
@@ -171,7 +171,7 @@ describe('useAPI - fetchJSON', () => {
         }),
       });
 
-      const result = await fetchJSON('/api/cluster');
+      const result = await fetchJSON<{ data: Record<string, never>; degraded: string[] }>('/api/cluster');
 
       expect(result.degraded).toEqual(['signoz', 'ntopng', 'elastiflow']);
     });
@@ -186,7 +186,7 @@ describe('useAPI - fetchJSON', () => {
         }),
       });
 
-      const result = await fetchJSON('/api/cluster');
+      const result = await fetchJSON<{ data: Record<string, never>; degraded: string[] }>('/api/cluster');
 
       expect(result.degraded).toEqual([]);
     });
@@ -202,7 +202,7 @@ describe('useAPI - fetchJSON', () => {
         json: async () => largeArray,
       });
 
-      const result = await fetchJSON('/api/large');
+      const result = await fetchJSON<Array<{ id: number }>>('/api/large');
 
       expect(result.data).toHaveLength(10000);
     });
@@ -214,7 +214,7 @@ describe('useAPI - fetchJSON', () => {
         json: async () => null,
       });
 
-      const result = await fetchJSON('/api/null');
+      const result = await fetchJSON<null>('/api/null');
 
       expect(result.data).toBeNull();
     });
@@ -226,7 +226,7 @@ describe('useAPI - fetchJSON', () => {
         json: async () => true,
       });
 
-      const result = await fetchJSON('/api/bool');
+      const result = await fetchJSON<boolean>('/api/bool');
 
       expect(result.data).toBe(true);
     });
@@ -238,7 +238,7 @@ describe('useAPI - fetchJSON', () => {
         json: async () => 42,
       });
 
-      const result = await fetchJSON('/api/number');
+      const result = await fetchJSON<number>('/api/number');
 
       expect(result.data).toBe(42);
     });
