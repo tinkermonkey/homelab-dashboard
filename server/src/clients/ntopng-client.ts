@@ -59,44 +59,61 @@ export class NtopngClient {
 
   private async getInterfaceData(): Promise<Record<string, unknown>> {
     const data = await this.fetchWithAuth('/lua/get_interface_data.lua?ifid=0');
+    if (!data || typeof data !== 'object') {
+      throw new Error('Invalid interface data format');
+    }
     return data as Record<string, unknown>;
+  }
+
+  private toNumber(value: unknown, fallback = 0): number {
+    if (typeof value === 'number') return value;
+    if (typeof value === 'string') {
+      const num = parseFloat(value);
+      return isNaN(num) ? fallback : num;
+    }
+    return fallback;
   }
 
   async getWanPing(): Promise<number> {
     const iface = await this.getInterfaceData();
-    return (iface.ping || 0) as number;
+    return this.toNumber(iface.ping);
   }
 
   async getWanJitter(): Promise<number> {
     const iface = await this.getInterfaceData();
-    return (iface.jitter || 0) as number;
+    return this.toNumber(iface.jitter);
   }
 
   async getWanLoss(): Promise<number> {
     const iface = await this.getInterfaceData();
-    return (iface.loss || 0) as number;
+    return this.toNumber(iface.loss);
   }
 
   async getDNSStats(): Promise<{ resolved: number; blocked: number }> {
     const data = await this.fetchWithAuth('/lua/get_dns_stats.lua');
+    if (!data || typeof data !== 'object') {
+      throw new Error('Invalid DNS stats format');
+    }
     const stats = data as Record<string, unknown>;
     return {
-      resolved: (stats.dns_resolved || 0) as number,
-      blocked: (stats.dns_blocked || 0) as number,
+      resolved: this.toNumber(stats.dns_resolved),
+      blocked: this.toNumber(stats.dns_blocked),
     };
   }
 
   async getVpnPeers(): Promise<number> {
     const data = await this.fetchWithAuth('/lua/get_vpn_peers.lua');
-    const peers = data as Array<unknown>;
-    return peers.length;
+    if (!Array.isArray(data)) {
+      throw new Error('Invalid VPN peers format');
+    }
+    return data.length;
   }
 
   async getThroughput(): Promise<{ down: number; up: number }> {
     const iface = await this.getInterfaceData();
     return {
-      down: (iface.throughput_down || 0) as number,
-      up: (iface.throughput_up || 0) as number,
+      down: this.toNumber(iface.throughput_down),
+      up: this.toNumber(iface.throughput_up),
     };
   }
 
@@ -109,11 +126,11 @@ export class NtopngClient {
   }> {
     const iface = await this.getInterfaceData();
     return {
-      ping: (iface.ping || 0) as number,
-      jitter: (iface.jitter || 0) as number,
-      loss: (iface.loss || 0) as number,
-      downMbps: (iface.throughput_down || 0) as number,
-      upMbps: (iface.throughput_up || 0) as number,
+      ping: this.toNumber(iface.ping),
+      jitter: this.toNumber(iface.jitter),
+      loss: this.toNumber(iface.loss),
+      downMbps: this.toNumber(iface.throughput_down),
+      upMbps: this.toNumber(iface.throughput_up),
     };
   }
 }

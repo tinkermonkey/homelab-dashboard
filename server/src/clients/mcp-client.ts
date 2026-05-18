@@ -69,6 +69,11 @@ export class MCPClient {
     return this.callTool('TOPOLOGY_DATA');
   }
 
+  // Fetch list of running containers across the cluster
+  async listContainers(): Promise<unknown> {
+    return this.callTool('list_containers');
+  }
+
   private async callTool(toolName: string, params?: Record<string, unknown>): Promise<unknown> {
     const request: MCPRequest = {
       jsonrpc: '2.0',

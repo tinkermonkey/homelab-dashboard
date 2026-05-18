@@ -101,7 +101,10 @@ export function useAlerts() {
         throw new Error(`API error: ${response.status}`);
       }
       const data = await response.json();
-      return data as Alert[];
+      return {
+        alerts: data.alerts as Alert[],
+        source: data.source as string,
+      };
     },
     refetchInterval: 5000,
     staleTime: 2000,

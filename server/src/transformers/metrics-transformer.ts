@@ -1,10 +1,25 @@
-import type { LAB_DATA } from '@homelab/shared';
+import type { LAB_DATA, App } from '@homelab/shared';
 import { signozClient } from '../clients/signoz-client.js';
 import { ntopngClient } from '../clients/ntopng-client.js';
 import { elastiflowClient } from '../clients/elastiflow-client.js';
+import { mcpClient } from '../clients/mcp-client.js';
 import { getLabData } from '../mock-data.js';
 
 const HOSTS = ['nyx', 'helios', 'aether', 'vega'];
+
+function isValidAppData(data: unknown): data is App[] {
+  if (!Array.isArray(data)) return false;
+  return data.every((app: unknown) => {
+    if (!app || typeof app !== 'object') return false;
+    const a = app as Record<string, unknown>;
+    return typeof a.id === 'string' &&
+           typeof a.host === 'string' &&
+           typeof a.cat === 'string' &&
+           typeof a.version === 'string' &&
+           typeof a.state === 'string' &&
+           typeof a.meta === 'string';
+  });
+}
 
 // Convert Prometheus decimal ratio (0-1) to percentage (0-100)
 export function prometheusRatioToPercent(value: string): number {
@@ -92,23 +107,36 @@ export async function transformMetrics(
 
   // Try to fetch and transform gateway metrics
   try {
-    const [wanStats, dnsStats, vpnPeers] = await Promise.all([
+    const gatewayResults = await Promise.allSettled([
       ntopngClient.getWanInterfaceStats(),
       ntopngClient.getDNSStats(),
       ntopngClient.getVpnPeers(),
     ]);
 
-    result.gateway = {
-      ...result.gateway,
-      pingMs: wanStats.ping,
-      jitterMs: wanStats.jitter,
-      lossPct: wanStats.loss,
-      dnsResolved: dnsStats.resolved,
-      dnsBlocked: dnsStats.blocked,
-      vpnPeers,
-      downMbps: wanStats.downMbps,
-      upMbps: wanStats.upMbps,
-    };
+    const wanStatsResult = gatewayResults[0];
+    const dnsStatsResult = gatewayResults[1];
+    const vpnPeersResult = gatewayResults[2];
+
+    if (wanStatsResult.status === 'rejected' || dnsStatsResult.status === 'rejected' || vpnPeersResult.status === 'rejected') {
+      console.error('One or more gateway metrics failed');
+      degraded.push('ntopng');
+    } else {
+      const wanStats = wanStatsResult.value;
+      const dnsStats = dnsStatsResult.value;
+      const vpnPeers = vpnPeersResult.value;
+
+      result.gateway = {
+        ...result.gateway,
+        pingMs: wanStats.ping,
+        jitterMs: wanStats.jitter,
+        lossPct: wanStats.loss,
+        dnsResolved: dnsStats.resolved,
+        dnsBlocked: dnsStats.blocked,
+        vpnPeers,
+        downMbps: wanStats.downMbps,
+        upMbps: wanStats.upMbps,
+      };
+    }
   } catch (error) {
     console.error('Error transforming gateway metrics:', error);
     degraded.push('ntopng');
@@ -119,20 +147,43 @@ export async function transformMetrics(
     const downHistPromises = HOSTS.map((hostname) =>
       elastiflowClient.getHostThroughput(hostname)
     );
-    const downHists = await Promise.all(downHistPromises);
+    const downHistResults = await Promise.allSettled(downHistPromises);
 
+    let hasFailure = false;
     HOSTS.forEach((hostname, idx) => {
-      const server = result.servers.find((s) => s.id === hostname);
-      if (server && downHists[idx].length > 0) {
-        server.net = {
-          ...server.net,
-          hist: histogramFromPrometheusMbps(downHists[idx]),
-        };
+      const histResult = downHistResults[idx];
+      if (histResult.status === 'fulfilled' && histResult.value.length > 0) {
+        const server = result.servers.find((s) => s.id === hostname);
+        if (server) {
+          server.net = {
+            ...server.net,
+            hist: histogramFromPrometheusMbps(histResult.value),
+          };
+        }
+      } else if (histResult.status === 'rejected') {
+        hasFailure = true;
       }
     });
+
+    if (hasFailure) {
+      degraded.push('elastiflow');
+    }
   } catch (error) {
     console.error('Error transforming ElastiFlow metrics:', error);
     degraded.push('elastiflow');
+  }
+
+  // Try to fetch apps from phone-home MCP
+  try {
+    const appsData = await mcpClient.listContainers();
+    if (isValidAppData(appsData)) {
+      result.apps = appsData;
+    } else {
+      throw new Error('Invalid apps data structure from MCP');
+    }
+  } catch (error) {
+    console.error('Error fetching apps from phone-home MCP:', error);
+    degraded.push('phone-home');
   }
 
   // Try to fetch power and uptime
