@@ -3,12 +3,16 @@ import type { TopologyBot } from '@homelab/shared';
 
 interface BotCardProps {
   bot: TopologyBot;
-  layout: { x: number; y: number; host: string };
+  layout?: { x: number; y: number; host: string };
   selected: boolean;
   onSelect: (botId: string) => void;
 }
 
 export const BotCard: React.FC<BotCardProps> = ({ bot, layout, selected, onSelect }) => {
+  if (!layout) {
+    return null;
+  }
+
   return (
     <div
       className={`tp-bot${selected ? ' selected' : ''}`}
