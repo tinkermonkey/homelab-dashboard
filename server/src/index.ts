@@ -11,6 +11,11 @@ await fastify.register(cors, {
   credentials: true,
 });
 
+// Simulate backend degradation: 20% chance of degraded response
+function shouldSimulateDegradation(): boolean {
+  return Math.random() < 0.2;
+}
+
 // Cache with TTL
 interface CacheEntry {
   data: unknown;
@@ -34,25 +39,41 @@ function getCachedData<T>(key: string, ttl: number, generator: () => T): T {
 }
 
 // GET /api/status (2.2s cadence, 2s cache)
-fastify.get<{ Reply: STATUS_DATA }>('/api/status', async (request, reply) => {
+fastify.get('/api/status', async (request, reply) => {
+  if (shouldSimulateDegradation()) {
+    reply.status(206).send({ degraded: true });
+    return;
+  }
   const data = getCachedData('status', 2, getStatusData);
   reply.send(data);
 });
 
 // GET /api/cluster (15s cadence, 10s cache)
-fastify.get<{ Reply: LAB_DATA }>('/api/cluster', async (request, reply) => {
+fastify.get('/api/cluster', async (request, reply) => {
+  if (shouldSimulateDegradation()) {
+    reply.status(206).send({ degraded: true });
+    return;
+  }
   const data = getCachedData('cluster', 10, getLabData);
   reply.send(data);
 });
 
 // GET /api/docker (30s cadence, 20s cache)
-fastify.get<{ Reply: DOCKER_DATA }>('/api/docker', async (request, reply) => {
+fastify.get('/api/docker', async (request, reply) => {
+  if (shouldSimulateDegradation()) {
+    reply.status(206).send({ degraded: true });
+    return;
+  }
   const data = getCachedData('docker', 20, getDockerData);
   reply.send(data);
 });
 
 // GET /api/topology (on-demand, 60s cache)
-fastify.get<{ Reply: TOPOLOGY_DATA }>('/api/topology', async (request, reply) => {
+fastify.get('/api/topology', async (request, reply) => {
+  if (shouldSimulateDegradation()) {
+    reply.status(206).send({ degraded: true });
+    return;
+  }
   const data = getCachedData('topology', 60, getTopologyData);
   reply.send(data);
 });
@@ -67,7 +88,8 @@ fastify.post<{ Params: { botId: string } }>('/api/chat/:botId', async (request, 
   reply.header('Connection', 'keep-alive');
 
   // Send a simple response event (in production, this would stream from an agent)
-  reply.send(`data: {"type": "message", "botId": "${botId}", "content": "Message received"}\n\n`);
+  const payload = JSON.stringify({ type: 'message', botId, content: 'Message received' });
+  reply.send(`data: ${payload}\n\n`);
 });
 
 // Health check
