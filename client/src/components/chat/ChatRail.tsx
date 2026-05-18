@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
-import type { Bot, ThreadItem, ThreadMessage } from './types';
+import type { Bot, ThreadItem, ThreadMessage } from '@homelab/shared';
+import DOMPurify from 'dompurify';
 import { Icon } from '../shared/Icon';
 import './ChatRail.css';
 
@@ -36,7 +37,7 @@ const ToolBlock: React.FC<{ tool: ThreadMessage['tool'] }> = ({ tool }) => {
 const ChatMessage: React.FC<{
   m: ThreadItem;
   bots: Bot[];
-  onSuggestedText?: (text: string) => void;
+  onSuggestedText?: (text: string) => Promise<void>;
 }> = ({ m, bots, onSuggestedText }) => {
   if (m.kind === 'divider') {
     return <div className="chat-divider">{m.label}</div>;
@@ -59,7 +60,7 @@ const ChatMessage: React.FC<{
         </div>
         <div className="body">
           {m.body.map((b, i) => (
-            <p key={i} dangerouslySetInnerHTML={{ __html: b.p }} />
+            <p key={i} dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(b.p) }} />
           ))}
           {m.tool && <ToolBlock tool={m.tool} />}
           {m.suggestions && (
@@ -68,7 +69,7 @@ const ChatMessage: React.FC<{
                 <button
                   key={i}
                   className="sg"
-                  onClick={() => onSuggestedText?.(sg.t)}
+                  onClick={() => onSuggestedText?.(sg.t).catch(console.error)}
                 >
                   <Icon name="arrow" size={9} />
                   {sg.t}
@@ -103,7 +104,7 @@ export const ChatRail: React.FC<ChatRailProps> = ({
     }
   }, [activeBot, extraMsgs]);
 
-  const send = (text?: string) => {
+  const send = async (text?: string) => {
     const t = (text != null ? text : draft).trim();
     if (!t) return;
 
@@ -121,45 +122,123 @@ export const ChatRail: React.FC<ChatRailProps> = ({
       body: [{ p: escapeHtml(t) }],
     };
 
-    // Canned bot reply
-    const replies: Record<string, { p: string; suggestions?: Array<{ t: string }> }> = {
-      'ops-bot': {
-        p: "On it — I'll prepare the steps and surface them before executing anything destructive.",
-        suggestions: [{ t: 'Show me the plan' }, { t: 'Approve & run' }, { t: 'Cancel' }],
-      },
-      'watch-bot': {
-        p: 'Querying prometheus for the relevant series. One moment.',
-        suggestions: [{ t: 'Last 1h' }, { t: 'Last 24h' }, { t: 'Compare hosts' }],
-      },
-      'sync-bot': {
-        p: 'I\'ll queue this against the next backup window (04:00 nightly). Override?',
-        suggestions: [{ t: 'Run now anyway' }, { t: 'Keep schedule' }],
-      },
-      'lab-bot': {
-        p: 'Got it. Delegating to <code>ops-bot</code> — I\'ll let you know when there\'s something to review.',
-      },
-    };
-
-    const reply = replies[activeBot] || replies['lab-bot'];
-    const botMsg: ThreadMessage = {
-      kind: 'msg',
-      who: activeBot,
-      when,
-      body: [{ p: reply.p }],
-      suggestions: reply.suggestions,
-    };
-
+    // Add user message to thread
     setExtraMsgs(prev => ({
       ...prev,
-      [activeBot]: [...(prev[activeBot] || []), userMsg, botMsg],
+      [activeBot]: [...(prev[activeBot] || []), userMsg],
     }));
     setDraft('');
+
+    // Stream bot response via SSE
+    try {
+      const response = await fetch(`/api/chat/${activeBot}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ message: t }),
+      });
+
+      if (!response.ok) {
+        const errorMsg: ThreadMessage = {
+          kind: 'msg',
+          who: activeBot,
+          when,
+          body: [{ p: `Error: ${response.statusText}` }],
+        };
+        setExtraMsgs(prev => ({
+          ...prev,
+          [activeBot]: [...(prev[activeBot] || []), errorMsg],
+        }));
+        return;
+      }
+
+      let accumulated = '';
+      const reader = response.body?.getReader();
+      if (!reader) return;
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const chunk = new TextDecoder().decode(value);
+        accumulated += chunk;
+
+        // Parse SSE format: "data: {json}\n\n"
+        const lines = accumulated.split('\n');
+        for (let i = 0; i < lines.length - 1; i++) {
+          const line = lines[i];
+          if (line.startsWith('data: ')) {
+            try {
+              const jsonStr = line.slice(6);
+              const parsed = JSON.parse(jsonStr);
+              if (parsed.choices?.[0]?.delta?.content) {
+                // SSE streaming chunk received
+                const content = parsed.choices[0].delta.content;
+                setExtraMsgs(prev => {
+                  const botMsgs = prev[activeBot] || [];
+                  const lastMsg = botMsgs[botMsgs.length - 1];
+
+                  if (lastMsg && lastMsg.kind === 'msg' && lastMsg.who === activeBot && lastMsg.body[0]) {
+                    // Append to existing bot message
+                    return {
+                      ...prev,
+                      [activeBot]: [
+                        ...botMsgs.slice(0, -1),
+                        {
+                          ...lastMsg,
+                          body: [{ p: lastMsg.body[0].p + content }],
+                        },
+                      ],
+                    };
+                  } else {
+                    // Create new bot message with first chunk
+                    const botMsg: ThreadMessage = {
+                      kind: 'msg',
+                      who: activeBot,
+                      when,
+                      body: [{ p: content }],
+                    };
+                    return {
+                      ...prev,
+                      [activeBot]: [...botMsgs, botMsg],
+                    };
+                  }
+                });
+              }
+            } catch {
+              // Ignore parse errors for malformed SSE lines
+            }
+          }
+        }
+
+        // Keep the last incomplete line in accumulated
+        accumulated = lines[lines.length - 1];
+      }
+
+      // Add the complete bot message if not already added
+      const finalMsgText = accumulated;
+      if (finalMsgText && !finalMsgText.startsWith('data: ')) {
+        // Already added via streaming above
+      }
+    } catch (error) {
+      const errorMsg: ThreadMessage = {
+        kind: 'msg',
+        who: activeBot,
+        when,
+        body: [{ p: `Connection error: ${error instanceof Error ? error.message : 'Unknown error'}` }],
+      };
+      setExtraMsgs(prev => ({
+        ...prev,
+        [activeBot]: [...(prev[activeBot] || []), errorMsg],
+      }));
+    }
   };
 
   const onKey = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      send();
+      send().catch(console.error);
     }
   };
 
@@ -240,7 +319,7 @@ export const ChatRail: React.FC<ChatRailProps> = ({
             <span className="hint">
               <b>↵</b> send · <b>⇧↵</b> newline · <b>/</b> commands
             </span>
-            <button className="send" onClick={() => send()}>
+            <button className="send" onClick={() => send().catch(console.error)}>
               <Icon name="arrow" size={11} /> send
             </button>
           </div>

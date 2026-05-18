@@ -1,4 +1,4 @@
-import type { Bot, ThreadItem } from '../components/chat/types';
+import type { Bot, ThreadItem } from '@homelab/shared';
 
 export const CHAT_DATA = {
   bots: [
