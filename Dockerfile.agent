@@ -1,0 +1,38 @@
+# ============================================================================
+# Dockerfile.agent — Development environment for homelab-dashboard
+# Builds the ENVIRONMENT only; source code is mounted at runtime.
+# ============================================================================
+
+FROM switchyard-orchestrator:latest
+
+USER root
+
+# ============================================================================
+# Pre-install dependencies from lockfile
+# ============================================================================
+WORKDIR /workspace/homelab-dashboard
+
+COPY package.json package-lock.json ./
+COPY shared/package.json ./shared/
+COPY client/package.json ./client/
+COPY server/package.json ./server/
+
+RUN --mount=type=cache,target=/root/.npm \
+    npm ci && \
+    chown -R orchestrator:orchestrator /workspace/homelab-dashboard
+
+# ============================================================================
+# Switch to runtime user
+# ============================================================================
+USER orchestrator
+
+# ============================================================================
+# Verification
+# ============================================================================
+RUN claude --version && \
+    git --version && \
+    gh --version && \
+    node --version && \
+    npm --version
+
+CMD ["/bin/bash"]

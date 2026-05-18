@@ -1,0 +1,17 @@
+node_modules/
+.git/
+.github/
+dist/
+build/
+*.log
+.vscode/
+.idea/
+.env
+.env.local
+.repair_cycle.log
+.playwright-mcp/
+design/
+client/dist/
+server/dist/
+client/node_modules/
+server/node_modules/

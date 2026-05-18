@@ -1,0 +1,29 @@
+{
+  "name": "homelab-dashboard",
+  "version": "1.0.0",
+  "description": "Monitoring & control dashboard for homelab cluster",
+  "private": true,
+  "workspaces": [
+    "client",
+    "server",
+    "shared"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm run dev --workspace=server\" \"npm run dev --workspace=client\"",
+    "build": "npm run build --workspace=client && npm run build --workspace=server"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tinkermonkey/homelab-dashboard.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/tinkermonkey/homelab-dashboard/issues"
+  },
+  "homepage": "https://github.com/tinkermonkey/homelab-dashboard#readme"
+}
