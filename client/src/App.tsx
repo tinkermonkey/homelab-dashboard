@@ -61,7 +61,7 @@ interface ShellLayoutProps {
   setDensity: (value: string) => void;
   showAlerts: boolean;
   setShowAlerts: (value: boolean) => void;
-  clusterData?: LAB_DATA;
+  clusterData?: LAB_DATA & { degraded?: string[] };
   children: React.ReactNode;
 }
 

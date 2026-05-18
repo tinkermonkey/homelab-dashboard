@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import type { LAB_DATA } from '@homelab/shared';
 
 interface StatusbarProps {
-  clusterData?: LAB_DATA;
+  clusterData?: LAB_DATA & { degraded?: string[] };
 }
 
 export const Statusbar: React.FC<StatusbarProps> = ({ clusterData }) => {
@@ -19,14 +19,14 @@ export const Statusbar: React.FC<StatusbarProps> = ({ clusterData }) => {
     if (!clusterData) return { status: 'unknown', color: 'rgb(var(--shell-fg-2))' };
 
     // Check for degraded services
-    if ((clusterData as any).degraded && (clusterData as any).degraded.length > 0) {
+    if (clusterData.degraded && clusterData.degraded.length > 0) {
       return { status: 'degraded', color: 'rgb(var(--status-warn))' };
     }
 
-    // Check for servers with error status
-    const hasErrors = clusterData.servers?.some((s: any) => s.status === 'error' || s.status === 'failed');
-    if (hasErrors) {
-      return { status: 'error', color: 'rgb(var(--status-error))' };
+    // Check for servers with error or warn status
+    const hasIssues = clusterData.servers?.some((s) => s.status === 'err' || s.status === 'warn');
+    if (hasIssues) {
+      return { status: 'degraded', color: 'rgb(var(--status-warn))' };
     }
 
     // Default to OK
