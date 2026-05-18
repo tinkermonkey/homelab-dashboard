@@ -34,8 +34,3 @@ export interface ThreadMessage {
 }
 
 export type ThreadItem = ThreadDivider | ThreadMessage;
-
-export interface ChatData {
-  bots: Bot[];
-  threadByBot: Record<string, ThreadItem[]>;
-}

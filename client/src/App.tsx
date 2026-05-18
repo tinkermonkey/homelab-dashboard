@@ -126,7 +126,7 @@ const ShellLayout: React.FC<ShellLayoutProps> = ({
                 display: 'flex',
                 alignItems: 'center',
                 gap: '6px',
-                background: chatVisible ? 'var(--accent-cyan)' : undefined,
+                background: chatVisible ? 'rgb(var(--accent-cyan))' : undefined,
                 color: chatVisible ? '#0b0f14' : undefined,
               }}
               title="Toggle bot console"
