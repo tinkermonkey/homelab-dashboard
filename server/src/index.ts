@@ -63,66 +63,94 @@ function getCachedData<T>(
   return generator().then((data) => {
     cache.set(key, { data, timestamp: now, ttl });
     return data;
+  }).catch((error) => {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    fastify.log.error(`Cache generator error for key "${key}": ${message}`);
+    throw error;
   });
 }
 
 // GET /api/status (2.2s cadence, 2s cache)
 fastify.get('/api/status', async (request, reply) => {
-  const data = getCachedData('status', 2, () => Promise.resolve(getStatusData()));
-  reply.send(await data);
+  try {
+    const data = await getCachedData('status', 2, () => Promise.resolve(getStatusData()));
+    reply.send(data);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    fastify.log.error(`Failed to fetch status: ${message}`);
+    reply.status(500).send({ error: 'Failed to fetch status', degraded: ['status'] });
+  }
 });
 
 // GET /api/cluster (15s cadence, 10s cache) - with Promise.allSettled fan-out
 fastify.get('/api/cluster', async (request, reply) => {
-  const data = await getCachedData('cluster', 10, async () => {
-    const baseData = getLabData();
-    const { data: transformedData, degraded } = await transformMetrics(baseData);
+  try {
+    const data = await getCachedData('cluster', 10, async () => {
+      const baseData = getLabData();
+      const { data: transformedData, degraded } = await transformMetrics(baseData);
 
-    return {
-      ...transformedData,
-      degraded,
-    };
-  });
+      return {
+        ...transformedData,
+        degraded,
+      };
+    });
 
-  if (data.degraded && data.degraded.length > 0) {
-    reply.status(206);
+    if (data.degraded && data.degraded.length > 0) {
+      reply.status(206);
+    }
+
+    reply.send(data);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    fastify.log.error(`Failed to fetch cluster data: ${message}`);
+    reply.status(500).send({ error: 'Failed to fetch cluster data', degraded: ['cluster'] });
   }
-
-  reply.send(data);
 });
 
 // GET /api/docker (30s cadence, 20s cache)
 fastify.get('/api/docker', async (request, reply) => {
-  const data = await getCachedData('docker', 20, async () => {
-    const { data: dockerData, degraded } = await transformDockerData();
-    return {
-      ...dockerData,
-      degraded,
-    };
-  });
+  try {
+    const data = await getCachedData('docker', 20, async () => {
+      const { data: dockerData, degraded } = await transformDockerData();
+      return {
+        ...dockerData,
+        degraded,
+      };
+    });
 
-  if (data.degraded && data.degraded.length > 0) {
-    reply.status(206);
+    if (data.degraded && data.degraded.length > 0) {
+      reply.status(206);
+    }
+
+    reply.send(data);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    fastify.log.error(`Failed to fetch docker data: ${message}`);
+    reply.status(500).send({ error: 'Failed to fetch docker data', degraded: ['docker'] });
   }
-
-  reply.send(data);
 });
 
 // GET /api/topology (on-demand, 60s cache)
 fastify.get('/api/topology', async (request, reply) => {
-  const data = await getCachedData('topology', 60, async () => {
-    const { data: topoData, degraded } = await transformTopologyData();
-    return {
-      ...topoData,
-      degraded,
-    };
-  });
+  try {
+    const data = await getCachedData('topology', 60, async () => {
+      const { data: topoData, degraded } = await transformTopologyData();
+      return {
+        ...topoData,
+        degraded,
+      };
+    });
 
-  if (data.degraded && data.degraded.length > 0) {
-    reply.status(206);
+    if (data.degraded && data.degraded.length > 0) {
+      reply.status(206);
+    }
+
+    reply.send(data);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    fastify.log.error(`Failed to fetch topology data: ${message}`);
+    reply.status(500).send({ error: 'Failed to fetch topology data', degraded: ['topology'] });
   }
-
-  reply.send(data);
 });
 
 // POST /api/chat/:botId (SSE proxy to phone-home)

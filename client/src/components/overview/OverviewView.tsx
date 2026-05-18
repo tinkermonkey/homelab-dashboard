@@ -8,7 +8,7 @@ import { AppsSection } from './AppsSection';
 import './OverviewView.css';
 
 interface OverviewViewProps {
-  data: LAB_DATA;
+  data: LAB_DATA & { degraded?: string[] };
   showAlerts?: boolean;
 }
 
@@ -44,6 +44,27 @@ export const OverviewView: React.FC<OverviewViewProps> = ({ data, showAlerts = t
           </button>
         </div>
       </div>
+
+      {/* Degradation Banner */}
+      {data.degraded && data.degraded.length > 0 && (
+        <div
+          style={{
+            backgroundColor: 'rgba(245, 158, 11, 0.1)',
+            border: '1px solid rgba(245, 158, 11, 0.3)',
+            borderRadius: '4px',
+            padding: '12px 16px',
+            marginBottom: '24px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '12px',
+          }}
+        >
+          <Icon name="alert-triangle" size={16} style={{ color: '#F59E0B' }} />
+          <div style={{ fontSize: '13px' }}>
+            <strong>Partial Data:</strong> {data.degraded.join(', ')} are temporarily unavailable. Showing cached data.
+          </div>
+        </div>
+      )}
 
       {/* Alerts Strip */}
       {showAlerts && data.cluster.activeAlerts > 0 && (

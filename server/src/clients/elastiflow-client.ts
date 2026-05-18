@@ -96,7 +96,9 @@ export class ElastiFlowClient {
         down: down ? parseFloat(down) / (1024 * 1024) : 0, // Mbps
         up: up ? parseFloat(up) / (1024 * 1024) : 0,
       };
-    } catch {
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      console.error(`Failed to fetch ElastiFlow throughput for ${hostname}: ${message}`);
       return { down: 0, up: 0 };
     }
   }

@@ -1,0 +1,72 @@
+You are a Senior Software Engineer.
+
+You implement clean, well thought out code with proper error handling and maintainable architecture.
+
+### Work Item
+
+These are the requirements to implement.
+
+**Title**:
+[PR Feedback] Error Handling & Degradation Signaling
+
+**Description**:
+Based on consolidated PR review, address the following in **Error Handling & Degradation Signaling**:
+
+- **Silent fallback to mock data masks production failures**: `mcp-transformer.ts:11-18` and `:22-35` catch MCP errors and silently fall back to hardcoded mock data. The server sends HTTP 206 with a `degraded` array, but `useAPI.ts:8` only throws on `!response.ok` — 206 is a success status, so the degradation signal is completely lost. The frontend never knows it is showing fabricated data. An operator sees green dashboards while actual infrastructure could be down. `server/src/transformers/mcp-transformer.ts:11-18`, `client/src/hooks/useAPI.ts:8`
+- **NtopNG client silently returns zeros on every failure**: Three methods in `ntopng-client.ts` use bare `catch {}` with no logging: `getInterfaceData()` (line 64), `getDNSStats()` (line 92), `getVpnPeers()` (line 103). When ntopng is unreachable, the dashboard shows zeros as if there is no activity. `server/src/clients/ntopng-client.ts:61-105`
+- **ElastiFlow client silently returns zero throughput**: `getCurrentThroughput()` at `elastiflow-client.ts:99-101` catches all errors and returns `{ down: 0, up: 0 }` with no logging. Bare `catch {}` discards errors entirely. `server/src/clients/elastiflow-client.ts:99-101`
+- **Server route handlers have no error handling**: `/api/status`, `/api/cluster`, `/api/docker`, `/api/topology` routes in `index.ts:70-126` have zero try-catch protection. `getCachedData` (lines 51-67) also has no error handling — rejected promises propagate with no logging or wrapping. `server/src/index.ts:51-126`
+- **No React error boundary in the application**: `main.tsx` and `App.tsx` have no error boundary. Any component render exception crashes the entire application to a white screen with no recovery. `client/src/main.tsx:15`, `client/src/App.tsx`
+- **Overview error state indistinguishable from loading state**: `App.tsx:231-234` renders the same `PlaceholderView` for loading, error, and no-data states. The error object from React Query is completely discarded. Users see "Coming in Phase 2+" when the API fails. `client/src/App.tsx:231-234`
+
+---
+_Created by PR Review Stage - Consolidation Phase_
+
+---
+
+## Concurrent Fix Issues (Same Review Cycle)
+
+The following issues are being fixed simultaneously in this review cycle. Check these issues for any files they modify before making your own changes to avoid introducing conflicts:
+
+- #12: [PR Feedback] Chat & Bot Console
+- #14: [PR Feedback] Metrics & Data Accuracy
+- #15: [PR Feedback] Shell & View Components
+- #16: [PR Feedback] Backend Integration
+- #17: [PR Feedback] Configuration & Test Infrastructure
+
+### Previous Work
+
+
+
+### Guidelines
+
+
+Implement the specified code changes to meet the requirements specified.
+
+### Project-Specific Expert Agents
+
+Check `/workspace/CLAUDE.md` for a "Specialized Sub-Agents" section. If any listed agent matches your task domain (e.g., flow-expert for React Flow nodes, state-expert for Zustand, guardian for architecture review), you MUST consult it via the Task tool before implementing.
+
+Do not implement from general knowledge when a project-specific agent exists for your task.
+
+### For UI/Frontend Changes
+
+- Use Playwright MCP to test your changes in the browser before completing
+- Run accessibility checks (Playwright has built-in a11y testing)
+- Verify responsive behaviour on different viewport sizes
+- Test form interactions and validation
+
+### Important Implementation Guidelines
+
+- Don't over-engineer, implement only what is necessary to meet the requirements
+- Focus on re-use of existing code, libraries and patterns
+- Don't name files "phase 1", "phase 2", etc, use descriptive names only for files, variable, and comments
+- Don't create reports or documentation, your output should be code only
+
+### Output Instructions
+
+**IMPORTANT**:
+- Provide a short summary of your work as the final output
+- Use proper markdown formatting (headers, lists, code blocks)
+- You may create, edit, or modify files as needed to complete your task
+- Your changes will be auto-committed to git

@@ -3,19 +3,34 @@ import type { LAB_DATA, DOCKER_DATA, TOPOLOGY_DATA, STATUS_DATA } from '@homelab
 
 const API_BASE = import.meta.env.VITE_API_BASE || '/api';
 
-async function fetchJSON<T>(url: string): Promise<T> {
+interface APIResponse<T> {
+  data: T;
+  degraded?: string[];
+}
+
+async function fetchJSON<T>(url: string): Promise<APIResponse<T>> {
   const response = await fetch(url);
-  if (!response.ok) {
+
+  if (!response.ok && response.status !== 206) {
     throw new Error(`API error: ${response.status}`);
   }
-  return response.json();
+
+  const data = await response.json();
+
+  return {
+    data,
+    degraded: response.status === 206 ? data.degraded : undefined,
+  };
 }
 
 // Status data hook (2.2s polling)
 export function useStatus() {
   return useQuery({
     queryKey: ['status'],
-    queryFn: () => fetchJSON<STATUS_DATA>(`${API_BASE}/status`),
+    queryFn: async () => {
+      const response = await fetchJSON<STATUS_DATA>(`${API_BASE}/status`);
+      return response.data as STATUS_DATA & { degraded?: string[] };
+    },
     refetchInterval: 2200,
     staleTime: 1000,
     gcTime: 5 * 60 * 1000,
@@ -26,7 +41,13 @@ export function useStatus() {
 export function useCluster() {
   return useQuery({
     queryKey: ['cluster'],
-    queryFn: () => fetchJSON<LAB_DATA>(`${API_BASE}/cluster`),
+    queryFn: async () => {
+      const response = await fetchJSON<LAB_DATA>(`${API_BASE}/cluster`);
+      return {
+        ...response.data,
+        degraded: response.degraded,
+      } as LAB_DATA & { degraded?: string[] };
+    },
     refetchInterval: 15000,
     staleTime: 5000,
     gcTime: 10 * 60 * 1000,
@@ -37,7 +58,13 @@ export function useCluster() {
 export function useDocker() {
   return useQuery({
     queryKey: ['docker'],
-    queryFn: () => fetchJSON<DOCKER_DATA>(`${API_BASE}/docker`),
+    queryFn: async () => {
+      const response = await fetchJSON<DOCKER_DATA>(`${API_BASE}/docker`);
+      return {
+        ...response.data,
+        degraded: response.degraded,
+      } as DOCKER_DATA & { degraded?: string[] };
+    },
     refetchInterval: 30000,
     staleTime: 10000,
     gcTime: 15 * 60 * 1000,
@@ -48,7 +75,13 @@ export function useDocker() {
 export function useTopology(enabled = true) {
   return useQuery({
     queryKey: ['topology'],
-    queryFn: () => fetchJSON<TOPOLOGY_DATA>(`${API_BASE}/topology`),
+    queryFn: async () => {
+      const response = await fetchJSON<TOPOLOGY_DATA>(`${API_BASE}/topology`);
+      return {
+        ...response.data,
+        degraded: response.degraded,
+      } as TOPOLOGY_DATA & { degraded?: string[] };
+    },
     enabled,
     staleTime: 60000,
     gcTime: 10 * 60 * 1000,

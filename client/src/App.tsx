@@ -13,6 +13,7 @@ import { OverviewView } from './components/overview/OverviewView';
 import { ContainersView } from './components/containers/ContainersView';
 import { TopologyView } from './components/topology/TopologyView';
 import { PlaceholderView } from './components/shared/PlaceholderView';
+import { ErrorView } from './components/shared/ErrorView';
 import { Icon } from './components/shared/Icon';
 import { ChatRail } from './components/chat/ChatRail';
 import { CHAT_DATA } from './data/chatData';
@@ -228,10 +229,26 @@ const AppContent: React.FC = () => {
       <Routes>
         <Route path="/" element={<Navigate to="/cluster/overview" replace />} />
         <Route path="/cluster/overview" element={
-          isLoading ? <PlaceholderView routeName="Overview" /> :
-          error ? <PlaceholderView routeName="Overview" /> :
-          clusterData ? <OverviewView data={clusterData} showAlerts={showAlerts} /> :
-          <PlaceholderView routeName="Overview" />
+          isLoading ? (
+            <PlaceholderView routeName="Overview" />
+          ) : error ? (
+            <ErrorView
+              title="Failed to Load Overview"
+              message="Could not fetch cluster data. Please try again in a moment."
+              isDegraded={false}
+            />
+          ) : clusterData ? (
+            <OverviewView
+              data={clusterData}
+              showAlerts={showAlerts}
+            />
+          ) : (
+            <ErrorView
+              title="No Data Available"
+              message="No cluster data could be loaded."
+              isDegraded={false}
+            />
+          )
         } />
         <Route path="/cluster/containers" element={<ContainersView />} />
         <Route path="/cluster/topology" element={<TopologyView />} />

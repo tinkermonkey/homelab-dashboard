@@ -61,7 +61,9 @@ export class NtopngClient {
     try {
       const data = await this.fetchWithAuth('/lua/get_interface_data.lua?ifid=0');
       return data as Record<string, unknown>;
-    } catch {
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      console.error(`Failed to fetch ntopng interface data: ${message}`);
       return {};
     }
   }
@@ -89,7 +91,9 @@ export class NtopngClient {
         resolved: (stats.dns_resolved || 0) as number,
         blocked: (stats.dns_blocked || 0) as number,
       };
-    } catch {
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      console.error(`Failed to fetch ntopng DNS stats: ${message}`);
       return { resolved: 0, blocked: 0 };
     }
   }
@@ -99,7 +103,9 @@ export class NtopngClient {
       const data = await this.fetchWithAuth('/lua/get_vpn_peers.lua');
       const peers = data as Array<unknown>;
       return peers.length;
-    } catch {
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      console.error(`Failed to fetch ntopng VPN peers: ${message}`);
       return 0;
     }
   }
