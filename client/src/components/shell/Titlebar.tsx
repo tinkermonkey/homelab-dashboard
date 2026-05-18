@@ -15,8 +15,8 @@ export const Titlebar: React.FC<TitlebarProps> = ({ title = 'Homelab', onCommand
         height: '32px',
         paddingLeft: '8px',
         paddingRight: '16px',
-        background: 'var(--shell-bg)',
-        borderBottom: '1px solid var(--shell-border)',
+        background: 'rgb(var(--shell-bg))',
+        borderBottom: '1px solid rgb(var(--shell-border))',
       } as React.CSSProperties}
     >
       <div style={{ display: 'flex', gap: '8px', marginRight: 'auto' }}>
@@ -50,7 +50,7 @@ export const Titlebar: React.FC<TitlebarProps> = ({ title = 'Homelab', onCommand
         style={{
           fontSize: '12px',
           fontWeight: 600,
-          color: 'var(--shell-fg-2)',
+          color: 'rgb(var(--shell-fg-2))',
           textTransform: 'uppercase',
           letterSpacing: '0.04em',
         }}
@@ -77,7 +77,7 @@ export const Titlebar: React.FC<TitlebarProps> = ({ title = 'Homelab', onCommand
             background: 'rgba(255, 255, 255, 0.05)',
             border: 'none',
             fontSize: '11px',
-            color: 'var(--shell-fg-2)',
+            color: 'rgb(var(--shell-fg-2))',
             cursor: 'pointer',
             transition: 'all 80ms ease-out',
           }}
@@ -94,10 +94,10 @@ export const Titlebar: React.FC<TitlebarProps> = ({ title = 'Homelab', onCommand
             width: '8px',
             height: '8px',
             borderRadius: '50%',
-            background: 'var(--status-ok)',
+            background: 'rgb(var(--status-ok))',
           }}
         />
-        <span style={{ fontSize: '11px', color: 'var(--shell-fg-2)' }}>Cluster</span>
+        <span style={{ fontSize: '11px', color: 'rgb(var(--shell-fg-2))' }}>Cluster</span>
       </div>
     </div>
   );

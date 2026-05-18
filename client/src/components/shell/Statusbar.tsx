@@ -15,6 +15,26 @@ export const Statusbar: React.FC<StatusbarProps> = ({ clusterData }) => {
 
   const [ticker, setTicker] = useState(getInitialTicker);
 
+  const getClusterStatus = () => {
+    if (!clusterData) return { status: 'unknown', color: 'rgb(var(--shell-fg-2))' };
+
+    // Check for degraded services
+    if ((clusterData as any).degraded && (clusterData as any).degraded.length > 0) {
+      return { status: 'degraded', color: 'rgb(var(--status-warn))' };
+    }
+
+    // Check for servers with error status
+    const hasErrors = clusterData.servers?.some((s: any) => s.status === 'error' || s.status === 'failed');
+    if (hasErrors) {
+      return { status: 'error', color: 'rgb(var(--status-error))' };
+    }
+
+    // Default to OK
+    return { status: 'OK', color: 'rgb(var(--status-ok))' };
+  };
+
+  const { status, color } = getClusterStatus();
+
   useEffect(() => {
     if (!clusterData) return;
 
@@ -58,7 +78,7 @@ export const Statusbar: React.FC<StatusbarProps> = ({ clusterData }) => {
           <span style={{ color: 'rgb(var(--shell-fg-3))', margin: '0 6px' }}>|</span>
           ↑ <span style={{ fontFamily: 'var(--font-mono)', color: 'rgb(var(--shell-fg-1))' }}>{ticker.up}</span>
           <span style={{ color: 'rgb(var(--shell-fg-3))', margin: '0 6px' }}>|</span>
-          Cluster: <span style={{ color: 'rgb(var(--status-ok))', fontWeight: 500 }}>OK</span>
+          Cluster: <span style={{ color, fontWeight: 500 }}>{status}</span>
         </div>
       </div>
     </div>
