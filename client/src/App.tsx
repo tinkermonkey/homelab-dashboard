@@ -87,12 +87,6 @@ const AppContent: React.FC = () => {
   }, [location.pathname, setActiveRoute]);
 
   useEffect(() => {
-    if (location.pathname === '/') {
-      navigate(activeRoute, { replace: true });
-    }
-  }, []);
-
-  useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
         e.preventDefault();
@@ -223,7 +217,7 @@ const AppContent: React.FC = () => {
         <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
           <div style={{ flex: 1, overflow: 'auto' }}>
             <Routes>
-              <Route path="/" element={<Navigate to="/cluster/overview" replace />} />
+              <Route path="/" element={<Navigate to={activeRoute} replace />} />
               <Route path="/cluster/overview" element={viewContent} />
               <Route path="/cluster/containers" element={<ContainersView />} />
               <Route path="/cluster/topology" element={<TopologyView />} />
