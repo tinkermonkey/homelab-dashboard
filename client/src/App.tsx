@@ -3,7 +3,9 @@ import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from
 import './styles/heimdall.css';
 import './styles/globals.css';
 import { usePersistedState } from './utils/localStorage';
+import { useCluster } from './hooks/useAPI';
 import { Titlebar } from './components/shell/Titlebar';
+import { OverviewView } from './components/overview/OverviewView';
 import { PlaceholderView } from './components/shared/PlaceholderView';
 import { getIconSvgPath } from './utils/icons';
 
@@ -159,6 +161,7 @@ const ShellLayout: React.FC<ShellLayoutProps> = ({
 const AppContent: React.FC = () => {
   const [sidebarCollapsed, setSidebarCollapsed] = usePersistedState('sidebarCollapsed', false);
   const [darkCanvas, setDarkCanvas] = usePersistedState('darkCanvas', true);
+  const { data: clusterData, isLoading, error } = useCluster();
 
   useEffect(() => {
     document.body.classList.toggle('dark-canvas', darkCanvas);
@@ -173,7 +176,12 @@ const AppContent: React.FC = () => {
     >
       <Routes>
         <Route path="/" element={<Navigate to="/cluster/overview" replace />} />
-        <Route path="/cluster/overview" element={<PlaceholderView routeName="Overview" />} />
+        <Route path="/cluster/overview" element={
+          isLoading ? <PlaceholderView routeName="Overview" /> :
+          error ? <PlaceholderView routeName="Overview" /> :
+          clusterData ? <OverviewView data={clusterData} /> :
+          <PlaceholderView routeName="Overview" />
+        } />
         <Route path="/cluster/containers" element={<PlaceholderView routeName="Containers" />} />
         <Route path="/cluster/topology" element={<PlaceholderView routeName="Topology" />} />
         <Route path="/cluster/servers" element={<PlaceholderView routeName="Servers" />} />
