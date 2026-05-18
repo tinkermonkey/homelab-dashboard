@@ -1,10 +1,10 @@
-import React from 'react';
+import { useState } from 'react';
 
 export const usePersistedState = <T,>(
   key: string,
   defaultValue: T
 ): [T, (value: T) => void] => {
-  const [state, setState] = React.useState<T>(() => {
+  const [state, setState] = useState<T>(() => {
     try {
       const item = window.localStorage.getItem(key);
       return item ? JSON.parse(item) : defaultValue;
