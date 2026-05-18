@@ -1,0 +1,43 @@
+.split-pane {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+.split-pane--horizontal {
+  flex-direction: row;
+}
+
+.split-pane--vertical {
+  flex-direction: column;
+}
+
+.split-pane__first,
+.split-pane__second {
+  overflow: auto;
+}
+
+.split-pane__divider {
+  background: rgb(var(--canvas-border));
+  user-select: none;
+  transition: background 80ms ease-out;
+}
+
+.split-pane__divider--horizontal {
+  width: 1px;
+  cursor: col-resize;
+}
+
+.split-pane__divider--horizontal:hover {
+  background: rgb(var(--accent-primary));
+}
+
+.split-pane__divider--vertical {
+  height: 1px;
+  cursor: row-resize;
+}
+
+.split-pane__divider--vertical:hover {
+  background: rgb(var(--accent-primary));
+}
