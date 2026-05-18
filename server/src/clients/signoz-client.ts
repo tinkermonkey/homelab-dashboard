@@ -39,7 +39,7 @@ export class SigNozClient {
     end: number,
     step: string = '30m'
   ): Promise<PromQLResponse> {
-    const url = new URL(`${this.baseUrl}/api/v1/query_range`);
+    const url = new URL(`${this.baseUrl}/api/v5/query_range`);
     url.searchParams.set('query', query);
     url.searchParams.set('start', String(start));
     url.searchParams.set('end', String(end));
@@ -64,7 +64,7 @@ export class SigNozClient {
   }
 
   async query(query: string): Promise<PromQLResponse> {
-    const url = new URL(`${this.baseUrl}/api/v1/query`);
+    const url = new URL(`${this.baseUrl}/api/v5/query`);
     url.searchParams.set('query', query);
 
     try {
@@ -207,7 +207,7 @@ export class SigNozClient {
 
   // Fetch active alerts from Alertmanager
   async getActiveAlerts(): Promise<Alert[]> {
-    const url = new URL(`${this.baseUrl}/api/v1/alerts`);
+    const url = new URL(`${this.baseUrl}/api/v5/alerts`);
     url.searchParams.set('state', 'active');
 
     try {
