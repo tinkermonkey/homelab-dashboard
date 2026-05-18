@@ -222,8 +222,8 @@ export const ChatRail: React.FC<ChatRailProps> = ({
                   }
                 });
               }
-            } catch {
-              // Ignore parse errors for malformed SSE lines
+            } catch (parseError) {
+              console.error('Failed to parse SSE message:', parseError, 'Raw JSON:', jsonStr);
             }
           }
         }

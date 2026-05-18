@@ -73,7 +73,7 @@ export async function transformMetrics(
         };
       } catch (error) {
         console.error(`Failed to fetch SigNoz metrics for ${hostname}:`, error);
-        return null;
+        throw error;
       }
     });
 
@@ -220,6 +220,7 @@ export async function transformMetrics(
     };
   } catch (error) {
     console.error('Error transforming cluster metrics:', error);
+    degraded.push('signoz');
   }
 
   return { data: result, degraded };

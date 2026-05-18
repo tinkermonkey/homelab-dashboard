@@ -13,7 +13,7 @@ export const ContainersView: React.FC = () => {
   const [hostFilter, setHostFilter] = useState('all');
   const [query, setQuery] = useState('');
 
-  const dockerData = data as DOCKER_DATA | undefined;
+  const dockerData = data as (DOCKER_DATA & { degraded?: string[] }) | undefined;
 
   if (isLoading) {
     return <div className="containers-view">Loading...</div>;
@@ -62,6 +62,27 @@ export const ContainersView: React.FC = () => {
           </button>
         </div>
       </div>
+
+      {/* Degradation Banner */}
+      {dockerData.degraded && dockerData.degraded.length > 0 && (
+        <div
+          style={{
+            backgroundColor: 'rgba(245, 158, 11, 0.1)',
+            border: '1px solid rgba(245, 158, 11, 0.3)',
+            borderRadius: '4px',
+            padding: '12px 16px',
+            marginBottom: '24px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '12px',
+          }}
+        >
+          <Icon name="alert-triangle" size={16} style={{ color: '#F59E0B' }} />
+          <div style={{ fontSize: '13px' }}>
+            <strong>Partial Data:</strong> {dockerData.degraded.join(', ')} are temporarily unavailable. Showing cached data.
+          </div>
+        </div>
+      )}
 
       {/* Tab Bar */}
       <div className="tab-bar">

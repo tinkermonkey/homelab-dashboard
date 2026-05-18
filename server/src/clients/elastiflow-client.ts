@@ -87,23 +87,17 @@ export class ElastiFlowClient {
 
   // Get current throughput for a host (bytes/sec from Prometheus)
   async getCurrentThroughput(hostname: string): Promise<{ down: number; up: number }> {
-    try {
-      const response = await this.query(
-        `rate(flow_bytes_sent_total{hostname="${hostname}"}[5m]), rate(flow_bytes_rcvd_total{hostname="${hostname}"}[5m])`
-      );
+    const response = await this.query(
+      `rate(flow_bytes_sent_total{hostname="${hostname}"}[5m]), rate(flow_bytes_rcvd_total{hostname="${hostname}"}[5m])`
+    );
 
-      const down = response.data.result[0]?.value?.[1];
-      const up = response.data.result[1]?.value?.[1];
+    const down = response.data.result[0]?.value?.[1];
+    const up = response.data.result[1]?.value?.[1];
 
-      return {
-        down: down ? parseFloat(down) : 0, // bytes/sec
-        up: up ? parseFloat(up) : 0,
-      };
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error';
-      console.error(`Failed to fetch ElastiFlow throughput for ${hostname}: ${message}`);
-      return { down: 0, up: 0 };
-    }
+    return {
+      down: down ? parseFloat(down) : 0, // bytes/sec
+      up: up ? parseFloat(up) : 0,
+    };
   }
 }
 

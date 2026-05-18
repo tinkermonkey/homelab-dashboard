@@ -137,10 +137,10 @@ export class SigNozClient {
     );
 
     const value = response.data.result[0]?.value?.[1];
-    if (value) {
-      return `${Math.round(parseFloat(value))}°C`;
+    if (!value) {
+      throw new Error(`No temperature data available for ${hostname}`);
     }
-    return '0°C';
+    return `${Math.round(parseFloat(value))}°C`;
   }
 
   // Fetch load average for a host
@@ -162,14 +162,19 @@ export class SigNozClient {
   async getPowerDraw(): Promise<number> {
     const response = await this.query('sum(power_watts)');
     const value = response.data.result[0]?.value?.[1];
-    return value ? parseFloat(value) : 0;
+    if (!value) {
+      throw new Error('No power draw data available');
+    }
+    return parseFloat(value);
   }
 
   // Fetch cluster uptime
   async getClusterUptime(): Promise<{ days: number; hours: number }> {
     const response = await this.query('max(node_boot_time_seconds)');
     const value = response.data.result[0]?.value?.[1];
-    if (!value) return { days: 0, hours: 0 };
+    if (!value) {
+      throw new Error('No uptime data available');
+    }
 
     const bootTime = parseFloat(value);
     const now = Date.now() / 1000;
