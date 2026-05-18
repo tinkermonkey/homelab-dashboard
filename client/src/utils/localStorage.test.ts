@@ -1,6 +1,8 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { renderHook, act } from '@testing-library/react';
+import { usePersistedState } from './localStorage.js';
 
-describe('usePersistedState hook behavior', () => {
+describe('usePersistedState hook', () => {
   beforeEach(() => {
     localStorage.clear();
     vi.clearAllMocks();
@@ -11,121 +13,105 @@ describe('usePersistedState hook behavior', () => {
     vi.restoreAllMocks();
   });
 
-  describe('localStorage initialization (useState initializer function)', () => {
-    it('reads persisted value from localStorage when available', () => {
-      const persistedValue = { value: 42 };
-      localStorage.setItem('test-key', JSON.stringify(persistedValue));
-
-      // Simulate the hook's useState initializer behavior
-      const item = localStorage.getItem('test-key');
-      const result = item ? JSON.parse(item) : undefined;
-
-      expect(result).toEqual(persistedValue);
-    });
-
-    it('falls back to default value when localStorage is empty', () => {
-      const defaultValue = { count: 0 };
-
-      // Simulate hook init with no persisted value
-      const item = localStorage.getItem('missing-key');
-      const result = item ? JSON.parse(item) : defaultValue;
-
-      expect(result).toEqual(defaultValue);
-    });
-
-    it('recovers from corrupted JSON with error handling', () => {
-      localStorage.setItem('corrupted', 'invalid-json{');
-      const defaultValue = { fallback: true };
-      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
-
-      // Simulate hook's error handling in useState initializer
-      const item = localStorage.getItem('corrupted');
-      let result = defaultValue;
-      try {
-        result = item ? JSON.parse(item) : defaultValue;
-      } catch (error) {
-        console.warn(`Error reading localStorage key "corrupted":`, error);
-        result = defaultValue;
-      }
-
-      expect(result).toEqual(defaultValue);
-      expect(warn).toHaveBeenCalledWith(
-        expect.stringContaining('Error reading localStorage key "corrupted"'),
-        expect.any(Error)
-      );
-
-      warn.mockRestore();
-    });
+  it('reads persisted value on init', () => {
+    localStorage.setItem('key', JSON.stringify('saved'));
+    const { result } = renderHook(() => usePersistedState('key', 'default'));
+    expect(result.current[0]).toBe('saved');
   });
 
-  describe('localStorage persistence (setPersisted function behavior)', () => {
-    it('persists updated values to localStorage', () => {
-      const key = 'state-key';
-      const newValue = 'updated-state';
+  it('falls back to default value when localStorage is empty', () => {
+    const { result } = renderHook(() => usePersistedState('key', 'default'));
+    expect(result.current[0]).toBe('default');
+  });
 
-      // Simulate setPersisted behavior
-      localStorage.setItem(key, JSON.stringify(newValue));
+  it('recovers from corrupted JSON with default value', () => {
+    localStorage.setItem('key', 'invalid-json{');
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
-      expect(JSON.parse(localStorage.getItem(key) || 'null')).toBe(newValue);
+    const { result } = renderHook(() => usePersistedState('key', 'default'));
+
+    expect(result.current[0]).toBe('default');
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining('Error reading localStorage key "key"'),
+      expect.any(Error)
+    );
+
+    warn.mockRestore();
+  });
+
+  it('setPersisted updates state and writes to localStorage', () => {
+    const { result } = renderHook(() => usePersistedState('key', 'default'));
+
+    act(() => {
+      result.current[1]('updated');
     });
 
-    it('handles write errors gracefully', () => {
-      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    expect(result.current[0]).toBe('updated');
+    expect(JSON.parse(localStorage.getItem('key')!)).toBe('updated');
+  });
 
-      vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+  it('handles write errors gracefully', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const setItemSpy = vi
+      .spyOn(Storage.prototype, 'setItem')
+      .mockImplementation(() => {
         throw new Error('QuotaExceededError');
       });
 
-      // Simulate the hook's setPersisted error handling
-      const key = 'key';
-      try {
-        localStorage.setItem(key, JSON.stringify('value'));
-      } catch (error) {
-        console.warn(`Error writing localStorage key "${key}":`, error);
-      }
+    const { result } = renderHook(() => usePersistedState('key', 'default'));
 
-      expect(warn).toHaveBeenCalledWith(
-        expect.stringContaining('Error writing localStorage key "key"'),
-        expect.any(Error)
-      );
-
-      warn.mockRestore();
+    act(() => {
+      result.current[1]('value');
     });
+
+    expect(result.current[0]).toBe('value');
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining('Error writing localStorage key "key"'),
+      expect.any(Error)
+    );
+
+    warn.mockRestore();
+    setItemSpy.mockRestore();
   });
 
-  describe('multiple independent state management', () => {
-    it('maintains separate values for different keys', () => {
-      const key1 = 'state1';
-      const key2 = 'state2';
+  it('maintains separate values for different keys', () => {
+    const { result: result1 } = renderHook(() => usePersistedState('key1', 'default1'));
+    const { result: result2 } = renderHook(() => usePersistedState('key2', 'default2'));
 
-      localStorage.setItem(key1, JSON.stringify('value1'));
-      localStorage.setItem(key2, JSON.stringify('value2'));
-
-      expect(JSON.parse(localStorage.getItem(key1) || 'null')).toBe('value1');
-      expect(JSON.parse(localStorage.getItem(key2) || 'null')).toBe('value2');
-
-      localStorage.setItem(key1, JSON.stringify('updated1'));
-
-      expect(JSON.parse(localStorage.getItem(key1) || 'null')).toBe('updated1');
-      expect(JSON.parse(localStorage.getItem(key2) || 'null')).toBe('value2');
+    act(() => {
+      result1.current[1]('value1');
     });
+
+    act(() => {
+      result2.current[1]('value2');
+    });
+
+    expect(result1.current[0]).toBe('value1');
+    expect(result2.current[0]).toBe('value2');
+    expect(JSON.parse(localStorage.getItem('key1')!)).toBe('value1');
+    expect(JSON.parse(localStorage.getItem('key2')!)).toBe('value2');
   });
 
-  describe('JSON serialization support', () => {
-    it('handles various JSON-serializable types', () => {
-      const tests = [
-        { key: 'string', value: 'test' },
-        { key: 'number', value: 42 },
-        { key: 'boolean', value: true },
-        { key: 'null', value: null },
-        { key: 'array', value: [1, 2, 3] },
-        { key: 'object', value: { nested: { deep: true } } },
-      ];
+  it('handles various JSON-serializable types', () => {
+    const testCases = [
+      { value: 'string' },
+      { value: 42 },
+      { value: true },
+      { value: null },
+      { value: [1, 2, 3] },
+      { value: { nested: { deep: true } } },
+    ];
 
-      tests.forEach(({ key, value }) => {
-        localStorage.setItem(key, JSON.stringify(value));
-        expect(JSON.parse(localStorage.getItem(key) || 'null')).toEqual(value);
+    testCases.forEach((testCase, i) => {
+      const key = `test-${i}`;
+      const { result } = renderHook(() => usePersistedState(key, testCase.value));
+
+      act(() => {
+        result.current[1](testCase.value);
       });
+
+      expect(result.current[0]).toEqual(testCase.value);
+      expect(JSON.parse(localStorage.getItem(key)!)).toEqual(testCase.value);
     });
   });
 });
