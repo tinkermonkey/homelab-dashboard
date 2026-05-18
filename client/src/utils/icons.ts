@@ -19,6 +19,8 @@ export const CUSTOM_ICONS: Record<string, string> = {
   folder: '<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',
   sparkle: '<path d="m12 3 2 7 7 2-7 2-2 7-2-7-7-2 7-2z"/>',
   branch: '<line x1="6" y1="3" x2="6" y2="15"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/>',
+  sun: '<circle cx="12" cy="12" r="5"/><path d="M12 1v6m0 6v6M4.22 4.22l4.24 4.24m0 5.08l-4.24 4.24M1 12h6m6 0h6m-1.78-7.78l-4.24 4.24m0 5.08l4.24 4.24"/>',
+  moon: '<path d="M20.354 15.354A9 9 0 0 1 8.646 3.646 9.003 9.003 0 0 0 12 21a9.003 9.003 0 0 0 8.354-5.646z"/>',
 };
 
 export function getIconSvgPath(iconName: string): string | undefined {

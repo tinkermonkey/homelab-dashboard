@@ -199,7 +199,7 @@ const ShellLayout: React.FC<ShellLayoutProps> = ({
                 gap: '6px',
               }}
             >
-              <Icon name={darkCanvas ? 'sparkle' : 'sparkle'} size={16} />
+              <Icon name={darkCanvas ? 'sun' : 'moon'} size={16} />
               {darkCanvas ? 'Light' : 'Dark'}
             </button>
           </div>
