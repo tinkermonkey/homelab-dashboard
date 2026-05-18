@@ -6,6 +6,7 @@ import { usePersistedState } from './utils/localStorage';
 import { useCluster } from './hooks/useAPI';
 import { Titlebar } from './components/shell/Titlebar';
 import { OverviewView } from './components/overview/OverviewView';
+import { ContainersView } from './components/containers/ContainersView';
 import { PlaceholderView } from './components/shared/PlaceholderView';
 import { Icon } from './components/shared/Icon';
 
@@ -162,7 +163,7 @@ const AppContent: React.FC = () => {
           clusterData ? <OverviewView data={clusterData} /> :
           <PlaceholderView routeName="Overview" />
         } />
-        <Route path="/cluster/containers" element={<PlaceholderView routeName="Containers" />} />
+        <Route path="/cluster/containers" element={<ContainersView />} />
         <Route path="/cluster/topology" element={<PlaceholderView routeName="Topology" />} />
         <Route path="/cluster/servers" element={<PlaceholderView routeName="Servers" />} />
         <Route path="/cluster/network" element={<PlaceholderView routeName="Network" />} />
