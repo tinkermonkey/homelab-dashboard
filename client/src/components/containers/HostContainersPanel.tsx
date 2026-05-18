@@ -2,18 +2,12 @@ import React, { useState, useMemo } from 'react';
 import type { DockerHost } from '@homelab/shared';
 import { ContainerRow } from './ContainerRow';
 import { Icon } from '../shared/Icon';
+import { ROLE_BY_HOST } from './constants';
 
 interface HostContainersPanelProps {
   host: DockerHost;
   query: string;
 }
-
-const ROLE_BY_HOST: Record<string, string> = {
-  nyx: 'compute',
-  helios: 'storage',
-  aether: 'k8s',
-  vega: 'gpu',
-};
 
 export const HostContainersPanel: React.FC<HostContainersPanelProps> = ({ host, query }) => {
   const [isCollapsed, setIsCollapsed] = useState(false);

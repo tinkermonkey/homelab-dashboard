@@ -85,6 +85,12 @@ body.dark-canvas .breadcrumb-chip--violet {
   flex-shrink: 0;
 }
 
+.btn--icon-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
 /* Containers toolbar */
 .containers-toolbar {
   display: flex;

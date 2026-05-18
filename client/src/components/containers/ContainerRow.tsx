@@ -1,5 +1,6 @@
 import React from 'react';
-import type { Container } from '@homelab/shared';
+import type { Container, Mount } from '@homelab/shared';
+import { getNetworkColor } from './constants';
 
 interface ContainerRowProps {
   container: Container;
@@ -16,6 +17,12 @@ const getStateColor = (state: string): string => {
     default:
       return 'neutral';
   }
+};
+
+const getDotColor = (state: string, health?: string): string => {
+  if (health === 'unhealthy' || health === 'failed') return 'rose';
+  if (health === 'degraded') return 'amber';
+  return getStateColor(state);
 };
 
 const getHealthColor = (health: string): string => {
@@ -35,13 +42,11 @@ const getHealthColor = (health: string): string => {
 };
 
 export const ContainerRow: React.FC<ContainerRowProps> = ({ container }) => {
-  const showHealthBadge = container.health &&
-    container.health !== 'healthy' &&
-    !['running', 'exited', 'updating'].includes(container.state);
+  const showHealthBadge = container.health && container.health !== 'healthy';
 
   return (
     <div className="container-row">
-      <div className={`container-row-status-dot status-dot status-dot--${getStateColor(container.state)}`} />
+      <div className={`container-row-status-dot status-dot status-dot--${getDotColor(container.state, container.health)}`} />
 
       <div className="container-row-id-section">
         <div className="container-row-name">
@@ -58,9 +63,6 @@ export const ContainerRow: React.FC<ContainerRowProps> = ({ container }) => {
             <span className={`status-badge status-badge--${getHealthColor(container.health)}`}>
               {container.health}
             </span>
-          )}
-          {container.health === 'healthy' && (
-            <span className="status-badge status-badge--emerald">healthy</span>
           )}
         </div>
       </div>
@@ -132,7 +134,7 @@ const PortPill: React.FC<{ port: string }> = ({ port }) => {
   );
 };
 
-const MountPill: React.FC<{ mount: any }> = ({ mount }) => {
+const MountPill: React.FC<{ mount: Mount }> = ({ mount }) => {
   const isBind = mount.type === 'bind';
   const source = isBind ? mount.host : mount.name;
   const isReadOnly = mount.mode === 'ro';
@@ -149,22 +151,6 @@ const MountPill: React.FC<{ mount: any }> = ({ mount }) => {
 };
 
 const NetPill: React.FC<{ network: string }> = ({ network }) => {
-  const getNetworkColor = (name: string): string => {
-    const colorMap: Record<string, string> = {
-      proxy_net: 'cyan',
-      iot_net: 'amber',
-      media_net: 'violet',
-      dev_net: 'emerald',
-      ai_net: 'rose',
-      obs_net: 'cyan',
-      cloud_net: 'emerald',
-      backup_net: 'cyan',
-      net_net: 'violet',
-      cni0: 'amber',
-    };
-    return colorMap[name] || 'neutral';
-  };
-
   return (
     <span className={`net-pill net-pill--${getNetworkColor(network)}`}>
       <span className="net-dot" />

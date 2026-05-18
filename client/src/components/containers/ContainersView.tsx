@@ -52,11 +52,11 @@ export const ContainersView: React.FC = () => {
           </p>
         </div>
         <div className="page-header__actions">
-          <button className="btn btn--sm btn--ghost" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <button className="btn btn--sm btn--ghost btn--icon-label">
             <Icon name="refresh" size={13} />
             Refresh
           </button>
-          <button className="btn btn--sm btn--primary" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <button className="btn btn--sm btn--primary btn--icon-label">
             <Icon name="plus" size={13} />
             Compose up…
           </button>
@@ -121,7 +121,7 @@ export const ContainersView: React.FC = () => {
               {h === 'all' ? 'all hosts' : h}
               <span className="host-filter-chip__count">
                 {h === 'all'
-                  ? totalContainers + (activeTab === 'networks' ? totalNetworks - totalContainers : activeTab === 'volumes' ? totalVolumes - totalContainers : 0)
+                  ? activeTab === 'containers' ? totalContainers : activeTab === 'networks' ? totalNetworks : totalVolumes
                   : (() => {
                       const host = dockerData.hosts.find(x => x.id === h);
                       if (!host) return 0;
@@ -139,11 +139,15 @@ export const ContainersView: React.FC = () => {
 
       {/* Tab Content */}
       <div className="containers-content">
-        {activeTab === 'containers' && (
+        <div style={{ display: activeTab === 'containers' ? 'block' : 'none' }}>
           <ContainersTab hosts={filteredHosts} query={query} />
-        )}
-        {activeTab === 'networks' && <NetworksTab hosts={filteredHosts} />}
-        {activeTab === 'volumes' && <VolumesTab hosts={filteredHosts} />}
+        </div>
+        <div style={{ display: activeTab === 'networks' ? 'block' : 'none' }}>
+          <NetworksTab hosts={filteredHosts} />
+        </div>
+        <div style={{ display: activeTab === 'volumes' ? 'block' : 'none' }}>
+          <VolumesTab hosts={filteredHosts} />
+        </div>
       </div>
     </div>
   );

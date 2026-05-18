@@ -1,16 +1,10 @@
 import React, { useMemo } from 'react';
 import type { DockerHost } from '@homelab/shared';
+import { ROLE_BY_HOST } from './constants';
 
 interface HostVolumesPanelProps {
   host: DockerHost;
 }
-
-const ROLE_BY_HOST: Record<string, string> = {
-  nyx: 'compute',
-  helios: 'storage',
-  aether: 'k8s',
-  vega: 'gpu',
-};
 
 export const HostVolumesPanel: React.FC<HostVolumesPanelProps> = ({ host }) => {
   const total = useMemo(() => {

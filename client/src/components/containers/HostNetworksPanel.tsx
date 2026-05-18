@@ -1,32 +1,10 @@
 import React from 'react';
 import type { DockerHost } from '@homelab/shared';
+import { ROLE_BY_HOST, getNetworkColor } from './constants';
 
 interface HostNetworksPanelProps {
   host: DockerHost;
 }
-
-const ROLE_BY_HOST: Record<string, string> = {
-  nyx: 'compute',
-  helios: 'storage',
-  aether: 'k8s',
-  vega: 'gpu',
-};
-
-const getNetworkColor = (name: string): string => {
-  const colorMap: Record<string, string> = {
-    proxy_net: 'cyan',
-    iot_net: 'amber',
-    media_net: 'violet',
-    dev_net: 'emerald',
-    ai_net: 'rose',
-    obs_net: 'cyan',
-    cloud_net: 'emerald',
-    backup_net: 'cyan',
-    net_net: 'violet',
-    cni0: 'amber',
-  };
-  return colorMap[name] || 'neutral';
-};
 
 export const HostNetworksPanel: React.FC<HostNetworksPanelProps> = ({ host }) => {
   const totalAttached = host.networks.reduce((a, n) => a + (n.attached || 0), 0);
