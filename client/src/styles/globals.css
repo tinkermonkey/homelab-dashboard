@@ -85,3 +85,13 @@ html, body {
 code, pre, .monospace {
   font-family: var(--font-mono);
 }
+
+/* Compact density mode */
+body.density-compact {
+  /* Reduce card header padding */
+  --density-card-header-padding: 8px 12px;
+  /* Reduce metric row padding */
+  --density-metric-row-padding: 4px 0;
+  /* Reduce canvas padding */
+  --density-canvas-padding: 12px;
+}

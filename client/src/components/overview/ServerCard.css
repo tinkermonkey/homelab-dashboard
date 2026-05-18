@@ -9,7 +9,7 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 12px 16px;
+  padding: var(--density-card-header-padding, 12px 16px);
   border-bottom: 1px solid rgb(var(--canvas-border));
 }
 
@@ -75,7 +75,7 @@
   grid-template-columns: 30px 1fr 60px 48px;
   gap: 10px;
   align-items: center;
-  padding: 8px 0;
+  padding: var(--density-metric-row-padding, 8px 0);
   border-bottom: 1px solid rgb(var(--canvas-border) / 0.3);
 }
 

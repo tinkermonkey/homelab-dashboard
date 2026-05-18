@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 
 interface SparklineProps {
   data: number[];
@@ -15,6 +15,8 @@ export const Sparkline: React.FC<SparklineProps> = ({
   color = 'currentColor',
   areaColor = 'currentColor',
 }) => {
+  const gradientId = useMemo(() => `sparkline-grad-${Math.random().toString(36).substr(2, 9)}`, []);
+
   if (!data || data.length === 0) return null;
 
   // Find min and max for scaling
@@ -48,14 +50,14 @@ export const Sparkline: React.FC<SparklineProps> = ({
       style={{ display: 'block' }}
     >
       <defs>
-        <linearGradient id="sparkline-grad" x1="0%" y1="0%" x2="0%" y2="100%">
+        <linearGradient id={gradientId} x1="0%" y1="0%" x2="0%" y2="100%">
           <stop offset="0%" style={{ stopColor: areaColor, stopOpacity: 0.2 }} />
           <stop offset="100%" style={{ stopColor: areaColor, stopOpacity: 0.01 }} />
         </linearGradient>
       </defs>
       <path
         d={areaPathD}
-        fill="url(#sparkline-grad)"
+        fill={`url(#${gradientId})`}
         stroke="none"
       />
       <path

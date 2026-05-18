@@ -161,11 +161,16 @@ const ShellLayout: React.FC<ShellLayoutProps> = ({
 const AppContent: React.FC = () => {
   const [sidebarCollapsed, setSidebarCollapsed] = usePersistedState('sidebarCollapsed', false);
   const [darkCanvas, setDarkCanvas] = usePersistedState('darkCanvas', true);
+  const [density] = usePersistedState('density', 'regular');
   const { data: clusterData, isLoading, error } = useCluster();
 
   useEffect(() => {
     document.body.classList.toggle('dark-canvas', darkCanvas);
   }, [darkCanvas]);
+
+  useEffect(() => {
+    document.body.classList.toggle('density-compact', density === 'compact');
+  }, [density]);
 
   return (
     <ShellLayout

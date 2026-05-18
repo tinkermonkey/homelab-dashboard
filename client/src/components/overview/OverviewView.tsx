@@ -1,11 +1,37 @@
 import React from 'react';
 import type { LAB_DATA } from '@homelab/shared';
 import { usePersistedState } from '../../utils/localStorage';
+import { getIconSvgPath } from '../../utils/icons';
 import { ServerCard } from './ServerCard';
 import { AlertsStrip } from './AlertsStrip';
 import { GatewayPanel } from './GatewayPanel';
 import { AppsSection } from './AppsSection';
 import './OverviewView.css';
+
+interface IconProps {
+  name: string;
+  size?: number;
+}
+
+const Icon: React.FC<IconProps> = ({ name, size = 24 }) => {
+  const pathData = getIconSvgPath(name);
+  if (!pathData) return null;
+
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <g dangerouslySetInnerHTML={{ __html: pathData }} />
+    </svg>
+  );
+};
 
 interface OverviewViewProps {
   data: LAB_DATA;
@@ -34,11 +60,13 @@ export const OverviewView: React.FC<OverviewViewProps> = ({ data }) => {
           </p>
         </div>
         <div className="page-header__actions">
-          <button className="btn btn--sm btn--ghost">
-            ↻ Refresh
+          <button className="btn btn--sm btn--ghost" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <Icon name="refresh" size={13} />
+            Refresh
           </button>
-          <button className="btn btn--sm btn--primary">
-            🤖 Ask lab-bot
+          <button className="btn btn--sm btn--primary" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <Icon name="bot" size={13} />
+            Ask lab-bot
           </button>
         </div>
       </div>
