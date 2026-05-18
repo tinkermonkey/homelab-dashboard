@@ -153,41 +153,43 @@ const Chart: React.FC<{
           now
         </text>
 
-        {/* Area fill (primary) */}
-        {areaPathD && (
-          <path
-            d={areaPathD}
-            fill={`url(#${gradientId})`}
-            className="gateway-chart__area"
-          />
-        )}
+        <g transform={`translate(${padding.left}, ${padding.top})`}>
+          {/* Area fill (primary) */}
+          {areaPathD && (
+            <path
+              d={areaPathD}
+              fill={`url(#${gradientId})`}
+              className="gateway-chart__area"
+            />
+          )}
 
-        {/* Line (secondary - dashed) */}
-        {secondaryPathD && secondaryColor && (
-          <path
-            d={secondaryPathD}
-            stroke={secondaryColor}
-            strokeWidth="2"
-            fill="none"
-            strokeDasharray="4,2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className="gateway-chart__line gateway-chart__line--secondary"
-          />
-        )}
+          {/* Line (secondary - dashed) */}
+          {secondaryPathD && secondaryColor && (
+            <path
+              d={secondaryPathD}
+              stroke={secondaryColor}
+              strokeWidth="2"
+              fill="none"
+              strokeDasharray="4,2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="gateway-chart__line gateway-chart__line--secondary"
+            />
+          )}
 
-        {/* Line (primary - solid) */}
-        {pathD && (
-          <path
-            d={pathD}
-            stroke={primaryColor}
-            strokeWidth="2"
-            fill="none"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className="gateway-chart__line"
-          />
-        )}
+          {/* Line (primary - solid) */}
+          {pathD && (
+            <path
+              d={pathD}
+              stroke={primaryColor}
+              strokeWidth="2"
+              fill="none"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="gateway-chart__line"
+            />
+          )}
+        </g>
       </svg>
     </div>
   );
@@ -209,8 +211,8 @@ export const GatewayChart: React.FC<GatewayChartProps> = ({
           secondaryData={upHist}
           width={320}
           height={120}
-          primaryColor="rgb(var(--accent-cyan))"
-          secondaryColor="rgb(var(--accent-violet))"
+          primaryColor="rgb(var(--status-cyan))"
+          secondaryColor="rgb(var(--status-violet))"
           showGrid={true}
           label="THROUGHPUT (24H)"
           unit="Mbps"
@@ -226,7 +228,7 @@ export const GatewayChart: React.FC<GatewayChartProps> = ({
           data={pingHist}
           width={320}
           height={120}
-          primaryColor="rgb(var(--accent-cyan))"
+          primaryColor="rgb(var(--status-cyan))"
           label="LATENCY (24H)"
           unit="ms"
           currentValue={currentPing}
