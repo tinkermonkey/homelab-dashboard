@@ -1,10 +1,16 @@
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
+import staticPlugin from '@fastify/static';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import type { LAB_DATA, DOCKER_DATA, TOPOLOGY_DATA, STATUS_DATA } from '@homelab/shared';
 import { getLabData, getDockerData, getTopologyData, getStatusData } from './mock-data.js';
 import { config } from './config.js';
 import { transformMetrics } from './transformers/metrics-transformer.js';
 import { transformDockerData, transformTopologyData } from './transformers/mcp-transformer.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const fastify = Fastify({ logger: true });
 
@@ -13,6 +19,25 @@ await fastify.register(cors, {
   origin: ['http://localhost:5173', 'http://localhost:3000'],
   credentials: true,
 });
+
+// Serve static files from client dist
+const isProduction = process.env.NODE_ENV === 'production';
+if (isProduction) {
+  const publicDir = path.join(__dirname, '../../client/dist');
+  await fastify.register(staticPlugin, {
+    root: publicDir,
+    prefix: '/',
+  });
+
+  // SPA fallback: serve index.html for non-API routes
+  fastify.setNotFoundHandler((request, reply) => {
+    if (!request.url.startsWith('/api') && !request.url.startsWith('/health')) {
+      reply.sendFile('index.html');
+    } else {
+      reply.status(404).send({ error: 'Not found' });
+    }
+  });
+}
 
 // Cache with TTL
 interface CacheEntry {

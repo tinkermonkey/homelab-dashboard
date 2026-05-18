@@ -1,10 +1,13 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import './styles/heimdall.css';
 import './styles/globals.css';
 import { usePersistedState } from './utils/localStorage';
 import { useCluster } from './hooks/useAPI';
 import { Titlebar } from './components/shell/Titlebar';
+import { CommandPalette } from './components/shell/CommandPalette';
+import { Topbar } from './components/shell/Topbar';
+import { Statusbar } from './components/shell/Statusbar';
 import { OverviewView } from './components/overview/OverviewView';
 import { ContainersView } from './components/containers/ContainersView';
 import { TopologyView } from './components/topology/TopologyView';
@@ -15,16 +18,16 @@ import { CHAT_DATA } from './data/chatData';
 
 const ROUTES = [
   { path: '/', name: 'Overview', display: 'Overview' },
-  { path: '/cluster/overview', name: 'Overview', display: 'Overview' },
-  { path: '/cluster/containers', name: 'Containers', display: 'Containers' },
-  { path: '/cluster/topology', name: 'Topology', display: 'Topology' },
-  { path: '/cluster/servers', name: 'Servers', display: 'Servers' },
-  { path: '/cluster/network', name: 'Network', display: 'Network' },
-  { path: '/cluster/apps', name: 'Apps', display: 'Apps' },
-  { path: '/cluster/storage', name: 'Storage', display: 'Storage' },
-  { path: '/cluster/bots', name: 'Bots', display: 'Bots' },
-  { path: '/cluster/logs', name: 'Logs', display: 'Logs' },
-  { path: '/cluster/settings', name: 'Settings', display: 'Settings' },
+  { path: '/cluster/overview', name: 'Overview', display: 'Overview', icon: 'dashboard' },
+  { path: '/cluster/containers', name: 'Containers', display: 'Containers', icon: 'layers' },
+  { path: '/cluster/topology', name: 'Topology', display: 'Topology', icon: 'globe' },
+  { path: '/cluster/servers', name: 'Servers', display: 'Servers', icon: 'cpu' },
+  { path: '/cluster/network', name: 'Network', display: 'Network', icon: 'link' },
+  { path: '/cluster/apps', name: 'Apps', display: 'Apps', icon: 'zap' },
+  { path: '/cluster/storage', name: 'Storage', display: 'Storage', icon: 'database' },
+  { path: '/cluster/bots', name: 'Bots', display: 'Bots', icon: 'bot' },
+  { path: '/cluster/logs', name: 'Logs', display: 'Logs', icon: 'history' },
+  { path: '/cluster/settings', name: 'Settings', display: 'Settings', icon: 'settings' },
 ];
 
 interface NavItem {
@@ -56,6 +59,11 @@ interface ShellLayoutProps {
   setChatVisible: (value: boolean) => void;
   activeBot: string;
   setActiveBot: (value: string) => void;
+  density: string;
+  setDensity: (value: string) => void;
+  showAlerts: boolean;
+  setShowAlerts: (value: boolean) => void;
+  clusterData?: any;
   children: React.ReactNode;
 }
 
@@ -68,20 +76,56 @@ const ShellLayout: React.FC<ShellLayoutProps> = ({
   setChatVisible,
   activeBot,
   setActiveBot,
+  density,
+  setDensity,
+  showAlerts,
+  setShowAlerts,
+  clusterData,
   children,
 }) => {
   const location = useLocation();
   const navigate = useNavigate();
+  const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
 
   const currentRoute = ROUTES.find(r => r.path === location.pathname) || ROUTES[0];
+
+  const commandPaletteCommands = ROUTES.filter(r => r.icon).map(r => ({
+    id: r.path,
+    label: r.display,
+    path: r.path,
+    icon: r.icon || 'dashboard',
+    category: 'Navigation',
+  }));
 
   const handleNavClick = (path: string) => {
     navigate(path);
   };
 
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        setCommandPaletteOpen(true);
+      } else if (e.key === 'Escape' && commandPaletteOpen) {
+        setCommandPaletteOpen(false);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [commandPaletteOpen]);
+
   return (
     <div className="shell-layout">
-      <Titlebar title="Homelab" />
+      <Titlebar
+        title="Homelab"
+        onCommandPaletteClick={() => setCommandPaletteOpen(true)}
+      />
+      <CommandPalette
+        isOpen={commandPaletteOpen}
+        onClose={() => setCommandPaletteOpen(false)}
+        commands={commandPaletteCommands}
+      />
 
       <div className="shell-layout__main">
         {/* Sidebar */}
@@ -114,36 +158,15 @@ const ShellLayout: React.FC<ShellLayoutProps> = ({
         {/* Main content */}
         <div className="shell-layout__content">
           {/* Topbar */}
-          <div className="topbar">
-            <div style={{ fontSize: '14px', fontWeight: 500, color: `rgb(var(--canvas-fg-1))` }}>
-              {currentRoute.display}
-            </div>
-
-            <button
-              onClick={() => setChatVisible(!chatVisible)}
-              className="btn btn--primary btn--sm"
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                background: chatVisible ? 'rgb(var(--accent-cyan))' : undefined,
-                color: chatVisible ? '#0b0f14' : undefined,
-              }}
-              title="Toggle bot console"
-            >
-              <Icon name="bot" size={16} />
-              Bot
-            </button>
-
-            <button
-              onClick={() => setDarkCanvas(!darkCanvas)}
-              className="btn btn--primary btn--sm"
-              style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
-            >
-              <Icon name={darkCanvas ? 'sun' : 'moon'} size={16} />
-              {darkCanvas ? 'Light' : 'Dark'}
-            </button>
-          </div>
+          <Topbar
+            currentRoute={currentRoute.display}
+            onDarkModeToggle={() => setDarkCanvas(!darkCanvas)}
+            darkMode={darkCanvas}
+            onChatToggle={() => setChatVisible(!chatVisible)}
+            chatVisible={chatVisible}
+            onDensityChange={() => setDensity(density === 'compact' ? 'regular' : 'compact')}
+            onShowAlertsToggle={() => setShowAlerts(!showAlerts)}
+          />
 
           {/* Canvas + Chat Rail wrapper */}
           <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
@@ -165,10 +188,7 @@ const ShellLayout: React.FC<ShellLayoutProps> = ({
           </div>
 
           {/* Statusbar */}
-          <div className="statusbar">
-            <div className="statusbar__slot statusbar__slot--left">Ready</div>
-            <div className="statusbar__slot statusbar__slot--right">Cluster Status: OK</div>
-          </div>
+          <Statusbar clusterData={clusterData} />
         </div>
       </div>
     </div>
@@ -180,7 +200,8 @@ const AppContent: React.FC = () => {
   const [darkCanvas, setDarkCanvas] = usePersistedState('darkCanvas', true);
   const [chatVisible, setChatVisible] = usePersistedState('chatVisible', false);
   const [activeBot, setActiveBot] = usePersistedState('activeBot', 'ops-bot');
-  const [density] = usePersistedState('density', 'regular');
+  const [density, setDensity] = usePersistedState('density', 'regular');
+  const [showAlerts, setShowAlerts] = usePersistedState('showAlerts', true);
   const { data: clusterData, isLoading, error } = useCluster();
 
   useEffect(() => {
@@ -201,13 +222,18 @@ const AppContent: React.FC = () => {
       setChatVisible={setChatVisible}
       activeBot={activeBot}
       setActiveBot={setActiveBot}
+      density={density}
+      setDensity={setDensity}
+      showAlerts={showAlerts}
+      setShowAlerts={setShowAlerts}
+      clusterData={clusterData}
     >
       <Routes>
         <Route path="/" element={<Navigate to="/cluster/overview" replace />} />
         <Route path="/cluster/overview" element={
           isLoading ? <PlaceholderView routeName="Overview" /> :
           error ? <PlaceholderView routeName="Overview" /> :
-          clusterData ? <OverviewView data={clusterData} /> :
+          clusterData ? <OverviewView data={clusterData} showAlerts={showAlerts} /> :
           <PlaceholderView routeName="Overview" />
         } />
         <Route path="/cluster/containers" element={<ContainersView />} />

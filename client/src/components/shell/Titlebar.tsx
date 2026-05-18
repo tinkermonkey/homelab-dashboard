@@ -1,10 +1,12 @@
 import React from 'react';
+import { Icon } from '../shared/Icon';
 
 interface TitlebarProps {
   title?: string;
+  onCommandPaletteClick?: () => void;
 }
 
-export const Titlebar: React.FC<TitlebarProps> = ({ title = 'Homelab' }) => {
+export const Titlebar: React.FC<TitlebarProps> = ({ title = 'Homelab', onCommandPaletteClick }) => {
   return (
     <div
       style={{
@@ -61,14 +63,32 @@ export const Titlebar: React.FC<TitlebarProps> = ({ title = 'Homelab' }) => {
           marginLeft: 'auto',
           display: 'flex',
           alignItems: 'center',
-          gap: '8px',
-          padding: '4px 8px',
-          borderRadius: '4px',
-          background: 'rgba(255, 255, 255, 0.05)',
-          fontSize: '11px',
-          color: 'var(--shell-fg-2)',
+          gap: '12px',
         }}
       >
+        <button
+          onClick={onCommandPaletteClick}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+            padding: '4px 8px',
+            borderRadius: '4px',
+            background: 'rgba(255, 255, 255, 0.05)',
+            border: 'none',
+            fontSize: '11px',
+            color: 'var(--shell-fg-2)',
+            cursor: 'pointer',
+            transition: 'all 80ms ease-out',
+          }}
+          onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)')}
+          onMouseLeave={(e) => (e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)')}
+          title="Command Palette (⌘K)"
+        >
+          <Icon name="search" size={12} />
+          <span style={{ fontFamily: 'var(--font-mono)' }}>⌘K</span>
+        </button>
+
         <div
           style={{
             width: '8px',
@@ -77,7 +97,7 @@ export const Titlebar: React.FC<TitlebarProps> = ({ title = 'Homelab' }) => {
             background: 'var(--status-ok)',
           }}
         />
-        Cluster
+        <span style={{ fontSize: '11px', color: 'var(--shell-fg-2)' }}>Cluster</span>
       </div>
     </div>
   );

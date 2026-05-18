@@ -1,6 +1,5 @@
 import React from 'react';
 import type { LAB_DATA } from '@homelab/shared';
-import { usePersistedState } from '../../utils/localStorage';
 import { Icon } from '../shared/Icon';
 import { ServerCard } from './ServerCard';
 import { AlertsStrip } from './AlertsStrip';
@@ -10,10 +9,10 @@ import './OverviewView.css';
 
 interface OverviewViewProps {
   data: LAB_DATA;
+  showAlerts?: boolean;
 }
 
-export const OverviewView: React.FC<OverviewViewProps> = ({ data }) => {
-  const [showAlerts] = usePersistedState('showAlerts', true);
+export const OverviewView: React.FC<OverviewViewProps> = ({ data, showAlerts = true }) => {
 
   return (
     <div className="overview-view">
