@@ -1,4 +1,5 @@
 import { config } from '../config.js';
+import { fetchWithTimeout } from '../utils/fetch-with-timeout.js';
 
 export interface NtopngInterface {
   name: string;
@@ -40,10 +41,11 @@ export class NtopngClient {
     const url = `${this.baseUrl}${path}`;
 
     try {
-      const response = await fetch(url, {
+      const response = await fetchWithTimeout(url, {
         headers: {
           Authorization: `Basic ${auth}`,
         },
+        timeout: 10000,
       });
 
       if (!response.ok) {

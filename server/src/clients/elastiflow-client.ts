@@ -1,4 +1,5 @@
 import { config } from '../config.js';
+import { fetchWithTimeout } from '../utils/fetch-with-timeout.js';
 
 interface PrometheusResponse {
   status: string;
@@ -24,8 +25,9 @@ export class ElastiFlowClient {
     url.searchParams.set('query', query);
 
     try {
-      const response = await fetch(url.toString(), {
+      const response = await fetchWithTimeout(url.toString(), {
         method: 'GET',
+        timeout: 15000,
       });
 
       if (!response.ok) {
@@ -52,8 +54,9 @@ export class ElastiFlowClient {
     url.searchParams.set('step', step);
 
     try {
-      const response = await fetch(url.toString(), {
+      const response = await fetchWithTimeout(url.toString(), {
         method: 'GET',
+        timeout: 15000,
       });
 
       if (!response.ok) {

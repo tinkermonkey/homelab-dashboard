@@ -1,4 +1,5 @@
 import { config } from '../config.js';
+import { fetchWithTimeout } from '../utils/fetch-with-timeout.js';
 import type { Alert } from '@homelab/shared';
 
 interface PromQLResponse {
@@ -45,9 +46,10 @@ export class SigNozClient {
     url.searchParams.set('step', step);
 
     try {
-      const response = await fetch(url.toString(), {
+      const response = await fetchWithTimeout(url.toString(), {
         method: 'GET',
         headers: this.getHeaders(),
+        timeout: 20000,
       });
 
       if (!response.ok) {
@@ -66,9 +68,10 @@ export class SigNozClient {
     url.searchParams.set('query', query);
 
     try {
-      const response = await fetch(url.toString(), {
+      const response = await fetchWithTimeout(url.toString(), {
         method: 'GET',
         headers: this.getHeaders(),
+        timeout: 20000,
       });
 
       if (!response.ok) {
@@ -203,9 +206,10 @@ export class SigNozClient {
     url.searchParams.set('state', 'active');
 
     try {
-      const response = await fetch(url.toString(), {
+      const response = await fetchWithTimeout(url.toString(), {
         method: 'GET',
         headers: this.getHeaders(),
+        timeout: 10000,
       });
 
       if (!response.ok) {

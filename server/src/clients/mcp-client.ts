@@ -1,4 +1,5 @@
 import { config } from '../config.js';
+import { fetchWithTimeout } from '../utils/fetch-with-timeout.js';
 
 interface MCPRequest {
   jsonrpc: '2.0';
@@ -34,12 +35,13 @@ export class MCPClient {
     };
 
     try {
-      const response = await fetch(this.baseUrl, {
+      const response = await fetchWithTimeout(this.baseUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(request),
+        timeout: 15000,
       });
 
       if (!response.ok) {
@@ -86,12 +88,13 @@ export class MCPClient {
     };
 
     try {
-      const response = await fetch(this.baseUrl, {
+      const response = await fetchWithTimeout(this.baseUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(request),
+        timeout: 15000,
       });
 
       if (!response.ok) {

@@ -10,11 +10,20 @@ import { getCachedData } from './cache.js';
 import { transformMetrics } from './transformers/metrics-transformer.js';
 import { transformDockerData, transformTopologyData } from './transformers/mcp-transformer.js';
 import { signozClient } from './clients/signoz-client.js';
+import { fetchWithTimeout } from './utils/fetch-with-timeout.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const fastify = Fastify({ logger: true });
+
+// Validate botId: alphanumeric and underscore only, max 64 chars
+function isValidBotId(botId: string): boolean {
+  return /^[a-zA-Z0-9_]{1,64}$/.test(botId);
+}
+
+// Max request body size: 1MB
+const MAX_BODY_SIZE = 1024 * 1024;
 
 // Enable CORS for local development
 await fastify.register(cors, {
@@ -158,7 +167,22 @@ fastify.get('/api/alerts', async (request, reply) => {
 fastify.post<{ Params: { botId: string } }>('/api/chat/:botId', async (request, reply) => {
   const { botId } = request.params;
 
+  // Validate botId to prevent path traversal
+  if (!isValidBotId(botId)) {
+    reply.status(400);
+    reply.send(`data: ${JSON.stringify({ error: 'Invalid bot ID format' })}\n\n`);
+    return;
+  }
+
   try {
+    // Validate request body size
+    const bodyString = JSON.stringify(request.body);
+    if (bodyString.length > MAX_BODY_SIZE) {
+      reply.status(413);
+      reply.send(`data: ${JSON.stringify({ error: 'Request body too large' })}\n\n`);
+      return;
+    }
+
     // Set up SSE response headers
     reply.header('Content-Type', 'text/event-stream');
     reply.header('Cache-Control', 'no-cache');
@@ -166,12 +190,13 @@ fastify.post<{ Params: { botId: string } }>('/api/chat/:botId', async (request, 
 
     const phoneHomeUrl = `${config.phoneHomeChatUrl}/${botId}`;
 
-    const response = await fetch(phoneHomeUrl, {
+    const response = await fetchWithTimeout(phoneHomeUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(request.body),
+      body: bodyString,
+      timeout: 30000,
     });
 
     if (!response.ok) {
