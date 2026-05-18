@@ -67,7 +67,7 @@ export class ElastiFlowClient {
     }
   }
 
-  // Get network throughput for a host (24h history)
+  // Get network throughput for a host (24h history, bytes/sec from Prometheus)
   async getHostThroughput(hostname: string): Promise<Array<[number, string]>> {
     const now = Math.floor(Date.now() / 1000);
     const start = now - 24 * 60 * 60; // 24 hours
@@ -82,7 +82,7 @@ export class ElastiFlowClient {
     return response.data.result[0]?.values || [];
   }
 
-  // Get current throughput for a host
+  // Get current throughput for a host (bytes/sec from Prometheus)
   async getCurrentThroughput(hostname: string): Promise<{ down: number; up: number }> {
     try {
       const response = await this.query(
@@ -93,8 +93,8 @@ export class ElastiFlowClient {
       const up = response.data.result[1]?.value?.[1];
 
       return {
-        down: down ? parseFloat(down) / 125000 : 0, // Mbps
-        up: up ? parseFloat(up) / 125000 : 0,
+        down: down ? parseFloat(down) : 0, // bytes/sec
+        up: up ? parseFloat(up) : 0,
       };
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';

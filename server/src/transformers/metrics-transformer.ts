@@ -6,17 +6,30 @@ import { getLabData } from '../mock-data.js';
 
 const HOSTS = ['nyx', 'helios', 'aether', 'vega'];
 
-// Convert Prometheus values to percentage (0-100)
-function prometheusValueToPercent(value: string): number {
+// Convert Prometheus decimal ratio (0-1) to percentage (0-100)
+function prometheusRatioToPercent(value: string): number {
   const num = parseFloat(value);
   return Math.round(num * 10000) / 100;
 }
 
-// Convert Prometheus timestamp and value pairs to histogram
+// Convert bytes/sec to Mbps (1 Mbps = 125,000 bytes/sec)
+function prometheusBytesPerSecToMbps(value: string): number {
+  const num = parseFloat(value);
+  return Math.round((num / 125000) * 1000) / 1000;
+}
+
+// Convert Prometheus timestamp and value pairs to percentage histogram (0-100)
 function histogramFromPrometheus(values: Array<[number, string]>): number[] {
   return values
     .slice(-48) // Last 48 points (30-min buckets over 24h)
-    .map(([, value]) => prometheusValueToPercent(value));
+    .map(([, value]) => prometheusRatioToPercent(value));
+}
+
+// Convert Prometheus timestamp and value pairs to network throughput histogram (Mbps)
+function histogramFromPrometheusMbps(values: Array<[number, string]>): number[] {
+  return values
+    .slice(-48) // Last 48 points (30-min buckets over 24h)
+    .map(([, value]) => prometheusBytesPerSecToMbps(value));
 }
 
 export async function transformMetrics(
@@ -113,7 +126,7 @@ export async function transformMetrics(
       if (server && downHists[idx].length > 0) {
         server.net = {
           ...server.net,
-          hist: histogramFromPrometheus(downHists[idx]),
+          hist: histogramFromPrometheusMbps(downHists[idx]),
         };
       }
     });
