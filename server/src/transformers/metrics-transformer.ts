@@ -9,7 +9,7 @@ const HOSTS = ['nyx', 'helios', 'aether', 'vega'];
 // Convert Prometheus values to percentage (0-100)
 function prometheusValueToPercent(value: string): number {
   const num = parseFloat(value);
-  return Math.round(num * 100) / 100;
+  return Math.round(num * 10000) / 100;
 }
 
 // Convert Prometheus timestamp and value pairs to histogram

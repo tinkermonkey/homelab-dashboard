@@ -93,8 +93,8 @@ export class ElastiFlowClient {
       const up = response.data.result[1]?.value?.[1];
 
       return {
-        down: down ? parseFloat(down) / (1024 * 1024) : 0, // Mbps
-        up: up ? parseFloat(up) / (1024 * 1024) : 0,
+        down: down ? parseFloat(down) / 125000 : 0, // Mbps
+        up: up ? parseFloat(up) / 125000 : 0,
       };
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
