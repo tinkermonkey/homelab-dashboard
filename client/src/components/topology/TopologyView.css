@@ -311,7 +311,7 @@ body.dark-canvas .tp-bot {
 }
 
 .tp-bot[data-bot='ops-bot'] .tp-bot-av {
-  background: linear-gradient(135deg, var(--accent-cyan), var(--accent-cyan-deep));
+  background: linear-gradient(135deg, rgb(var(--status-cyan)), rgb(var(--status-cyan-deep)));
 }
 
 .tp-bot[data-bot='watch-bot'] .tp-bot-av {
