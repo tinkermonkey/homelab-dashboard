@@ -1,10 +1,16 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
   prometheusRatioToPercent,
   prometheusBytesPerSecToMbps,
   histogramFromPrometheus,
   histogramFromPrometheusMbps,
+  transformMetrics,
 } from './metrics-transformer.js';
+import { signozClient } from '../clients/signoz-client.js';
+import { ntopngClient } from '../clients/ntopng-client.js';
+import { elastiflowClient } from '../clients/elastiflow-client.js';
+import { mcpClient } from '../clients/mcp-client.js';
+import type { LAB_DATA } from '@homelab/shared';
 
 describe('Metrics Transformer', () => {
   describe('prometheusRatioToPercent', () => {
@@ -158,5 +164,491 @@ describe('Metrics Transformer', () => {
       expect(prometheusRatioToPercent('1e-2')).toBe(1);
       expect(prometheusBytesPerSecToMbps('1.25e5')).toBe(1);
     });
+  });
+});
+
+describe('transformMetrics', () => {
+  const mockLabData: LAB_DATA = {
+    cluster: {
+      name: 'asgard',
+      location: 'rack-01 · basement',
+      domain: 'lab.local',
+      powerDraw: 0,
+      powerAvg: 0,
+      uptimeDays: 0,
+      uptimeHours: 0,
+      egressTodayGB: 0,
+      egressDelta: 0,
+      activeAlerts: 0,
+      lastSync: 'never',
+    },
+    servers: [
+      {
+        id: 'nyx',
+        role: 'compute' as const,
+        mark: 'NX',
+        hostname: 'nyx.lab.local',
+        ip: '10.0.0.11',
+        model: 'Test Model',
+        uptime: '0d 0h',
+        status: 'ok' as const,
+        cpu: { v: 0, hist: [0] },
+        mem: { v: 0, hist: [0], used: '0', total: '128', unit: 'GB' as const },
+        disk: { v: 0, hist: [0], used: '0', total: '7.3', unit: 'TB' as const },
+        net: { v: 0, hist: [0], down: '0', up: '0', unit: 'Mbps' as const },
+        temp: '0°C',
+        load: '0 / 0 / 0',
+        containers: 0,
+      },
+      {
+        id: 'helios',
+        role: 'compute' as const,
+        mark: 'HE',
+        hostname: 'helios.lab.local',
+        ip: '10.0.0.12',
+        model: 'Test Model',
+        uptime: '0d 0h',
+        status: 'ok' as const,
+        cpu: { v: 0, hist: [0] },
+        mem: { v: 0, hist: [0], used: '0', total: '128', unit: 'GB' as const },
+        disk: { v: 0, hist: [0], used: '0', total: '7.3', unit: 'TB' as const },
+        net: { v: 0, hist: [0], down: '0', up: '0', unit: 'Mbps' as const },
+        temp: '0°C',
+        load: '0 / 0 / 0',
+        containers: 0,
+      },
+      {
+        id: 'aether',
+        role: 'compute' as const,
+        mark: 'AE',
+        hostname: 'aether.lab.local',
+        ip: '10.0.0.13',
+        model: 'Test Model',
+        uptime: '0d 0h',
+        status: 'ok' as const,
+        cpu: { v: 0, hist: [0] },
+        mem: { v: 0, hist: [0], used: '0', total: '128', unit: 'GB' as const },
+        disk: { v: 0, hist: [0], used: '0', total: '7.3', unit: 'TB' as const },
+        net: { v: 0, hist: [0], down: '0', up: '0', unit: 'Mbps' as const },
+        temp: '0°C',
+        load: '0 / 0 / 0',
+        containers: 0,
+      },
+      {
+        id: 'vega',
+        role: 'compute' as const,
+        mark: 'VG',
+        hostname: 'vega.lab.local',
+        ip: '10.0.0.14',
+        model: 'Test Model',
+        uptime: '0d 0h',
+        status: 'ok' as const,
+        cpu: { v: 0, hist: [0] },
+        mem: { v: 0, hist: [0], used: '0', total: '128', unit: 'GB' as const },
+        disk: { v: 0, hist: [0], used: '0', total: '7.3', unit: 'TB' as const },
+        net: { v: 0, hist: [0], down: '0', up: '0', unit: 'Mbps' as const },
+        temp: '0°C',
+        load: '0 / 0 / 0',
+        containers: 0,
+      },
+    ],
+    gateway: {
+      isp: 'ISP',
+      plan: 'Plan',
+      publicIp: '1.1.1.1',
+      hostname: 'gw.lab.local',
+      geo: 'US',
+      status: 'online' as const,
+      statusFor: '127d',
+      asn: '12345',
+      wanIf: 'eth0',
+      pingMs: 0,
+      pingHist: [0],
+      jitterMs: 0,
+      lossPct: 0,
+      lossHist: [0],
+      downMbps: 0,
+      upMbps: 0,
+      downHist: [0],
+      upHist: [0],
+      egressTodayGB: 0,
+      ingressTodayGB: 0,
+      egressMonthTB: 0,
+      blockedPct: 0,
+      dnsResolved: 0,
+      dnsBlocked: 0,
+      vpnPeers: 0,
+      vpnPeersActive: 0,
+    },
+    apps: [],
+    bots: [],
+    threadByBot: {},
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('successfully transforms metrics when all services are available', async () => {
+    vi.spyOn(signozClient, 'getCpuMetrics').mockResolvedValue([[100, '0.5']]);
+    vi.spyOn(signozClient, 'getMemoryMetrics').mockResolvedValue([[100, '0.6']]);
+    vi.spyOn(signozClient, 'getDiskMetrics').mockResolvedValue([[100, '0.7']]);
+    vi.spyOn(signozClient, 'getTemperature').mockResolvedValue('55°C');
+    vi.spyOn(signozClient, 'getLoadAverage').mockResolvedValue('1.5 / 1.8 / 2.0');
+    vi.spyOn(signozClient, 'getPowerDraw').mockResolvedValue(412);
+    vi.spyOn(signozClient, 'getClusterUptime').mockResolvedValue({ days: 127, hours: 4 });
+
+    vi.spyOn(ntopngClient, 'getWanInterfaceStats').mockResolvedValue({
+      ping: 25,
+      jitter: 5,
+      loss: 0,
+      downMbps: 500,
+      upMbps: 100,
+    });
+    vi.spyOn(ntopngClient, 'getDNSStats').mockResolvedValue({
+      resolved: 1000,
+      blocked: 50,
+    });
+    vi.spyOn(ntopngClient, 'getVpnPeers').mockResolvedValue([]);
+
+    vi.spyOn(elastiflowClient, 'getHostThroughput').mockResolvedValue([[100, '125000']]);
+
+    vi.spyOn(mcpClient, 'listContainers').mockResolvedValue([]);
+
+    const result = await transformMetrics(mockLabData);
+
+    expect(result.degraded).toEqual([]);
+    expect(result.data.cluster.powerDraw).toBe(412);
+    expect(result.data.cluster.uptimeDays).toBe(127);
+    expect(result.data.cluster.uptimeHours).toBe(4);
+    expect(result.data.gateway.pingMs).toBe(25);
+    expect(result.data.gateway.dnsResolved).toBe(1000);
+  });
+
+  it('degrades signoz when CPU metrics fail', async () => {
+    vi.spyOn(signozClient, 'getCpuMetrics').mockRejectedValue(new Error('Connection failed'));
+    vi.spyOn(signozClient, 'getMemoryMetrics').mockResolvedValue([]);
+    vi.spyOn(signozClient, 'getDiskMetrics').mockResolvedValue([]);
+    vi.spyOn(signozClient, 'getTemperature').mockResolvedValue('55°C');
+    vi.spyOn(signozClient, 'getLoadAverage').mockResolvedValue('1.5 / 1.8 / 2.0');
+    vi.spyOn(signozClient, 'getPowerDraw').mockResolvedValue(412);
+    vi.spyOn(signozClient, 'getClusterUptime').mockResolvedValue({ days: 127, hours: 4 });
+
+    vi.spyOn(ntopngClient, 'getWanInterfaceStats').mockResolvedValue({
+      ping: 25,
+      jitter: 5,
+      loss: 0,
+      downMbps: 500,
+      upMbps: 100,
+    });
+    vi.spyOn(ntopngClient, 'getDNSStats').mockResolvedValue({ resolved: 1000, blocked: 50 });
+    vi.spyOn(ntopngClient, 'getVpnPeers').mockResolvedValue([]);
+
+    vi.spyOn(elastiflowClient, 'getHostThroughput').mockResolvedValue([]);
+    vi.spyOn(mcpClient, 'listContainers').mockResolvedValue([]);
+
+    const result = await transformMetrics(mockLabData);
+
+    expect(result.degraded).toContain('signoz');
+  });
+
+  it('degrades ntopng when gateway stats fail', async () => {
+    vi.spyOn(signozClient, 'getCpuMetrics').mockResolvedValue([]);
+    vi.spyOn(signozClient, 'getMemoryMetrics').mockResolvedValue([]);
+    vi.spyOn(signozClient, 'getDiskMetrics').mockResolvedValue([]);
+    vi.spyOn(signozClient, 'getTemperature').mockResolvedValue('55°C');
+    vi.spyOn(signozClient, 'getLoadAverage').mockResolvedValue('1.5 / 1.8 / 2.0');
+    vi.spyOn(signozClient, 'getPowerDraw').mockResolvedValue(412);
+    vi.spyOn(signozClient, 'getClusterUptime').mockResolvedValue({ days: 127, hours: 4 });
+
+    vi.spyOn(ntopngClient, 'getWanInterfaceStats').mockRejectedValue(new Error('Network error'));
+    vi.spyOn(ntopngClient, 'getDNSStats').mockResolvedValue({ resolved: 1000, blocked: 50 });
+    vi.spyOn(ntopngClient, 'getVpnPeers').mockResolvedValue([]);
+
+    vi.spyOn(elastiflowClient, 'getHostThroughput').mockResolvedValue([]);
+    vi.spyOn(mcpClient, 'listContainers').mockResolvedValue([]);
+
+    const result = await transformMetrics(mockLabData);
+
+    expect(result.degraded).toContain('ntopng');
+  });
+
+  it('degrades elastiflow when throughput fetch fails', async () => {
+    vi.spyOn(signozClient, 'getCpuMetrics').mockResolvedValue([]);
+    vi.spyOn(signozClient, 'getMemoryMetrics').mockResolvedValue([]);
+    vi.spyOn(signozClient, 'getDiskMetrics').mockResolvedValue([]);
+    vi.spyOn(signozClient, 'getTemperature').mockResolvedValue('55°C');
+    vi.spyOn(signozClient, 'getLoadAverage').mockResolvedValue('1.5 / 1.8 / 2.0');
+    vi.spyOn(signozClient, 'getPowerDraw').mockResolvedValue(412);
+    vi.spyOn(signozClient, 'getClusterUptime').mockResolvedValue({ days: 127, hours: 4 });
+
+    vi.spyOn(ntopngClient, 'getWanInterfaceStats').mockResolvedValue({
+      ping: 25,
+      jitter: 5,
+      loss: 0,
+      downMbps: 500,
+      upMbps: 100,
+    });
+    vi.spyOn(ntopngClient, 'getDNSStats').mockResolvedValue({ resolved: 1000, blocked: 50 });
+    vi.spyOn(ntopngClient, 'getVpnPeers').mockResolvedValue([]);
+
+    vi.spyOn(elastiflowClient, 'getHostThroughput').mockRejectedValue(new Error('Service unavailable'));
+
+    vi.spyOn(mcpClient, 'listContainers').mockResolvedValue([]);
+
+    const result = await transformMetrics(mockLabData);
+
+    expect(result.degraded).toContain('elastiflow');
+  });
+
+  it('degrades phone-home when apps fetch fails', async () => {
+    vi.spyOn(signozClient, 'getCpuMetrics').mockResolvedValue([]);
+    vi.spyOn(signozClient, 'getMemoryMetrics').mockResolvedValue([]);
+    vi.spyOn(signozClient, 'getDiskMetrics').mockResolvedValue([]);
+    vi.spyOn(signozClient, 'getTemperature').mockResolvedValue('55°C');
+    vi.spyOn(signozClient, 'getLoadAverage').mockResolvedValue('1.5 / 1.8 / 2.0');
+    vi.spyOn(signozClient, 'getPowerDraw').mockResolvedValue(412);
+    vi.spyOn(signozClient, 'getClusterUptime').mockResolvedValue({ days: 127, hours: 4 });
+
+    vi.spyOn(ntopngClient, 'getWanInterfaceStats').mockResolvedValue({
+      ping: 25,
+      jitter: 5,
+      loss: 0,
+      downMbps: 500,
+      upMbps: 100,
+    });
+    vi.spyOn(ntopngClient, 'getDNSStats').mockResolvedValue({ resolved: 1000, blocked: 50 });
+    vi.spyOn(ntopngClient, 'getVpnPeers').mockResolvedValue([]);
+
+    vi.spyOn(elastiflowClient, 'getHostThroughput').mockResolvedValue([]);
+    vi.spyOn(mcpClient, 'listContainers').mockRejectedValue(new Error('Connection refused'));
+
+    const result = await transformMetrics(mockLabData);
+
+    expect(result.degraded).toContain('phone-home');
+  });
+
+  it('handles multiple simultaneous failures', async () => {
+    vi.spyOn(signozClient, 'getCpuMetrics').mockRejectedValue(new Error('Error'));
+    vi.spyOn(signozClient, 'getMemoryMetrics').mockRejectedValue(new Error('Error'));
+    vi.spyOn(signozClient, 'getDiskMetrics').mockRejectedValue(new Error('Error'));
+    vi.spyOn(signozClient, 'getTemperature').mockResolvedValue('55°C');
+    vi.spyOn(signozClient, 'getLoadAverage').mockResolvedValue('1.5 / 1.8 / 2.0');
+    vi.spyOn(signozClient, 'getPowerDraw').mockRejectedValue(new Error('Error'));
+    vi.spyOn(signozClient, 'getClusterUptime').mockRejectedValue(new Error('Error'));
+
+    vi.spyOn(ntopngClient, 'getWanInterfaceStats').mockRejectedValue(new Error('Error'));
+    vi.spyOn(ntopngClient, 'getDNSStats').mockResolvedValue({ resolved: 1000, blocked: 50 });
+    vi.spyOn(ntopngClient, 'getVpnPeers').mockResolvedValue([]);
+
+    vi.spyOn(elastiflowClient, 'getHostThroughput').mockRejectedValue(new Error('Error'));
+    vi.spyOn(mcpClient, 'listContainers').mockRejectedValue(new Error('Error'));
+
+    const result = await transformMetrics(mockLabData);
+
+    expect(result.degraded).toContain('signoz');
+    expect(result.degraded).toContain('ntopng');
+    expect(result.degraded).toContain('elastiflow');
+    expect(result.degraded).toContain('phone-home');
+  });
+
+  it('preserves original data structure when transformations fail', async () => {
+    vi.spyOn(signozClient, 'getCpuMetrics').mockRejectedValue(new Error('Error'));
+    vi.spyOn(signozClient, 'getMemoryMetrics').mockResolvedValue([]);
+    vi.spyOn(signozClient, 'getDiskMetrics').mockResolvedValue([]);
+    vi.spyOn(signozClient, 'getTemperature').mockResolvedValue('55°C');
+    vi.spyOn(signozClient, 'getLoadAverage').mockResolvedValue('1.5 / 1.8 / 2.0');
+    vi.spyOn(signozClient, 'getPowerDraw').mockResolvedValue(412);
+    vi.spyOn(signozClient, 'getClusterUptime').mockResolvedValue({ days: 127, hours: 4 });
+
+    vi.spyOn(ntopngClient, 'getWanInterfaceStats').mockResolvedValue({
+      ping: 25,
+      jitter: 5,
+      loss: 0,
+      downMbps: 500,
+      upMbps: 100,
+    });
+    vi.spyOn(ntopngClient, 'getDNSStats').mockResolvedValue({ resolved: 1000, blocked: 50 });
+    vi.spyOn(ntopngClient, 'getVpnPeers').mockResolvedValue([]);
+
+    vi.spyOn(elastiflowClient, 'getHostThroughput').mockResolvedValue([]);
+    vi.spyOn(mcpClient, 'listContainers').mockResolvedValue([]);
+
+    const result = await transformMetrics(mockLabData);
+
+    expect(result.data.cluster.name).toBe('asgard');
+    expect(result.data.servers).toHaveLength(4);
+    expect(result.data.servers.every((s) => s.id)).toBe(true);
+  });
+
+  it('updates metrics when data is provided', async () => {
+    vi.spyOn(signozClient, 'getCpuMetrics').mockResolvedValue([[100, '0.5']]);
+    vi.spyOn(signozClient, 'getMemoryMetrics').mockResolvedValue([[200, '0.6']]);
+    vi.spyOn(signozClient, 'getDiskMetrics').mockResolvedValue([[300, '0.7']]);
+    vi.spyOn(signozClient, 'getTemperature').mockResolvedValue('55°C');
+    vi.spyOn(signozClient, 'getLoadAverage').mockResolvedValue('1.5 / 1.8 / 2.0');
+    vi.spyOn(signozClient, 'getPowerDraw').mockResolvedValue(412);
+    vi.spyOn(signozClient, 'getClusterUptime').mockResolvedValue({ days: 127, hours: 4 });
+
+    vi.spyOn(ntopngClient, 'getWanInterfaceStats').mockResolvedValue({
+      ping: 25,
+      jitter: 5,
+      loss: 0,
+      downMbps: 500,
+      upMbps: 100,
+    });
+    vi.spyOn(ntopngClient, 'getDNSStats').mockResolvedValue({
+      resolved: 1000,
+      blocked: 50,
+    });
+    vi.spyOn(ntopngClient, 'getVpnPeers').mockResolvedValue([]);
+
+    vi.spyOn(elastiflowClient, 'getHostThroughput').mockResolvedValue([[100, '125000']]);
+    vi.spyOn(mcpClient, 'listContainers').mockResolvedValue([]);
+
+    const result = await transformMetrics(mockLabData);
+
+    const nyxServer = result.data.servers.find((s) => s.id === 'nyx');
+    expect(nyxServer?.cpu.hist).toEqual([50]);
+    expect(nyxServer?.mem.hist).toEqual([60]);
+    expect(nyxServer?.disk.hist).toEqual([70]);
+    expect(nyxServer?.temp).toBe('55°C');
+    expect(nyxServer?.load).toBe('1.5 / 1.8 / 2.0');
+  });
+
+  it('updates gateway metrics when data is provided', async () => {
+    vi.spyOn(signozClient, 'getCpuMetrics').mockResolvedValue([]);
+    vi.spyOn(signozClient, 'getMemoryMetrics').mockResolvedValue([]);
+    vi.spyOn(signozClient, 'getDiskMetrics').mockResolvedValue([]);
+    vi.spyOn(signozClient, 'getTemperature').mockResolvedValue('55°C');
+    vi.spyOn(signozClient, 'getLoadAverage').mockResolvedValue('1.5 / 1.8 / 2.0');
+    vi.spyOn(signozClient, 'getPowerDraw').mockResolvedValue(412);
+    vi.spyOn(signozClient, 'getClusterUptime').mockResolvedValue({ days: 127, hours: 4 });
+
+    vi.spyOn(ntopngClient, 'getWanInterfaceStats').mockResolvedValue({
+      ping: 25,
+      jitter: 5,
+      loss: 2,
+      downMbps: 500,
+      upMbps: 100,
+    });
+    vi.spyOn(ntopngClient, 'getDNSStats').mockResolvedValue({
+      resolved: 1000,
+      blocked: 50,
+    });
+    vi.spyOn(ntopngClient, 'getVpnPeers').mockResolvedValue([]);
+
+    vi.spyOn(elastiflowClient, 'getHostThroughput').mockResolvedValue([]);
+    vi.spyOn(mcpClient, 'listContainers').mockResolvedValue([]);
+
+    const result = await transformMetrics(mockLabData);
+
+    expect(result.data.gateway.pingMs).toBe(25);
+    expect(result.data.gateway.jitterMs).toBe(5);
+    expect(result.data.gateway.lossPct).toBe(2);
+    expect(result.data.gateway.downMbps).toBe(500);
+    expect(result.data.gateway.upMbps).toBe(100);
+    expect(result.data.gateway.dnsResolved).toBe(1000);
+    expect(result.data.gateway.dnsBlocked).toBe(50);
+  });
+
+  it('skips server metric updates when histogram is empty', async () => {
+    const originalCpu = mockLabData.servers[0].cpu.hist;
+
+    vi.spyOn(signozClient, 'getCpuMetrics').mockResolvedValue([]);
+    vi.spyOn(signozClient, 'getMemoryMetrics').mockResolvedValue([]);
+    vi.spyOn(signozClient, 'getDiskMetrics').mockResolvedValue([]);
+    vi.spyOn(signozClient, 'getTemperature').mockResolvedValue('55°C');
+    vi.spyOn(signozClient, 'getLoadAverage').mockResolvedValue('1.5 / 1.8 / 2.0');
+    vi.spyOn(signozClient, 'getPowerDraw').mockResolvedValue(412);
+    vi.spyOn(signozClient, 'getClusterUptime').mockResolvedValue({ days: 127, hours: 4 });
+
+    vi.spyOn(ntopngClient, 'getWanInterfaceStats').mockResolvedValue({
+      ping: 25,
+      jitter: 5,
+      loss: 0,
+      downMbps: 500,
+      upMbps: 100,
+    });
+    vi.spyOn(ntopngClient, 'getDNSStats').mockResolvedValue({ resolved: 1000, blocked: 50 });
+    vi.spyOn(ntopngClient, 'getVpnPeers').mockResolvedValue([]);
+
+    vi.spyOn(elastiflowClient, 'getHostThroughput').mockResolvedValue([]);
+    vi.spyOn(mcpClient, 'listContainers').mockResolvedValue([]);
+
+    const result = await transformMetrics(mockLabData);
+
+    const nyxServer = result.data.servers.find((s) => s.id === 'nyx');
+    expect(nyxServer?.cpu.hist).toEqual(originalCpu);
+  });
+
+  it('updates apps when valid app data is provided', async () => {
+    const mockApps = [
+      {
+        id: 'app1',
+        host: 'nyx',
+        cat: 'database',
+        version: '5.0',
+        state: 'running',
+        meta: 'PostgreSQL',
+      },
+    ];
+
+    vi.spyOn(signozClient, 'getCpuMetrics').mockResolvedValue([]);
+    vi.spyOn(signozClient, 'getMemoryMetrics').mockResolvedValue([]);
+    vi.spyOn(signozClient, 'getDiskMetrics').mockResolvedValue([]);
+    vi.spyOn(signozClient, 'getTemperature').mockResolvedValue('55°C');
+    vi.spyOn(signozClient, 'getLoadAverage').mockResolvedValue('1.5 / 1.8 / 2.0');
+    vi.spyOn(signozClient, 'getPowerDraw').mockResolvedValue(412);
+    vi.spyOn(signozClient, 'getClusterUptime').mockResolvedValue({ days: 127, hours: 4 });
+
+    vi.spyOn(ntopngClient, 'getWanInterfaceStats').mockResolvedValue({
+      ping: 25,
+      jitter: 5,
+      loss: 0,
+      downMbps: 500,
+      upMbps: 100,
+    });
+    vi.spyOn(ntopngClient, 'getDNSStats').mockResolvedValue({ resolved: 1000, blocked: 50 });
+    vi.spyOn(ntopngClient, 'getVpnPeers').mockResolvedValue([]);
+
+    vi.spyOn(elastiflowClient, 'getHostThroughput').mockResolvedValue([]);
+    vi.spyOn(mcpClient, 'listContainers').mockResolvedValue(mockApps);
+
+    const result = await transformMetrics(mockLabData);
+
+    expect(result.data.apps).toEqual(mockApps);
+  });
+
+  it('ignores invalid apps data', async () => {
+    vi.spyOn(signozClient, 'getCpuMetrics').mockResolvedValue([]);
+    vi.spyOn(signozClient, 'getMemoryMetrics').mockResolvedValue([]);
+    vi.spyOn(signozClient, 'getDiskMetrics').mockResolvedValue([]);
+    vi.spyOn(signozClient, 'getTemperature').mockResolvedValue('55°C');
+    vi.spyOn(signozClient, 'getLoadAverage').mockResolvedValue('1.5 / 1.8 / 2.0');
+    vi.spyOn(signozClient, 'getPowerDraw').mockResolvedValue(412);
+    vi.spyOn(signozClient, 'getClusterUptime').mockResolvedValue({ days: 127, hours: 4 });
+
+    vi.spyOn(ntopngClient, 'getWanInterfaceStats').mockResolvedValue({
+      ping: 25,
+      jitter: 5,
+      loss: 0,
+      downMbps: 500,
+      upMbps: 100,
+    });
+    vi.spyOn(ntopngClient, 'getDNSStats').mockResolvedValue({ resolved: 1000, blocked: 50 });
+    vi.spyOn(ntopngClient, 'getVpnPeers').mockResolvedValue([]);
+
+    vi.spyOn(elastiflowClient, 'getHostThroughput').mockResolvedValue([]);
+    vi.spyOn(mcpClient, 'listContainers').mockResolvedValue({ not: 'array' });
+
+    const result = await transformMetrics(mockLabData);
+
+    expect(result.degraded).toContain('phone-home');
+    expect(result.data.apps).toEqual([]);
   });
 });
