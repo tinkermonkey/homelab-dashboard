@@ -10,6 +10,8 @@ import { ContainersView } from './components/containers/ContainersView';
 import { TopologyView } from './components/topology/TopologyView';
 import { PlaceholderView } from './components/shared/PlaceholderView';
 import { Icon } from './components/shared/Icon';
+import { ChatRail } from './components/chat/ChatRail';
+import { CHAT_DATA } from './data/chatData';
 
 const ROUTES = [
   { path: '/', name: 'Overview', display: 'Overview' },
@@ -50,6 +52,10 @@ interface ShellLayoutProps {
   setSidebarCollapsed: (value: boolean) => void;
   darkCanvas: boolean;
   setDarkCanvas: (value: boolean) => void;
+  chatVisible: boolean;
+  setChatVisible: (value: boolean) => void;
+  activeBot: string;
+  setActiveBot: (value: string) => void;
   children: React.ReactNode;
 }
 
@@ -58,6 +64,10 @@ const ShellLayout: React.FC<ShellLayoutProps> = ({
   setSidebarCollapsed,
   darkCanvas,
   setDarkCanvas,
+  chatVisible,
+  setChatVisible,
+  activeBot,
+  setActiveBot,
   children,
 }) => {
   const location = useLocation();
@@ -110,6 +120,22 @@ const ShellLayout: React.FC<ShellLayoutProps> = ({
             </div>
 
             <button
+              onClick={() => setChatVisible(!chatVisible)}
+              className="btn btn--primary btn--sm"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                background: chatVisible ? 'var(--accent-cyan)' : undefined,
+                color: chatVisible ? '#0b0f14' : undefined,
+              }}
+              title="Toggle bot console"
+            >
+              <Icon name="bot" size={16} />
+              Bot
+            </button>
+
+            <button
               onClick={() => setDarkCanvas(!darkCanvas)}
               className="btn btn--primary btn--sm"
               style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
@@ -119,9 +145,23 @@ const ShellLayout: React.FC<ShellLayoutProps> = ({
             </button>
           </div>
 
-          {/* Canvas content */}
-          <div className="shell-layout__canvas">
-            {children}
+          {/* Canvas + Chat Rail wrapper */}
+          <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+            {/* Canvas content */}
+            <div className="shell-layout__canvas">
+              {children}
+            </div>
+
+            {/* Chat Rail */}
+            {chatVisible && (
+              <ChatRail
+                bots={CHAT_DATA.bots}
+                threadByBot={CHAT_DATA.threadByBot}
+                activeBot={activeBot}
+                onActiveBotChange={setActiveBot}
+                onClose={() => setChatVisible(false)}
+              />
+            )}
           </div>
 
           {/* Statusbar */}
@@ -138,6 +178,8 @@ const ShellLayout: React.FC<ShellLayoutProps> = ({
 const AppContent: React.FC = () => {
   const [sidebarCollapsed, setSidebarCollapsed] = usePersistedState('sidebarCollapsed', false);
   const [darkCanvas, setDarkCanvas] = usePersistedState('darkCanvas', true);
+  const [chatVisible, setChatVisible] = usePersistedState('chatVisible', false);
+  const [activeBot, setActiveBot] = usePersistedState('activeBot', 'ops-bot');
   const [density] = usePersistedState('density', 'regular');
   const { data: clusterData, isLoading, error } = useCluster();
 
@@ -155,6 +197,10 @@ const AppContent: React.FC = () => {
       setSidebarCollapsed={setSidebarCollapsed}
       darkCanvas={darkCanvas}
       setDarkCanvas={setDarkCanvas}
+      chatVisible={chatVisible}
+      setChatVisible={setChatVisible}
+      activeBot={activeBot}
+      setActiveBot={setActiveBot}
     >
       <Routes>
         <Route path="/" element={<Navigate to="/cluster/overview" replace />} />

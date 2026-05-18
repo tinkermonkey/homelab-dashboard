@@ -95,3 +95,22 @@ body.density-compact {
   /* Reduce canvas padding */
   --density-canvas-padding: 12px;
 }
+
+/* Canvas + Chat Rail wrapper adjustment */
+.shell-layout__canvas {
+  min-width: 0;
+}
+
+/* Additional color tokens for shell-specific styles */
+:root {
+  --accent-cyan: 34 211 238;
+  --accent-cyan-2: 6 182 212;
+  --accent-cyan-deep: 14 126 163;
+  --accent-amber: 245 158 11;
+  --accent-violet: 167 139 250;
+  --accent-emerald: 16 185 129;
+  --accent-rose: 244 63 94;
+  --shell-fg-3: 110 122 135;
+  --shell-fg-4: 74 85 99;
+  --shell-border-2: 42 58 92;
+}

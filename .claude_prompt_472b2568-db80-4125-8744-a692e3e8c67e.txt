@@ -1,0 +1,84 @@
+You are a Senior Software Engineer.
+
+You implement clean, well thought out code with proper error handling and maintainable architecture.
+
+### Work Item
+
+These are the requirements to implement.
+
+**Title**:
+Phase 6: Bot console rail
+
+**Description**:
+Build the collapsible bot console rail with bot tabs, message thread display (including tool-call blocks and suggestion chips), and the message composer with keyboard shortcuts. Visibility and active bot persist to localStorage.
+
+## Requirements
+- ChatRail (custom, wraps Heimdall Drawer): 380px right-docked, collapsible via topbar bot icon and internal close button; visibility persists
+- Rail header: 'Bot console' label + cyan status dot, monospace subtitle, history/settings/close icon buttons
+- Bot tab row: 4 tabs (lab-bot, ops-bot, watch-bot, sync-bot); each shows monospace name, 5px status dot, role in monospace caps; active tab has cyan bottom border; active bot persists
+- Chat thread: day dividers in monospace with flanking 1px lines; messages with 22px avatar, sender name + role badge + timestamp, body text
+- Tool-call blocks: lightning icon, tool name in monospace caps, status badge (e.g. 'completed in 1.4s' in emerald), KV output lines
+- Suggestion chips: monospace pill buttons; clicking submits the chip text as a user message
+- Composer: scope line ('talking to [bot-name]'), '+ context' and '/cmd' pills, textarea, keyboard hints; Enter sends (appends to thread + clears textarea), Shift+Enter inserts newline; cyan send button
+- Topbar bot icon highlighted in cyan when rail is open
+
+## Design Guidance
+Implements Phase 6 (Bot Console Rail) from the architecture design. Covers the Custom Components entries for ChatRail and the Heimdall Direct Use entry for Drawer.
+
+## Acceptance Criteria
+- [ ] Bot console toggles open/closed via topbar icon and internal close button
+- [ ] Topbar bot icon is cyan-highlighted when console is open
+- [ ] Console visibility persists across reload
+- [ ] Four bot tabs render; active tab has cyan bottom border; switching updates thread and composer scope line
+- [ ] Active bot tab persists across reload
+- [ ] Message thread renders day dividers, user messages, and bot messages with avatars and timestamps
+- [ ] Tool-call blocks render with lightning icon, monospace tool name, status badge, and KV output
+- [ ] Suggestion chips are visible below bot messages; clicking one sends its text as a user message
+- [ ] Enter sends the composed message; Shift+Enter inserts a newline without sending
+- [ ] No emoji anywhere in the rail
+
+## Dependencies
+Phase 1: Project scaffold and app shell
+
+## Parent Issue
+Part of #1
+
+## Discussion
+This work is detailed in the architecture design document provided as a pipeline context file.
+
+### Previous Work
+
+
+
+### Guidelines
+
+
+Implement the specified code changes to meet the requirements specified.
+
+### Project-Specific Expert Agents
+
+Check `/workspace/CLAUDE.md` for a "Specialized Sub-Agents" section. If any listed agent matches your task domain (e.g., flow-expert for React Flow nodes, state-expert for Zustand, guardian for architecture review), you MUST consult it via the Task tool before implementing.
+
+Do not implement from general knowledge when a project-specific agent exists for your task.
+
+### For UI/Frontend Changes
+
+- Use Playwright MCP to test your changes in the browser before completing
+- Run accessibility checks (Playwright has built-in a11y testing)
+- Verify responsive behaviour on different viewport sizes
+- Test form interactions and validation
+
+### Important Implementation Guidelines
+
+- Don't over-engineer, implement only what is necessary to meet the requirements
+- Focus on re-use of existing code, libraries and patterns
+- Don't name files "phase 1", "phase 2", etc, use descriptive names only for files, variable, and comments
+- Don't create reports or documentation, your output should be code only
+
+### Output Instructions
+
+**IMPORTANT**:
+- Provide a short summary of your work as the final output
+- Use proper markdown formatting (headers, lists, code blocks)
+- You may create, edit, or modify files as needed to complete your task
+- Your changes will be auto-committed to git
