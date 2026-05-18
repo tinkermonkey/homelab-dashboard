@@ -55,8 +55,9 @@ const AppContent: React.FC = () => {
   const navigate = useNavigate();
   const [sidebarCollapsed, setSidebarCollapsed] = usePersistedState('sidebarCollapsed', false);
   const [darkCanvas, setDarkCanvas] = usePersistedState('darkCanvas', true);
-  const [chatVisible, setChatVisible] = usePersistedState('chatVisible', false);
-  const [activeBot, setActiveBot] = usePersistedState('activeBot', 'ops-bot');
+  const [chatVisible, setChatVisible] = usePersistedState('chatVisible', true);
+  const [activeBot, setActiveBot] = usePersistedState('activeBot', 'lab-bot');
+  const [activeRoute, setActiveRoute] = usePersistedState('activeRoute', '/cluster/overview');
   const [density, setDensity] = usePersistedState('density', 'regular');
   const [showAlerts, setShowAlerts] = usePersistedState('showAlerts', true);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
@@ -80,6 +81,16 @@ const AppContent: React.FC = () => {
   useEffect(() => {
     document.body.classList.toggle('density-compact', density === 'compact');
   }, [density]);
+
+  useEffect(() => {
+    setActiveRoute(location.pathname);
+  }, [location.pathname, setActiveRoute]);
+
+  useEffect(() => {
+    if (location.pathname === '/') {
+      navigate(activeRoute, { replace: true });
+    }
+  }, []);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
