@@ -7,36 +7,38 @@ interface ServerCardProps {
   server: Server;
 }
 
+type HostTint = { rgb: string; a12: string; a31: string };
+
 interface MetricRowProps {
   label: string;
   value: number;
   display: string;
   hist: number[];
   metric: string;
-  tintColor: { rgb: string; rgba20: string; rgba50: string };
+  tintColor: HostTint;
   isHighMetric: (value: number, metric: string) => boolean;
 }
 
-const HOST_TINTS: Record<string, { rgb: string; rgba20: string; rgba50: string }> = {
+const HOST_TINTS: Record<string, HostTint> = {
   nyx: {
     rgb: 'rgb(var(--host-nyx-tint))',
-    rgba20: 'var(--host-nyx-tint-rgba-20)',
-    rgba50: 'var(--host-nyx-tint-rgba-50)',
+    a12: 'var(--host-nyx-tint-a12)',
+    a31: 'var(--host-nyx-tint-a31)',
   },
   helios: {
     rgb: 'rgb(var(--host-helios-tint))',
-    rgba20: 'var(--host-helios-tint-rgba-20)',
-    rgba50: 'var(--host-helios-tint-rgba-50)',
+    a12: 'var(--host-helios-tint-a12)',
+    a31: 'var(--host-helios-tint-a31)',
   },
   aether: {
     rgb: 'rgb(var(--host-aether-tint))',
-    rgba20: 'var(--host-aether-tint-rgba-20)',
-    rgba50: 'var(--host-aether-tint-rgba-50)',
+    a12: 'var(--host-aether-tint-a12)',
+    a31: 'var(--host-aether-tint-a31)',
   },
   vega: {
     rgb: 'rgb(var(--host-vega-tint))',
-    rgba20: 'var(--host-vega-tint-rgba-20)',
-    rgba50: 'var(--host-vega-tint-rgba-50)',
+    a12: 'var(--host-vega-tint-a12)',
+    a31: 'var(--host-vega-tint-a31)',
   },
 };
 
@@ -104,7 +106,7 @@ export const ServerCard: React.FC<ServerCardProps> = ({ server }) => {
       <div className="server-card__header">
         <div
           className="server-card__mark"
-          style={{ backgroundColor: tintColor.rgba20, borderColor: tintColor.rgba50 }}
+          style={{ backgroundColor: tintColor.a12, borderColor: tintColor.a31 }}
         >
           <span style={{ color: tintColor.rgb, fontWeight: 600 }}>{server.mark}</span>
         </div>

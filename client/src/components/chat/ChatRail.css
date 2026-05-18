@@ -203,7 +203,7 @@
 }
 
 .chat-msg.bot .av {
-  background: linear-gradient(135deg, var(--accent-cyan), #06b6d4);
+  background: linear-gradient(135deg, rgb(var(--accent-cyan)), #06b6d4);
   color: #0b0f14;
 }
 

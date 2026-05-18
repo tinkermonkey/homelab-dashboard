@@ -47,10 +47,10 @@ export const BotInspector: React.FC<BotInspectorProps> = ({ bot }) => {
           style={{
             color:
               bot.status === 'busy'
-                ? 'var(--accent-amber)'
+                ? 'rgb(var(--accent-amber))'
                 : bot.status === 'idle'
                   ? 'var(--canvas-fg-3)'
-                  : 'var(--accent-emerald)',
+                  : 'rgb(var(--accent-emerald))',
           }}
         >
           ● {bot.status}
@@ -146,12 +146,12 @@ export const BotInspector: React.FC<BotInspectorProps> = ({ bot }) => {
                   key={delegateId}
                   className="tp-project"
                   style={{
-                    borderColor: 'color-mix(in oklab, var(--accent-cyan) 35%, transparent)',
-                    background: 'color-mix(in oklab, var(--accent-cyan) 10%, transparent)',
-                    color: 'var(--accent-cyan-deep)',
+                    borderColor: 'color-mix(in oklab, rgb(var(--accent-cyan)) 35%, transparent)',
+                    background: 'color-mix(in oklab, rgb(var(--accent-cyan)) 10%, transparent)',
+                    color: 'rgb(var(--accent-cyan-deep))',
                   }}
                 >
-                  <span className="host-dot" style={{ background: 'var(--accent-cyan)' }} />
+                  <span className="host-dot" style={{ background: 'rgb(var(--accent-cyan))' }} />
                   {delegateId}
                 </span>
               ))}

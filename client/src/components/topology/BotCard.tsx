@@ -91,12 +91,12 @@ export const BotCard: React.FC<BotCardProps> = ({ bot, layout, selected, onSelec
                 className="tp-project"
                 data-host="orchestrator"
                 style={{
-                  borderColor: 'color-mix(in oklab, var(--accent-cyan) 35%, transparent)',
-                  background: 'color-mix(in oklab, var(--accent-cyan) 8%, transparent)',
-                  color: 'var(--accent-cyan-deep)',
+                  borderColor: 'color-mix(in oklab, rgb(var(--accent-cyan)) 35%, transparent)',
+                  background: 'color-mix(in oklab, rgb(var(--accent-cyan)) 8%, transparent)',
+                  color: 'rgb(var(--accent-cyan-deep))',
                 }}
               >
-                <span className="host-dot" style={{ background: 'var(--accent-cyan)' }} />
+                <span className="host-dot" style={{ background: 'rgb(var(--accent-cyan))' }} />
                 {delegateId}
               </span>
             ))}

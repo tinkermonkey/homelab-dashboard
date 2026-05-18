@@ -61,7 +61,7 @@ export const TopologyEdges: React.FC<TopologyEdgesProps> = ({ bots, botLayout })
     <svg className="tp-edges" viewBox={`0 0 ${TP_STAGE_W} ${TP_STAGE_H}`} preserveAspectRatio="none">
       <defs>
         <marker id="tp-arrow-cyan" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-          <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--accent-cyan)" />
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="rgb(var(--accent-cyan))" />
         </marker>
       </defs>
       {paths.map(p => (
@@ -78,7 +78,7 @@ export const TopologyEdges: React.FC<TopologyEdgesProps> = ({ bots, botLayout })
             height={16}
             rx={3}
             fill="var(--canvas-card)"
-            stroke="color-mix(in oklab, var(--accent-cyan) 30%, transparent)"
+            stroke="color-mix(in oklab, rgb(var(--accent-cyan)) 30%, transparent)"
           />
           <text x={p.midX} y={p.midY + 3.5} textAnchor="middle" fill="var(--accent-cyan-deep)">
             delegates
