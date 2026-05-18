@@ -195,6 +195,54 @@ export class SigNozClient {
     }
     return 0;
   }
+
+  // Fetch active alerts from Alertmanager
+  async getActiveAlerts(): Promise<Array<{
+    name: string;
+    severity: string;
+    state: string;
+    labels: Record<string, string>;
+  }>> {
+    const url = new URL(`${this.baseUrl}/api/v1/alerts`);
+    url.searchParams.set('state', 'active');
+
+    try {
+      const response = await fetch(url.toString(), {
+        method: 'GET',
+        headers: this.getHeaders(),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const data = await response.json() as {
+        status: string;
+        data?: Array<{
+          alert?: string;
+          labels?: Record<string, string>;
+          annotations?: Record<string, string>;
+          state?: string;
+          activeAt?: string;
+          value?: string;
+        }>;
+      };
+
+      if (data.status !== 'success' || !data.data) {
+        return [];
+      }
+
+      return data.data.map((alert) => ({
+        name: alert.labels?.alertname || 'Unknown Alert',
+        severity: alert.labels?.severity || 'unknown',
+        state: alert.state || 'active',
+        labels: alert.labels || {},
+      }));
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      throw new Error(`Failed to fetch active alerts: ${message}`);
+    }
+  }
 }
 
 export const signozClient = new SigNozClient();

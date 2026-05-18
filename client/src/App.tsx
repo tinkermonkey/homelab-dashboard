@@ -1,20 +1,22 @@
 import React, { useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
-import type { LAB_DATA } from '@homelab/shared';
+import {
+  ShellLayout,
+  Icon as HeimdallIcon,
+  Button,
+} from '@tinkermonkey/heimdall-ui';
+import '@tinkermonkey/heimdall-ui';
 import './styles/heimdall.css';
 import './styles/globals.css';
 import { usePersistedState } from './utils/localStorage';
 import { useCluster } from './hooks/useAPI';
-import { Titlebar } from './components/shell/Titlebar';
 import { CommandPalette } from './components/shell/CommandPalette';
-import { Topbar } from './components/shell/Topbar';
-import { Statusbar } from './components/shell/Statusbar';
+import { StatusbarContent } from './components/shell/Statusbar';
 import { OverviewView } from './components/overview/OverviewView';
 import { ContainersView } from './components/containers/ContainersView';
 import { TopologyView } from './components/topology/TopologyView';
 import { PlaceholderView } from './components/shared/PlaceholderView';
 import { ErrorView } from './components/shared/ErrorView';
-import { Icon } from './components/shared/Icon';
 import { ChatRail } from './components/chat/ChatRail';
 import { CHAT_DATA } from './data/chatData';
 
@@ -48,42 +50,17 @@ const NAV_ITEMS: NavItem[] = ROUTES
     path: r.path,
   }));
 
-interface ShellLayoutProps {
-  sidebarCollapsed: boolean;
-  setSidebarCollapsed: (value: boolean) => void;
-  darkCanvas: boolean;
-  setDarkCanvas: (value: boolean) => void;
-  chatVisible: boolean;
-  setChatVisible: (value: boolean) => void;
-  activeBot: string;
-  setActiveBot: (value: string) => void;
-  density: string;
-  setDensity: (value: string) => void;
-  showAlerts: boolean;
-  setShowAlerts: (value: boolean) => void;
-  clusterData?: LAB_DATA & { degraded?: string[] };
-  children: React.ReactNode;
-}
-
-const ShellLayout: React.FC<ShellLayoutProps> = ({
-  sidebarCollapsed,
-  setSidebarCollapsed,
-  darkCanvas,
-  setDarkCanvas,
-  chatVisible,
-  setChatVisible,
-  activeBot,
-  setActiveBot,
-  density,
-  setDensity,
-  showAlerts,
-  setShowAlerts,
-  clusterData,
-  children,
-}) => {
+const AppContent: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  const [sidebarCollapsed, setSidebarCollapsed] = usePersistedState('sidebarCollapsed', false);
+  const [darkCanvas, setDarkCanvas] = usePersistedState('darkCanvas', true);
+  const [chatVisible, setChatVisible] = usePersistedState('chatVisible', false);
+  const [activeBot, setActiveBot] = usePersistedState('activeBot', 'ops-bot');
+  const [density, setDensity] = usePersistedState('density', 'regular');
+  const [showAlerts, setShowAlerts] = usePersistedState('showAlerts', true);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
+  const { data: clusterData, isLoading, error } = useCluster();
 
   const currentRoute = ROUTES.find(r => r.path === location.pathname) || ROUTES[0];
 
@@ -95,9 +72,13 @@ const ShellLayout: React.FC<ShellLayoutProps> = ({
     category: 'Navigation',
   }));
 
-  const handleNavClick = (path: string) => {
-    navigate(path);
-  };
+  useEffect(() => {
+    document.body.classList.toggle('dark-canvas', darkCanvas);
+  }, [darkCanvas]);
+
+  useEffect(() => {
+    document.body.classList.toggle('density-compact', density === 'compact');
+  }, [density]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -113,154 +94,151 @@ const ShellLayout: React.FC<ShellLayoutProps> = ({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [commandPaletteOpen]);
 
-  return (
-    <div className="shell-layout">
-      <Titlebar
-        title="Homelab"
-        onCommandPaletteClick={() => setCommandPaletteOpen(true)}
-      />
-      <CommandPalette
-        isOpen={commandPaletteOpen}
-        onClose={() => setCommandPaletteOpen(false)}
-        commands={commandPaletteCommands}
-      />
+  const iconMap: Record<string, string> = {
+    dashboard: 'dashboard',
+    layers: 'layout',
+    globe: 'graph',
+    cpu: 'settings',
+    link: 'link',
+    zap: 'alert',
+    database: 'settings',
+    bot: 'user',
+    history: 'reload',
+    settings: 'settings',
+  };
 
-      <div className="shell-layout__main">
-        {/* Sidebar */}
-        <nav className={`sidebar ${sidebarCollapsed ? 'sidebar--collapsed' : ''}`}>
-          <div className="sidebar__nav">
-            {NAV_ITEMS.map(item => (
-              <button
-                key={item.id}
-                onClick={() => handleNavClick(item.path)}
-                className={`nav-item ${location.pathname === item.path ? 'nav-item--active' : ''}`}
-                title={sidebarCollapsed ? item.label : undefined}
-              >
-                <span className="nav-item__icon">
-                  <Icon name={item.icon} size={20} />
-                </span>
-                {!sidebarCollapsed && <span className="nav-item__label">{item.label}</span>}
-              </button>
-            ))}
-          </div>
+  const sidebarSections = [
+    {
+      title: 'Cluster',
+      items: NAV_ITEMS.map(item => ({
+        id: item.id,
+        label: item.label,
+        icon: (iconMap[item.icon] || 'dashboard') as any,
+      })),
+    },
+  ];
 
-          <button
-            onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-            className="sidebar__toggle"
-            title="Toggle sidebar"
-          >
-            {sidebarCollapsed ? '▶' : '◀'}
-          </button>
-        </nav>
-
-        {/* Main content */}
-        <div className="shell-layout__content">
-          {/* Topbar */}
-          <Topbar
-            currentRoute={currentRoute.display}
-            onDarkModeToggle={() => setDarkCanvas(!darkCanvas)}
-            darkMode={darkCanvas}
-            onChatToggle={() => setChatVisible(!chatVisible)}
-            chatVisible={chatVisible}
-            onDensityChange={() => setDensity(density === 'compact' ? 'regular' : 'compact')}
-            onShowAlertsToggle={() => setShowAlerts(!showAlerts)}
-          />
-
-          {/* Canvas + Chat Rail wrapper */}
-          <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
-            {/* Canvas content */}
-            <div className="shell-layout__canvas">
-              {children}
-            </div>
-
-            {/* Chat Rail */}
-            {chatVisible && (
-              <ChatRail
-                bots={CHAT_DATA.bots}
-                threadByBot={CHAT_DATA.threadByBot}
-                activeBot={activeBot}
-                onActiveBotChange={setActiveBot}
-                onClose={() => setChatVisible(false)}
-              />
-            )}
-          </div>
-
-          {/* Statusbar */}
-          <Statusbar clusterData={clusterData} />
-        </div>
-      </div>
-    </div>
-  );
-};
-
-const AppContent: React.FC = () => {
-  const [sidebarCollapsed, setSidebarCollapsed] = usePersistedState('sidebarCollapsed', false);
-  const [darkCanvas, setDarkCanvas] = usePersistedState('darkCanvas', true);
-  const [chatVisible, setChatVisible] = usePersistedState('chatVisible', false);
-  const [activeBot, setActiveBot] = usePersistedState('activeBot', 'ops-bot');
-  const [density, setDensity] = usePersistedState('density', 'regular');
-  const [showAlerts, setShowAlerts] = usePersistedState('showAlerts', true);
-  const { data: clusterData, isLoading, error } = useCluster();
-
-  useEffect(() => {
-    document.body.classList.toggle('dark-canvas', darkCanvas);
-  }, [darkCanvas]);
-
-  useEffect(() => {
-    document.body.classList.toggle('density-compact', density === 'compact');
-  }, [density]);
-
-  return (
-    <ShellLayout
-      sidebarCollapsed={sidebarCollapsed}
-      setSidebarCollapsed={setSidebarCollapsed}
-      darkCanvas={darkCanvas}
-      setDarkCanvas={setDarkCanvas}
-      chatVisible={chatVisible}
-      setChatVisible={setChatVisible}
-      activeBot={activeBot}
-      setActiveBot={setActiveBot}
-      density={density}
-      setDensity={setDensity}
+  const viewContent = isLoading ? (
+    <PlaceholderView routeName="Overview" />
+  ) : error ? (
+    <ErrorView
+      title="Failed to Load Overview"
+      message="Could not fetch cluster data. Please try again in a moment."
+      isDegraded={false}
+    />
+  ) : clusterData ? (
+    <OverviewView
+      data={clusterData}
       showAlerts={showAlerts}
-      setShowAlerts={setShowAlerts}
-      clusterData={clusterData}
-    >
-      <Routes>
-        <Route path="/" element={<Navigate to="/cluster/overview" replace />} />
-        <Route path="/cluster/overview" element={
-          isLoading ? (
-            <PlaceholderView routeName="Overview" />
-          ) : error ? (
-            <ErrorView
-              title="Failed to Load Overview"
-              message="Could not fetch cluster data. Please try again in a moment."
-              isDegraded={false}
+    />
+  ) : (
+    <ErrorView
+      title="No Data Available"
+      message="No cluster data could be loaded."
+      isDegraded={false}
+    />
+  );
+
+  return (
+    <>
+      <ShellLayout
+        appTitle={{
+          title: 'Homelab',
+          version: 'asgard',
+        }}
+        sidebar={{
+          sections: sidebarSections,
+          activeItemId: NAV_ITEMS.find(i => i.path === location.pathname)?.id,
+          collapsed: sidebarCollapsed,
+          onCollapse: setSidebarCollapsed,
+          onSelectItem: (itemId) => {
+            const item = NAV_ITEMS.find(i => i.id === itemId);
+            if (item) navigate(item.path);
+          },
+        }}
+        topbar={{
+          breadcrumbs: [
+            { label: 'cluster', onClick: () => navigate('/cluster/overview') },
+            { label: currentRoute.display },
+          ],
+          children: (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginLeft: 'auto' }}>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => setShowAlerts(!showAlerts)}
+                title="Toggle alerts visibility"
+              >
+                <HeimdallIcon name="bell" size={16} />
+                {!sidebarCollapsed && 'Alerts'}
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => setDensity(density === 'compact' ? 'regular' : 'compact')}
+                title="Toggle compact density"
+              >
+                <HeimdallIcon name="layout" size={16} />
+                {!sidebarCollapsed && 'Density'}
+              </Button>
+              <Button
+                variant={chatVisible ? 'primary' : 'secondary'}
+                size="sm"
+                onClick={() => setChatVisible(!chatVisible)}
+                title="Toggle bot console"
+              >
+                <HeimdallIcon name="user" size={16} />
+                {!sidebarCollapsed && 'Bot'}
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => setDarkCanvas(!darkCanvas)}
+                title="Toggle dark/light mode"
+              >
+                <HeimdallIcon name={darkCanvas ? 'sun' : 'moon'} size={16} />
+                {!sidebarCollapsed && (darkCanvas ? 'Light' : 'Dark')}
+              </Button>
+            </div>
+          ),
+        }}
+        statusbar={{
+          left: <StatusbarContent clusterData={clusterData} />,
+        }}
+      >
+        <CommandPalette
+          isOpen={commandPaletteOpen}
+          onClose={() => setCommandPaletteOpen(false)}
+          commands={commandPaletteCommands}
+        />
+        <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+          <div style={{ flex: 1, overflow: 'auto' }}>
+            <Routes>
+              <Route path="/" element={<Navigate to="/cluster/overview" replace />} />
+              <Route path="/cluster/overview" element={viewContent} />
+              <Route path="/cluster/containers" element={<ContainersView />} />
+              <Route path="/cluster/topology" element={<TopologyView />} />
+              <Route path="/cluster/servers" element={<PlaceholderView routeName="Servers" />} />
+              <Route path="/cluster/network" element={<PlaceholderView routeName="Network" />} />
+              <Route path="/cluster/apps" element={<PlaceholderView routeName="Apps" />} />
+              <Route path="/cluster/storage" element={<PlaceholderView routeName="Storage" />} />
+              <Route path="/cluster/bots" element={<PlaceholderView routeName="Bots" />} />
+              <Route path="/cluster/logs" element={<PlaceholderView routeName="Logs" />} />
+              <Route path="/cluster/settings" element={<PlaceholderView routeName="Settings" />} />
+            </Routes>
+          </div>
+          {chatVisible && (
+            <ChatRail
+              bots={CHAT_DATA.bots}
+              threadByBot={CHAT_DATA.threadByBot}
+              activeBot={activeBot}
+              onActiveBotChange={setActiveBot}
+              onClose={() => setChatVisible(false)}
             />
-          ) : clusterData ? (
-            <OverviewView
-              data={clusterData}
-              showAlerts={showAlerts}
-            />
-          ) : (
-            <ErrorView
-              title="No Data Available"
-              message="No cluster data could be loaded."
-              isDegraded={false}
-            />
-          )
-        } />
-        <Route path="/cluster/containers" element={<ContainersView />} />
-        <Route path="/cluster/topology" element={<TopologyView />} />
-        <Route path="/cluster/servers" element={<PlaceholderView routeName="Servers" />} />
-        <Route path="/cluster/network" element={<PlaceholderView routeName="Network" />} />
-        <Route path="/cluster/apps" element={<PlaceholderView routeName="Apps" />} />
-        <Route path="/cluster/storage" element={<PlaceholderView routeName="Storage" />} />
-        <Route path="/cluster/bots" element={<PlaceholderView routeName="Bots" />} />
-        <Route path="/cluster/logs" element={<PlaceholderView routeName="Logs" />} />
-        <Route path="/cluster/settings" element={<PlaceholderView routeName="Settings" />} />
-      </Routes>
-    </ShellLayout>
+          )}
+        </div>
+      </ShellLayout>
+    </>
   );
 };
 

@@ -5,7 +5,7 @@ interface StatusbarProps {
   clusterData?: LAB_DATA & { degraded?: string[] };
 }
 
-export const Statusbar: React.FC<StatusbarProps> = ({ clusterData }) => {
+export const StatusbarContent: React.FC<StatusbarProps> = ({ clusterData }) => {
   const getInitialTicker = () => ({
     cpu: clusterData?.servers[0]?.cpu.v || 0,
     ping: clusterData?.gateway?.pingMs || 0,
@@ -62,25 +62,20 @@ export const Statusbar: React.FC<StatusbarProps> = ({ clusterData }) => {
   }, [clusterData]);
 
   return (
-    <div className="statusbar">
-      <div className="statusbar__slot statusbar__slot--left">
-        <div style={{ fontSize: '11px', color: 'rgb(var(--shell-fg-2))' }}>
-          CPU: <span style={{ fontFamily: 'var(--font-mono)', color: 'rgb(var(--shell-fg-1))' }}>{ticker.cpu}%</span>
-        </div>
-        <div style={{ fontSize: '11px', color: 'rgb(var(--shell-fg-2))' }}>
-          Ping: <span style={{ fontFamily: 'var(--font-mono)', color: 'rgb(var(--shell-fg-1))' }}>{ticker.ping}ms</span>
-        </div>
+    <>
+      <div style={{ fontSize: '11px', color: 'rgb(var(--shell-fg-2))' }}>
+        CPU: <span style={{ fontFamily: 'var(--font-mono)', color: 'rgb(var(--shell-fg-1))' }}>{ticker.cpu}%</span>
       </div>
-
-      <div className="statusbar__slot statusbar__slot--right">
-        <div style={{ fontSize: '11px', color: 'rgb(var(--shell-fg-2))' }}>
-          ↓ <span style={{ fontFamily: 'var(--font-mono)', color: 'rgb(var(--shell-fg-1))' }}>{ticker.down}</span>
-          <span style={{ color: 'rgb(var(--shell-fg-3))', margin: '0 6px' }}>|</span>
-          ↑ <span style={{ fontFamily: 'var(--font-mono)', color: 'rgb(var(--shell-fg-1))' }}>{ticker.up}</span>
-          <span style={{ color: 'rgb(var(--shell-fg-3))', margin: '0 6px' }}>|</span>
-          Cluster: <span style={{ color, fontWeight: 500 }}>{status}</span>
-        </div>
+      <div style={{ fontSize: '11px', color: 'rgb(var(--shell-fg-2))' }}>
+        Ping: <span style={{ fontFamily: 'var(--font-mono)', color: 'rgb(var(--shell-fg-1))' }}>{ticker.ping}ms</span>
       </div>
-    </div>
+      <div style={{ fontSize: '11px', color: 'rgb(var(--shell-fg-2))', marginLeft: 'auto' }}>
+        ↓ <span style={{ fontFamily: 'var(--font-mono)', color: 'rgb(var(--shell-fg-1))' }}>{ticker.down}</span>
+        <span style={{ color: 'rgb(var(--shell-fg-3))', margin: '0 6px' }}>|</span>
+        ↑ <span style={{ fontFamily: 'var(--font-mono)', color: 'rgb(var(--shell-fg-1))' }}>{ticker.up}</span>
+        <span style={{ color: 'rgb(var(--shell-fg-3))', margin: '0 6px' }}>|</span>
+        Cluster: <span style={{ color, fontWeight: 500 }}>{status}</span>
+      </div>
+    </>
   );
 };

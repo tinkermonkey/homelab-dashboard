@@ -4,10 +4,11 @@ import staticPlugin from '@fastify/static';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import type { LAB_DATA, DOCKER_DATA, TOPOLOGY_DATA, STATUS_DATA } from '@homelab/shared';
-import { getLabData, getDockerData, getTopologyData, getStatusData } from './mock-data.js';
+import { getLabData, getDockerData, getTopologyData, getStatusData, getActiveAlerts } from './mock-data.js';
 import { config } from './config.js';
 import { transformMetrics } from './transformers/metrics-transformer.js';
 import { transformDockerData, transformTopologyData } from './transformers/mcp-transformer.js';
+import { signozClient } from './clients/signoz-client.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -150,6 +151,36 @@ fastify.get('/api/topology', async (request, reply) => {
     const message = error instanceof Error ? error.message : 'Unknown error';
     fastify.log.error(`Failed to fetch topology data: ${message}`);
     reply.status(500).send({ error: 'Failed to fetch topology data' });
+  }
+});
+
+// GET /api/alerts (5s cadence, 3s cache) - active alerts from SigNoz Alertmanager
+fastify.get('/api/alerts', async (request, reply) => {
+  try {
+    const data = await getCachedData('alerts', 3, async () => {
+      try {
+        // Try to fetch from SigNoz Alertmanager
+        const alerts = await signozClient.getActiveAlerts();
+        return {
+          alerts,
+          source: 'alertmanager',
+        };
+      } catch (error) {
+        // Fallback to mock data if SigNoz is unavailable
+        const message = error instanceof Error ? error.message : 'Unknown error';
+        fastify.log.warn(`SigNoz Alertmanager unavailable, using mock data: ${message}`);
+        return {
+          alerts: getActiveAlerts(),
+          source: 'mock',
+        };
+      }
+    });
+
+    reply.send(data);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    fastify.log.error(`Failed to fetch alerts: ${message}`);
+    reply.status(500).send({ error: 'Failed to fetch alerts' });
   }
 });
 

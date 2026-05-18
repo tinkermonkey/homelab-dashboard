@@ -461,3 +461,37 @@ export function getStatusData(): STATUS_DATA {
     alertPrimary: 'aether MEM 81%',
   };
 }
+
+export function getActiveAlerts(): Array<{
+  name: string;
+  severity: string;
+  state: string;
+  labels: Record<string, string>;
+}> {
+  return [
+    {
+      name: 'HighMemoryUsage',
+      severity: 'warning',
+      state: 'active',
+      labels: {
+        alertname: 'HighMemoryUsage',
+        severity: 'warning',
+        instance: 'aether.lab.local:9090',
+        job: 'prometheus',
+        host: 'aether',
+      },
+    },
+    {
+      name: 'HighCPUUsage',
+      severity: 'info',
+      state: 'active',
+      labels: {
+        alertname: 'HighCPUUsage',
+        severity: 'info',
+        instance: 'nyx.lab.local:9090',
+        job: 'prometheus',
+        host: 'nyx',
+      },
+    },
+  ];
+}
