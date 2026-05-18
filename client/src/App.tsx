@@ -3,7 +3,6 @@ import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from
 import {
   ShellLayout,
   Icon as HeimdallIcon,
-  Button,
   type IconName,
 } from '@tinkermonkey/heimdall-ui';
 import './styles/heimdall.css';
@@ -54,11 +53,11 @@ const AppContent: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const [sidebarCollapsed, setSidebarCollapsed] = usePersistedState('sidebarCollapsed', false);
-  const [darkCanvas, setDarkCanvas] = usePersistedState('darkCanvas', true);
+  const [darkCanvas] = usePersistedState('darkCanvas', true);
   const [chatVisible, setChatVisible] = usePersistedState('chatVisible', true);
   const [activeBot, setActiveBot] = usePersistedState('activeBot', 'lab-bot');
   const [activeRoute, setActiveRoute] = usePersistedState('activeRoute', '/cluster/overview');
-  const [density, setDensity] = usePersistedState('density', 'regular');
+  const [density] = usePersistedState('density', 'regular');
   const [showAlerts, setShowAlerts] = usePersistedState('showAlerts', true);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const { data: clusterData, isLoading, error } = useCluster();
@@ -168,42 +167,76 @@ const AppContent: React.FC = () => {
           ],
           children: (
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginLeft: 'auto' }}>
-              <Button
-                variant="secondary"
-                size="sm"
+              <button
                 onClick={() => setShowAlerts(!showAlerts)}
-                title="Toggle alerts visibility"
+                title="Activity"
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: 'rgb(var(--shell-fg-1))',
+                  padding: '4px',
+                }}
               >
                 <HeimdallIcon name="bell" size={16} />
-                Alerts
-              </Button>
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={() => setDensity(density === 'compact' ? 'regular' : 'compact')}
-                title="Toggle compact density"
+              </button>
+              <button
+                onClick={() => window.location.reload()}
+                title="Refresh"
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: 'rgb(var(--shell-fg-1))',
+                  padding: '4px',
+                }}
               >
-                <HeimdallIcon name="layout" size={16} />
-                Density
-              </Button>
-              <Button
-                variant={chatVisible ? 'primary' : 'secondary'}
-                size="sm"
+                <HeimdallIcon name="reload" size={16} />
+              </button>
+              <button
                 onClick={() => setChatVisible(!chatVisible)}
-                title="Toggle bot console"
+                title={chatVisible ? 'Close bot console' : 'Open bot console'}
+                style={{
+                  background: chatVisible ? 'rgb(var(--shell-surface))' : 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: chatVisible ? 'rgb(var(--accent-cyan))' : 'rgb(var(--shell-fg-1))',
+                  padding: '4px',
+                }}
               >
                 <HeimdallIcon name="user" size={16} />
-                Bot
-              </Button>
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={() => setDarkCanvas(!darkCanvas)}
-                title="Toggle dark/light mode"
+              </button>
+              <span
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  fontSize: '12px',
+                  color: 'rgb(var(--accent-cyan))',
+                  marginLeft: '8px',
+                  paddingLeft: '8px',
+                  borderLeft: '1px solid rgb(var(--shell-border))',
+                }}
               >
-                <HeimdallIcon name={darkCanvas ? 'sun' : 'moon'} size={16} />
-                {darkCanvas ? 'Light' : 'Dark'}
-              </Button>
+                <span
+                  style={{
+                    width: '6px',
+                    height: '6px',
+                    borderRadius: '50%',
+                    backgroundColor: 'rgb(var(--accent-cyan))',
+                  }}
+                />
+                main
+              </span>
             </div>
           ),
         }}

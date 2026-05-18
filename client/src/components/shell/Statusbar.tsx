@@ -11,26 +11,6 @@ export const useStatusbarContent = (clusterData?: LAB_DATA & { degraded?: string
 
   const [ticker, setTicker] = useState(getInitialTicker);
 
-  const getClusterStatus = () => {
-    if (!clusterData) return { status: 'unknown', color: 'rgb(var(--shell-fg-2))' };
-
-    // Check for degraded services
-    if (clusterData.degraded && clusterData.degraded.length > 0) {
-      return { status: 'degraded', color: 'rgb(var(--status-warn))' };
-    }
-
-    // Check for servers with error or warn status
-    const hasIssues = clusterData.servers?.some((s) => s.status === 'err' || s.status === 'warn');
-    if (hasIssues) {
-      return { status: 'degraded', color: 'rgb(var(--status-warn))' };
-    }
-
-    // Default to OK
-    return { status: 'OK', color: 'rgb(var(--status-ok))' };
-  };
-
-  const { status, color } = getClusterStatus();
-
   useEffect(() => {
     if (!clusterData) return;
 
@@ -57,24 +37,76 @@ export const useStatusbarContent = (clusterData?: LAB_DATA & { degraded?: string
     return () => clearInterval(interval);
   }, [clusterData]);
 
+  const getPrimaryAlert = () => {
+    if (!clusterData?.servers || clusterData.servers.length === 0) {
+      return null;
+    }
+
+    const warnServer = clusterData.servers.find((s) => s.status === 'warn');
+    if (warnServer) {
+      return `${warnServer.id.toUpperCase()} MEM ${Math.round(warnServer.mem.v)}%`;
+    }
+
+    return null;
+  };
+
+  const primaryAlert = getPrimaryAlert();
+  const alertCount = clusterData?.cluster.activeAlerts || 0;
+
   const leftMetrics = (
-    <>
+    <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
       <div style={{ fontSize: '11px', color: 'rgb(var(--shell-fg-2))' }}>
-        CPU: <span style={{ fontFamily: 'var(--font-mono)', color: 'rgb(var(--shell-fg-1))' }}>{ticker.cpu}%</span>
+        Prometheus <span style={{ fontFamily: 'var(--font-mono)', color: 'rgb(var(--shell-fg-1))' }}>:9090</span>
       </div>
       <div style={{ fontSize: '11px', color: 'rgb(var(--shell-fg-2))' }}>
-        Ping: <span style={{ fontFamily: 'var(--font-mono)', color: 'rgb(var(--shell-fg-1))' }}>{ticker.ping}ms</span>
+        4 hosts · 28 apps · 47 containers
       </div>
-    </>
+      {alertCount > 0 && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px' }}>
+          <span
+            style={{
+              width: '6px',
+              height: '6px',
+              borderRadius: '50%',
+              backgroundColor: 'rgb(var(--status-warn))',
+            }}
+          />
+          <span style={{ color: 'rgb(var(--shell-fg-1))' }}>
+            {alertCount} alert{alertCount !== 1 ? 's' : ''} open
+          </span>
+          {primaryAlert && (
+            <span style={{ fontFamily: 'var(--font-mono)', color: 'rgb(var(--shell-fg-1))' }}>
+              {primaryAlert}
+            </span>
+          )}
+        </div>
+      )}
+    </div>
   );
 
   const rightMetrics = (
-    <div style={{ fontSize: '11px', color: 'rgb(var(--shell-fg-2))' }}>
-      ↓ <span style={{ fontFamily: 'var(--font-mono)', color: 'rgb(var(--shell-fg-1))' }}>{ticker.down}</span>
-      <span style={{ color: 'rgb(var(--shell-fg-3))', margin: '0 6px' }}>|</span>
-      ↑ <span style={{ fontFamily: 'var(--font-mono)', color: 'rgb(var(--shell-fg-1))' }}>{ticker.up}</span>
-      <span style={{ color: 'rgb(var(--shell-fg-3))', margin: '0 6px' }}>|</span>
-      Cluster: <span style={{ color, fontWeight: 500 }}>{status}</span>
+    <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+      <div style={{ fontSize: '11px', color: 'rgb(var(--shell-fg-2))' }}>
+        <span style={{ fontFamily: 'var(--font-mono)', color: 'rgb(var(--shell-fg-1))' }}>
+          ping {ticker.ping} ms
+        </span>
+      </div>
+      <div style={{ fontSize: '11px', color: 'rgb(var(--shell-fg-2))' }}>
+        <span style={{ fontFamily: 'var(--font-mono)', color: 'rgb(var(--shell-fg-1))' }}>
+          ↓ {ticker.down} ↑ {ticker.up} Mbps
+        </span>
+      </div>
+      <div style={{ fontSize: '11px', color: 'rgb(var(--shell-fg-2))' }}>
+        <span style={{ fontFamily: 'var(--font-mono)', color: 'rgb(var(--shell-fg-1))' }}>
+          cluster cpu {ticker.cpu}%
+        </span>
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', color: 'rgb(var(--shell-fg-2))' }}>
+        <span style={{ color: 'rgb(var(--status-ok))' }}>✓</span>
+        <span style={{ fontFamily: 'var(--font-mono)', color: 'rgb(var(--shell-fg-1))' }}>
+          synced {clusterData?.cluster.lastSync || '14s ago'}
+        </span>
+      </div>
     </div>
   );
 
