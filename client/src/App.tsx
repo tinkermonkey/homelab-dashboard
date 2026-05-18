@@ -1,10 +1,11 @@
 import React, { useEffect } from 'react';
-import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import './styles/heimdall.css';
 import './styles/globals.css';
 import { usePersistedState } from './utils/localStorage';
 import { Titlebar } from './components/shell/Titlebar';
 import { PlaceholderView } from './components/shared/PlaceholderView';
+import { getIconSvgPath } from './utils/icons';
 
 const ROUTES = [
   { path: '/', name: 'Overview', display: 'Overview' },
@@ -40,13 +41,38 @@ const NAV_ITEMS: NavItem[] = [
   { id: 'settings', label: 'Settings', icon: 'settings', path: '/cluster/settings' },
 ];
 
+interface IconProps {
+  name: string;
+  size?: number;
+}
+
+const Icon: React.FC<IconProps> = ({ name, size = 24 }) => {
+  const pathData = getIconSvgPath(name);
+  if (!pathData) return null;
+
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <g dangerouslySetInnerHTML={{ __html: pathData }} />
+    </svg>
+  );
+};
+
 interface ShellLayoutProps {
   sidebarCollapsed: boolean;
   setSidebarCollapsed: (value: boolean) => void;
   darkCanvas: boolean;
   setDarkCanvas: (value: boolean) => void;
-  activeRoute: string;
-  setActiveRoute: (value: string) => void;
+  density: 'compact' | 'regular';
+  setDensity: (value: 'compact' | 'regular') => void;
   children: React.ReactNode;
 }
 
@@ -55,18 +81,19 @@ const ShellLayout: React.FC<ShellLayoutProps> = ({
   setSidebarCollapsed,
   darkCanvas,
   setDarkCanvas,
-  activeRoute,
-  setActiveRoute,
+  density: _density,
+  setDensity: _setDensity,
   children,
 }) => {
   const location = useLocation();
-
-  useEffect(() => {
-    setActiveRoute(location.pathname);
-  }, [location.pathname, setActiveRoute]);
+  const navigate = useNavigate();
 
   const sidebarWidth = sidebarCollapsed ? 64 : 256;
-  const currentRoute = ROUTES.find(r => r.path === activeRoute) || ROUTES[0];
+  const currentRoute = ROUTES.find(r => r.path === location.pathname) || ROUTES[0];
+
+  const handleNavClick = (path: string) => {
+    navigate(path);
+  };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
@@ -77,8 +104,8 @@ const ShellLayout: React.FC<ShellLayoutProps> = ({
         <nav
           style={{
             width: `${sidebarWidth}px`,
-            background: 'var(--shell-bg)',
-            borderRight: '1px solid var(--shell-border)',
+            background: `rgb(var(--shell-bg))`,
+            borderRight: `1px solid rgb(var(--shell-border))`,
             display: 'flex',
             flexDirection: 'column',
             padding: '12px 0',
@@ -89,36 +116,27 @@ const ShellLayout: React.FC<ShellLayoutProps> = ({
           {NAV_ITEMS.map(item => (
             <button
               key={item.id}
-              onClick={() => setActiveRoute(item.path)}
+              onClick={() => handleNavClick(item.path)}
               style={{
                 flex: 'none',
                 padding: sidebarCollapsed ? '8px 12px' : '12px 16px',
-                background: activeRoute === item.path ? 'rgba(34, 211, 238, 0.1)' : 'transparent',
+                background: location.pathname === item.path ? 'rgba(34, 211, 238, 0.1)' : 'transparent',
                 border: 'none',
-                color: activeRoute === item.path ? 'var(--accent-primary)' : 'var(--shell-fg-2)',
+                color: location.pathname === item.path ? `rgb(var(--accent-primary))` : `rgb(var(--shell-fg-2))`,
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
                 gap: sidebarCollapsed ? 0 : 12,
                 fontSize: '14px',
                 fontWeight: 500,
-                borderLeft: activeRoute === item.path ? '2px solid var(--accent-primary)' : '2px solid transparent',
+                borderLeft: location.pathname === item.path ? `2px solid rgb(var(--accent-primary))` : '2px solid transparent',
                 transition: 'all 0.2s ease',
                 whiteSpace: 'nowrap',
               }}
               title={sidebarCollapsed ? item.label : undefined}
             >
-              <span style={{ display: 'inline-block', width: '20px', textAlign: 'center' }}>
-                {item.icon === 'dashboard' && '◇'}
-                {item.icon === 'layers' && '▦'}
-                {item.icon === 'globe' && '◎'}
-                {item.icon === 'cpu' && '⬛'}
-                {item.icon === 'link' && '⟂'}
-                {item.icon === 'zap' && '⚡'}
-                {item.icon === 'database' && '◉'}
-                {item.icon === 'bot' && '⦿'}
-                {item.icon === 'history' && '⟲'}
-                {item.icon === 'settings' && '⚙'}
+              <span style={{ display: 'inline-flex', width: '24px', height: '24px', alignItems: 'center', justifyContent: 'center' }}>
+                <Icon name={item.icon} size={20} />
               </span>
               {!sidebarCollapsed && <span>{item.label}</span>}
             </button>
@@ -132,11 +150,14 @@ const ShellLayout: React.FC<ShellLayoutProps> = ({
               padding: '8px 12px',
               background: 'transparent',
               border: 'none',
-              color: 'var(--shell-fg-2)',
+              color: `rgb(var(--shell-fg-2))`,
               cursor: 'pointer',
               fontSize: '12px',
-              borderTop: '1px solid var(--shell-border)',
+              borderTop: `1px solid rgb(var(--shell-border))`,
               transition: 'all 0.2s ease',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
             }}
             title="Toggle sidebar"
           >
@@ -150,15 +171,15 @@ const ShellLayout: React.FC<ShellLayoutProps> = ({
           <div
             style={{
               height: '44px',
-              borderBottom: '1px solid var(--shell-border)',
-              background: 'var(--shell-bg)',
+              borderBottom: `1px solid rgb(var(--shell-border))`,
+              background: `rgb(var(--shell-bg))`,
               padding: '0 16px',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
             }}
           >
-            <div style={{ fontSize: '14px', fontWeight: 500, color: 'var(--canvas-fg-1)' }}>
+            <div style={{ fontSize: '14px', fontWeight: 500, color: `rgb(var(--canvas-fg-1))` }}>
               {currentRoute.display}
             </div>
 
@@ -166,34 +187,48 @@ const ShellLayout: React.FC<ShellLayoutProps> = ({
               onClick={() => setDarkCanvas(!darkCanvas)}
               style={{
                 padding: '6px 12px',
-                background: 'var(--accent-primary)',
+                background: `rgb(var(--accent-primary))`,
                 color: 'white',
                 border: 'none',
                 borderRadius: '4px',
                 cursor: 'pointer',
                 fontSize: '12px',
                 fontWeight: 500,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
               }}
             >
-              {darkCanvas ? '☀️' : '🌙'}
+              <Icon name={darkCanvas ? 'sparkle' : 'sparkle'} size={16} />
+              {darkCanvas ? 'Light' : 'Dark'}
             </button>
           </div>
 
           {/* Canvas content */}
-          <div style={{ flex: 1, overflow: 'auto' }}>{children}</div>
+          <div
+            style={{
+              flex: 1,
+              overflow: 'auto',
+              background: `rgb(var(--canvas-bg))`,
+              color: `rgb(var(--canvas-fg-1))`,
+              borderTopLeftRadius: '8px',
+            }}
+          >
+            {children}
+          </div>
 
           {/* Statusbar */}
           <div
             style={{
               height: '32px',
-              borderTop: '1px solid var(--shell-border)',
-              background: 'var(--shell-bg)',
+              borderTop: `1px solid rgb(var(--shell-border))`,
+              background: `rgb(var(--shell-bg))`,
               padding: '0 16px',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
               fontSize: '12px',
-              color: 'var(--shell-fg-2)',
+              color: `rgb(var(--shell-fg-2))`,
             }}
           >
             <div>Ready</div>
@@ -208,7 +243,7 @@ const ShellLayout: React.FC<ShellLayoutProps> = ({
 const AppContent: React.FC = () => {
   const [sidebarCollapsed, setSidebarCollapsed] = usePersistedState('sidebarCollapsed', false);
   const [darkCanvas, setDarkCanvas] = usePersistedState('darkCanvas', true);
-  const [activeRoute, setActiveRoute] = usePersistedState('activeRoute', '/cluster/overview');
+  const [density, setDensity] = usePersistedState<'compact' | 'regular'>('density', 'regular');
 
   useEffect(() => {
     document.body.classList.toggle('dark-canvas', darkCanvas);
@@ -220,8 +255,8 @@ const AppContent: React.FC = () => {
       setSidebarCollapsed={setSidebarCollapsed}
       darkCanvas={darkCanvas}
       setDarkCanvas={setDarkCanvas}
-      activeRoute={activeRoute}
-      setActiveRoute={setActiveRoute}
+      density={density}
+      setDensity={setDensity}
     >
       <Routes>
         <Route path="/" element={<Navigate to="/cluster/overview" replace />} />

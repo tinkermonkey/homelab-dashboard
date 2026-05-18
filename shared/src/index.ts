@@ -4,23 +4,23 @@ export interface LAB_DATA {
     activeAlerts: number;
     uptime: string;
   };
-  servers: any[];
-  gateway: any;
-  apps: any[];
-  alerts: any[];
+  servers: unknown[];
+  gateway: unknown;
+  apps: unknown[];
+  alerts: unknown[];
 }
 
 export interface DOCKER_DATA {
-  hosts: any[];
-  containers: any[];
-  networks: any[];
-  volumes: any[];
+  hosts: unknown[];
+  containers: unknown[];
+  networks: unknown[];
+  volumes: unknown[];
 }
 
 export interface TOPOLOGY_DATA {
-  bots: any[];
-  mcps: any[];
-  delegates: any[];
+  bots: unknown[];
+  mcps: unknown[];
+  delegates: unknown[];
 }
 
 export interface STATUS_DATA {

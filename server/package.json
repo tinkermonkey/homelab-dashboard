@@ -1,0 +1,10 @@
+{
+  "name": "server",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "echo 'server dev not implemented yet'",
+    "build": "echo 'server build not implemented yet'"
+  }
+}
