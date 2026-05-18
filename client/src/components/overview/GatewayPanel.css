@@ -141,6 +141,10 @@
   min-width: 60px;
 }
 
+.gateway-panel__quality-section {
+  margin-bottom: 14px;
+}
+
 .gateway-panel__quality-stats {
   display: flex;
   gap: 20px;

@@ -7,7 +7,7 @@ import { useCluster } from './hooks/useAPI';
 import { Titlebar } from './components/shell/Titlebar';
 import { OverviewView } from './components/overview/OverviewView';
 import { PlaceholderView } from './components/shared/PlaceholderView';
-import { getIconSvgPath } from './utils/icons';
+import { Icon } from './components/shared/Icon';
 
 const ROUTES = [
   { path: '/', name: 'Overview', display: 'Overview' },
@@ -42,31 +42,6 @@ const NAV_ITEMS: NavItem[] = [
   { id: 'logs', label: 'Logs', icon: 'history', path: '/cluster/logs' },
   { id: 'settings', label: 'Settings', icon: 'settings', path: '/cluster/settings' },
 ];
-
-interface IconProps {
-  name: string;
-  size?: number;
-}
-
-const Icon: React.FC<IconProps> = ({ name, size = 24 }) => {
-  const pathData = getIconSvgPath(name);
-  if (!pathData) return null;
-
-  return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.75"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <g dangerouslySetInnerHTML={{ __html: pathData }} />
-    </svg>
-  );
-};
 
 interface ShellLayoutProps {
   sidebarCollapsed: boolean;

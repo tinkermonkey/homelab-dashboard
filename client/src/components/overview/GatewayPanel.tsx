@@ -1,6 +1,6 @@
 import React from 'react';
 import type { Gateway } from '@homelab/shared';
-import { Sparkline } from './Sparkline';
+import { GatewayChart } from './GatewayChart';
 import './GatewayPanel.css';
 
 interface GatewayPanelProps {
@@ -70,48 +70,25 @@ export const GatewayPanel: React.FC<GatewayPanelProps> = ({ gateway }) => {
         <div className="gateway-panel__divider" />
 
         <div className="gateway-panel__charts">
-          <div className="gateway-panel__chart-group">
-            <div className="gateway-panel__chart-header">
-              <span className="gateway-panel__chart-label">THROUGHPUT (24H)</span>
-            </div>
-            <div className="gateway-panel__chart-container">
-              <div className="gateway-panel__chart-item">
-                <div className="gateway-panel__chart-legend">↓ DOWN</div>
-                <Sparkline
-                  data={gateway.downHist}
-                  width={240}
-                  height={32}
-                  color="rgb(var(--status-cyan))"
-                  areaColor="rgb(var(--status-cyan))"
-                />
-              </div>
-              <div className="gateway-panel__chart-item">
-                <div className="gateway-panel__chart-legend">↑ UP</div>
-                <Sparkline
-                  data={gateway.upHist}
-                  width={240}
-                  height={32}
-                  color="rgb(var(--status-emerald))"
-                  areaColor="rgb(var(--status-emerald))"
-                />
-              </div>
-            </div>
-          </div>
+          <GatewayChart
+            downHist={gateway.downHist}
+            upHist={gateway.upHist}
+            pingHist={gateway.pingHist}
+            currentDown={gateway.downMbps}
+            currentUp={gateway.upMbps}
+            currentPing={gateway.pingMs}
+          />
+        </div>
 
-          <div className="gateway-panel__chart-group">
-            <div className="gateway-panel__chart-header">
-              <span className="gateway-panel__chart-label">QUALITY (24H)</span>
+        <div className="gateway-panel__quality-section">
+          <div className="gateway-panel__quality-stats">
+            <div className="gateway-panel__quality-item">
+              <span className="gateway-panel__quality-label">JITTER</span>
+              <span className="gateway-panel__quality-value">±{gateway.jitterMs} ms</span>
             </div>
-            <div className="gateway-panel__quality-stats">
-              <div className="gateway-panel__quality-item">
-                <span className="gateway-panel__quality-label">PING</span>
-                <span className="gateway-panel__quality-value">{gateway.pingMs} ms</span>
-                <span className="gateway-panel__quality-meta">±{gateway.jitterMs} jitter</span>
-              </div>
-              <div className="gateway-panel__quality-item">
-                <span className="gateway-panel__quality-label">PACKET LOSS</span>
-                <span className="gateway-panel__quality-value">{gateway.lossPct.toFixed(2)}%</span>
-              </div>
+            <div className="gateway-panel__quality-item">
+              <span className="gateway-panel__quality-label">PACKET LOSS</span>
+              <span className="gateway-panel__quality-value">{gateway.lossPct.toFixed(2)}%</span>
             </div>
           </div>
         </div>

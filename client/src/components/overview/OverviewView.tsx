@@ -1,37 +1,12 @@
 import React from 'react';
 import type { LAB_DATA } from '@homelab/shared';
 import { usePersistedState } from '../../utils/localStorage';
-import { getIconSvgPath } from '../../utils/icons';
+import { Icon } from '../shared/Icon';
 import { ServerCard } from './ServerCard';
 import { AlertsStrip } from './AlertsStrip';
 import { GatewayPanel } from './GatewayPanel';
 import { AppsSection } from './AppsSection';
 import './OverviewView.css';
-
-interface IconProps {
-  name: string;
-  size?: number;
-}
-
-const Icon: React.FC<IconProps> = ({ name, size = 24 }) => {
-  const pathData = getIconSvgPath(name);
-  if (!pathData) return null;
-
-  return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.75"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <g dangerouslySetInnerHTML={{ __html: pathData }} />
-    </svg>
-  );
-};
 
 interface OverviewViewProps {
   data: LAB_DATA;
