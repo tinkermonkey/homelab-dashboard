@@ -37,18 +37,14 @@ interface NavItem {
   path: string;
 }
 
-const NAV_ITEMS: NavItem[] = [
-  { id: 'overview', label: 'Overview', icon: 'dashboard', path: '/cluster/overview' },
-  { id: 'containers', label: 'Containers', icon: 'layers', path: '/cluster/containers' },
-  { id: 'topology', label: 'Topology', icon: 'globe', path: '/cluster/topology' },
-  { id: 'servers', label: 'Servers', icon: 'cpu', path: '/cluster/servers' },
-  { id: 'network', label: 'Network', icon: 'link', path: '/cluster/network' },
-  { id: 'apps', label: 'Apps', icon: 'zap', path: '/cluster/apps' },
-  { id: 'storage', label: 'Storage', icon: 'database', path: '/cluster/storage' },
-  { id: 'bots', label: 'Bots', icon: 'bot', path: '/cluster/bots' },
-  { id: 'logs', label: 'Logs', icon: 'history', path: '/cluster/logs' },
-  { id: 'settings', label: 'Settings', icon: 'settings', path: '/cluster/settings' },
-];
+const NAV_ITEMS: NavItem[] = ROUTES
+  .filter(r => r.icon)
+  .map(r => ({
+    id: r.path.split('/').pop() || 'overview',
+    label: r.display,
+    icon: r.icon!,
+    path: r.path,
+  }));
 
 interface ShellLayoutProps {
   sidebarCollapsed: boolean;

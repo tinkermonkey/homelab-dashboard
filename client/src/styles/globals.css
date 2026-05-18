@@ -149,12 +149,12 @@ body.density-compact .table__row {
 
 @media (min-width: 768px) {
   .sidebar__toggle {
-    opacity: 0;
-    pointer-events: none;
+    opacity: 0.4;
+    transition: opacity 80ms ease-out;
   }
 
   .sidebar__toggle:hover {
-    opacity: 0;
+    opacity: 1;
   }
 }
 

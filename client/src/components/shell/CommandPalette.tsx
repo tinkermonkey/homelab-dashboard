@@ -30,7 +30,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose,
 
   useEffect(() => {
     setSelectedIndex(0);
-  }, [filtered]);
+  }, [search]);
 
   useEffect(() => {
     if (isOpen && inputRef.current) {

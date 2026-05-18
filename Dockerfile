@@ -1,7 +1,6 @@
 # Stage 1: Build dependencies and shared module
 FROM node:20-alpine AS base
 WORKDIR /workspace
-RUN npm install --global pnpm
 
 # Copy all package.json files
 COPY package.json package-lock.json ./
@@ -28,16 +27,16 @@ RUN npm run build --workspace=server
 FROM node:20-alpine AS runtime
 WORKDIR /app
 
-# Install minimal dependencies for runtime only
-RUN npm install --global pnpm
-
 # Copy built client from client-builder
 COPY --from=client-builder /workspace/client/dist ./client/dist
 
-# Copy built server and its dependencies
-COPY --from=server-builder /workspace/server/dist ./server/
-COPY --from=server-builder /workspace/server/package.json ./
-COPY --from=server-builder /workspace/node_modules ./node_modules
+# Copy built server and package files
+COPY --from=server-builder /workspace/server/dist ./server/dist
+COPY --from=server-builder /workspace/server/package.json ./server/
+COPY package.json package-lock.json ./
+
+# Install production dependencies only
+RUN npm ci --omit=dev --ignore-scripts
 
 # Copy shared module for types/runtime
 COPY --from=base /workspace/shared ./shared
