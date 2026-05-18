@@ -78,7 +78,7 @@ fastify.get('/api/status', async (request, reply) => {
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
     fastify.log.error(`Failed to fetch status: ${message}`);
-    reply.status(500).send({ error: 'Failed to fetch status', degraded: ['status'] });
+    reply.status(500).send({ error: 'Failed to fetch status' });
   }
 });
 
@@ -103,7 +103,7 @@ fastify.get('/api/cluster', async (request, reply) => {
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
     fastify.log.error(`Failed to fetch cluster data: ${message}`);
-    reply.status(500).send({ error: 'Failed to fetch cluster data', degraded: ['cluster'] });
+    reply.status(500).send({ error: 'Failed to fetch cluster data' });
   }
 });
 
@@ -126,7 +126,7 @@ fastify.get('/api/docker', async (request, reply) => {
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
     fastify.log.error(`Failed to fetch docker data: ${message}`);
-    reply.status(500).send({ error: 'Failed to fetch docker data', degraded: ['docker'] });
+    reply.status(500).send({ error: 'Failed to fetch docker data' });
   }
 });
 
@@ -149,7 +149,7 @@ fastify.get('/api/topology', async (request, reply) => {
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
     fastify.log.error(`Failed to fetch topology data: ${message}`);
-    reply.status(500).send({ error: 'Failed to fetch topology data', degraded: ['topology'] });
+    reply.status(500).send({ error: 'Failed to fetch topology data' });
   }
 });
 

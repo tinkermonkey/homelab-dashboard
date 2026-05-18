@@ -29,7 +29,10 @@ export function useStatus() {
     queryKey: ['status'],
     queryFn: async () => {
       const response = await fetchJSON<STATUS_DATA>(`${API_BASE}/status`);
-      return response.data as STATUS_DATA & { degraded?: string[] };
+      return {
+        ...response.data,
+        degraded: response.degraded,
+      } as STATUS_DATA & { degraded?: string[] };
     },
     refetchInterval: 2200,
     staleTime: 1000,
