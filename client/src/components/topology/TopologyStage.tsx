@@ -84,7 +84,7 @@ export const TopologyStage: React.FC<TopologyStageProps> = ({ bots, selectedBotI
         <div className="tp-empty" style={{ left: TP_COL_X.vega, top: 88 }}>
           <b>No bot on vega</b>
           GPU workloads are launched here by <span style={{ color: 'var(--canvas-fg-1)' }}>ops-bot</span> via{' '}
-          <code style={{ fontFamily: 'var(--mono)', fontSize: 10, background: 'var(--canvas-bg-2)', padding: '1px 4px', borderRadius: 3 }}>
+          <code style={{ fontFamily: 'var(--font-mono)', fontSize: 10, background: 'var(--canvas-bg-2)', padding: '1px 4px', borderRadius: 3 }}>
             ssh-mcp
           </code>
           ; no resident agent.

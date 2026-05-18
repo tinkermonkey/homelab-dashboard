@@ -13,7 +13,7 @@ export const BotInspector: React.FC<BotInspectorProps> = ({ bot }) => {
   if (!bot) {
     return (
       <div className="tp-inspector">
-        <div style={{ textAlign: 'center', color: 'var(--canvas-fg-3)', fontSize: 12, padding: '24px 0', fontFamily: 'var(--mono)' }}>
+        <div style={{ textAlign: 'center', color: 'var(--canvas-fg-3)', fontSize: 12, padding: '24px 0', fontFamily: 'var(--font-mono)' }}>
           Select a bot to inspect.
         </div>
       </div>

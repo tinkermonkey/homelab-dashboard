@@ -29,9 +29,17 @@
 
   /* Host tints */
   --host-nyx-tint: 34 211 238;
+  --host-nyx-tint-rgba-20: rgba(34, 211, 238, 0.125);
+  --host-nyx-tint-rgba-50: rgba(34, 211, 238, 0.314);
   --host-helios-tint: 16 185 129;
+  --host-helios-tint-rgba-20: rgba(16, 185, 129, 0.125);
+  --host-helios-tint-rgba-50: rgba(16, 185, 129, 0.314);
   --host-aether-tint: 167 139 250;
+  --host-aether-tint-rgba-20: rgba(167, 139, 250, 0.125);
+  --host-aether-tint-rgba-50: rgba(167, 139, 250, 0.314);
   --host-vega-tint: 245 158 11;
+  --host-vega-tint-rgba-20: rgba(245, 158, 11, 0.125);
+  --host-vega-tint-rgba-50: rgba(245, 158, 11, 0.314);
 
   /* Status colors */
   --status-ok: 16 185 129;

@@ -13,15 +13,31 @@ interface MetricRowProps {
   display: string;
   hist: number[];
   metric: string;
-  tintColor: string;
+  tintColor: { rgb: string; rgba20: string; rgba50: string };
   isHighMetric: (value: number, metric: string) => boolean;
 }
 
-const HOST_TINTS: Record<string, string> = {
-  nyx: 'rgb(var(--host-nyx-tint))',
-  helios: 'rgb(var(--host-helios-tint))',
-  aether: 'rgb(var(--host-aether-tint))',
-  vega: 'rgb(var(--host-vega-tint))',
+const HOST_TINTS: Record<string, { rgb: string; rgba20: string; rgba50: string }> = {
+  nyx: {
+    rgb: 'rgb(var(--host-nyx-tint))',
+    rgba20: 'var(--host-nyx-tint-rgba-20)',
+    rgba50: 'var(--host-nyx-tint-rgba-50)',
+  },
+  helios: {
+    rgb: 'rgb(var(--host-helios-tint))',
+    rgba20: 'var(--host-helios-tint-rgba-20)',
+    rgba50: 'var(--host-helios-tint-rgba-50)',
+  },
+  aether: {
+    rgb: 'rgb(var(--host-aether-tint))',
+    rgba20: 'var(--host-aether-tint-rgba-20)',
+    rgba50: 'var(--host-aether-tint-rgba-50)',
+  },
+  vega: {
+    rgb: 'rgb(var(--host-vega-tint))',
+    rgba20: 'var(--host-vega-tint-rgba-20)',
+    rgba50: 'var(--host-vega-tint-rgba-50)',
+  },
 };
 
 const STATUS_COLORS: Record<string, string> = {
@@ -43,7 +59,7 @@ const MetricRow: React.FC<MetricRowProps> = ({
   isHighMetric,
 }) => {
   const isHigh = isHighMetric(value, metric);
-  const barColor = isHigh ? 'rgb(var(--status-warn))' : tintColor;
+  const barColor = isHigh ? 'rgb(var(--status-warn))' : tintColor.rgb;
 
   return (
     <div className="server-card__metric-row">
@@ -60,7 +76,7 @@ const MetricRow: React.FC<MetricRowProps> = ({
       </div>
       <div className="server-card__metric-value">{display}</div>
       <div className="server-card__sparkline">
-        <Sparkline data={hist} width={40} height={18} color={tintColor} areaColor={tintColor} />
+        <Sparkline data={hist} width={40} height={18} color={tintColor.rgb} areaColor={tintColor.rgb} />
       </div>
     </div>
   );
@@ -88,9 +104,9 @@ export const ServerCard: React.FC<ServerCardProps> = ({ server }) => {
       <div className="server-card__header">
         <div
           className="server-card__mark"
-          style={{ backgroundColor: tintColor + '20', borderColor: tintColor + '50' }}
+          style={{ backgroundColor: tintColor.rgba20, borderColor: tintColor.rgba50 }}
         >
-          <span style={{ color: tintColor, fontWeight: 600 }}>{server.mark}</span>
+          <span style={{ color: tintColor.rgb, fontWeight: 600 }}>{server.mark}</span>
         </div>
         <div className="server-card__info">
           <div className="server-card__name">
