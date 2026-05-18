@@ -1,26 +1,29 @@
 import React, { useState, useEffect } from 'react';
+import type { LAB_DATA } from '@homelab/shared';
 
 interface StatusbarProps {
-  clusterData?: any;
+  clusterData?: LAB_DATA;
 }
 
 export const Statusbar: React.FC<StatusbarProps> = ({ clusterData }) => {
-  const [ticker, setTicker] = useState({
-    cpu: 0,
-    ping: 0,
-    down: 0,
-    up: 0,
+  const getInitialTicker = () => ({
+    cpu: clusterData?.servers[0]?.cpu.v || 0,
+    ping: clusterData?.gateway?.pingMs || 0,
+    down: clusterData?.gateway?.downMbps || 0,
+    up: clusterData?.gateway?.upMbps || 0,
   });
+
+  const [ticker, setTicker] = useState(getInitialTicker);
 
   useEffect(() => {
     if (!clusterData) return;
 
     const interval = setInterval(() => {
       // Generate lively ticker values with slight jitter
-      const baseCpu = clusterData.servers[0]?.cpu || 45;
-      const basePing = clusterData.gateway?.ping || 25;
-      const baseDown = clusterData.gateway?.down || 125;
-      const baseUp = clusterData.gateway?.up || 85;
+      const baseCpu = clusterData.servers[0]?.cpu.v || 45;
+      const basePing = clusterData.gateway?.pingMs || 25;
+      const baseDown = clusterData.gateway?.downMbps || 125;
+      const baseUp = clusterData.gateway?.upMbps || 85;
 
       const jitter = (base: number) => {
         const variance = Math.random() * 6 - 3; // -3 to +3
@@ -34,16 +37,6 @@ export const Statusbar: React.FC<StatusbarProps> = ({ clusterData }) => {
         up: jitter(baseUp),
       });
     }, 2200); // 2.2s polling
-
-    // Set initial values immediately
-    if (clusterData.servers[0]) {
-      setTicker({
-        cpu: clusterData.servers[0].cpu || 0,
-        ping: clusterData.gateway?.ping || 0,
-        down: clusterData.gateway?.down || 0,
-        up: clusterData.gateway?.up || 0,
-      });
-    }
 
     return () => clearInterval(interval);
   }, [clusterData]);

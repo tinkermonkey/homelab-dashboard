@@ -28,9 +28,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose,
     cmd.category?.toLowerCase().includes(search.toLowerCase())
   );
 
-  useEffect(() => {
-    setSelectedIndex(0);
-  }, [search]);
+  const clampedSelectedIndex = Math.min(selectedIndex, Math.max(0, filtered.length - 1));
 
   useEffect(() => {
     if (isOpen && inputRef.current) {
@@ -49,11 +47,16 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose,
       setSelectedIndex(prev => Math.max(prev - 1, 0));
     } else if (e.key === 'Enter') {
       e.preventDefault();
-      if (filtered[selectedIndex]) {
-        navigate(filtered[selectedIndex].path);
+      if (filtered[clampedSelectedIndex]) {
+        navigate(filtered[clampedSelectedIndex].path);
         onClose();
       }
     }
+  };
+
+  const handleSearchChange = (value: string) => {
+    setSearch(value);
+    setSelectedIndex(0);
   };
 
   if (!isOpen) return null;
@@ -69,7 +72,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose,
             placeholder="Search routes..."
             className="command-palette__input"
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => handleSearchChange(e.target.value)}
             onKeyDown={handleKeyDown}
           />
           <div className="command-palette__hint">Esc</div>
@@ -82,7 +85,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose,
             filtered.map((cmd, idx) => (
               <button
                 key={cmd.id}
-                className={`command-palette__item ${idx === selectedIndex ? 'command-palette__item--selected' : ''}`}
+                className={`command-palette__item ${idx === clampedSelectedIndex ? 'command-palette__item--selected' : ''}`}
                 onClick={() => {
                   navigate(cmd.path);
                   onClose();

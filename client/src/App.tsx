@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
+import type { LAB_DATA } from '@homelab/shared';
 import './styles/heimdall.css';
 import './styles/globals.css';
 import { usePersistedState } from './utils/localStorage';
@@ -59,7 +60,7 @@ interface ShellLayoutProps {
   setDensity: (value: string) => void;
   showAlerts: boolean;
   setShowAlerts: (value: boolean) => void;
-  clusterData?: any;
+  clusterData?: LAB_DATA;
   children: React.ReactNode;
 }
 
