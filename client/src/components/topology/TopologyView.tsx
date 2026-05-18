@@ -35,8 +35,8 @@ export const TopologyView: React.FC = () => {
     );
   }
 
-  const typedTopologyData = topologyData as typeof topologyData & { degraded?: string[] };
-  const selectedBot = typedTopologyData.bots.find(b => b.id === selectedBotId) || typedTopologyData.bots[0];
+  const selectedBot = topologyData.bots.find(b => b.id === selectedBotId) || topologyData.bots[0];
+  const degraded = (topologyData as typeof topologyData & { degraded?: string[] }).degraded;
 
   return (
     <div className="topology-view">
@@ -46,7 +46,7 @@ export const TopologyView: React.FC = () => {
           <div className="page-header__breadcrumb">
             <span className="breadcrumb-chip breadcrumb-chip--violet">
               <span className="breadcrumb-dot" />
-              topology · {typedTopologyData.bots.length} bots
+              topology · {topologyData.bots.length} bots
             </span>
             <span className="breadcrumb-meta">bots · sidecar mcp servers · managed projects</span>
           </div>
@@ -68,7 +68,7 @@ export const TopologyView: React.FC = () => {
       </div>
 
       {/* Degradation Banner */}
-      {typedTopologyData.degraded && typedTopologyData.degraded.length > 0 && (
+      {degraded && degraded.length > 0 && (
         <div
           style={{
             backgroundColor: 'rgba(245, 158, 11, 0.1)',
@@ -83,14 +83,14 @@ export const TopologyView: React.FC = () => {
         >
           <Icon name="alert-triangle" size={16} style={{ color: '#F59E0B' }} />
           <div style={{ fontSize: '13px' }}>
-            <strong>Partial Data:</strong> {typedTopologyData.degraded.join(', ')} are temporarily unavailable. Showing cached data.
+            <strong>Partial Data:</strong> {degraded.join(', ')} are temporarily unavailable. Showing cached data.
           </div>
         </div>
       )}
 
       {/* Topology Stage with Inspector */}
       <div className="topology-container">
-        <TopologyStage bots={typedTopologyData.bots} selectedBotId={selectedBotId} onSelectBot={setSelectedBotId} />
+        <TopologyStage bots={topologyData.bots} selectedBotId={selectedBotId} onSelectBot={setSelectedBotId} />
         <BotInspector bot={selectedBot} />
       </div>
     </div>

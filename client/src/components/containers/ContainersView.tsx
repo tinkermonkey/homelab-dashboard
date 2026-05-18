@@ -13,25 +13,24 @@ export const ContainersView: React.FC = () => {
   const [hostFilter, setHostFilter] = useState('all');
   const [query, setQuery] = useState('');
 
-  const dockerData = data as (DOCKER_DATA & { degraded?: string[] }) | undefined;
-
   if (isLoading) {
     return <div className="containers-view">Loading...</div>;
   }
 
-  if (error || !dockerData) {
+  if (error || !data) {
     return <div className="containers-view">Error loading Docker data</div>;
   }
 
-  const totalContainers = dockerData.hosts.reduce((a, h) => a + h.containers.length, 0);
-  const runningContainers = dockerData.hosts.reduce(
+  const totalContainers = data.hosts.reduce((a, h) => a + h.containers.length, 0);
+  const runningContainers = data.hosts.reduce(
     (a, h) => a + h.containers.filter(c => c.state === 'running').length,
     0
   );
-  const totalNetworks = dockerData.hosts.reduce((a, h) => a + h.networks.length, 0);
-  const totalVolumes = dockerData.hosts.reduce((a, h) => a + h.volumes.length, 0);
+  const totalNetworks = data.hosts.reduce((a, h) => a + h.networks.length, 0);
+  const totalVolumes = data.hosts.reduce((a, h) => a + h.volumes.length, 0);
 
-  const filteredHosts = hostFilter === 'all' ? dockerData.hosts : dockerData.hosts.filter(h => h.id === hostFilter);
+  const filteredHosts = hostFilter === 'all' ? data.hosts : data.hosts.filter(h => h.id === hostFilter);
+  const degraded = (data as DOCKER_DATA & { degraded?: string[] }).degraded;
 
   return (
     <div className="containers-view">
@@ -41,7 +40,7 @@ export const ContainersView: React.FC = () => {
           <div className="page-header__breadcrumb">
             <span className="breadcrumb-chip breadcrumb-chip--violet">
               <span className="breadcrumb-dot" />
-              docker · {dockerData.hosts.length} hosts
+              docker · {data.hosts.length} hosts
             </span>
             <span className="breadcrumb-meta">scraped via docker socket · every 30s</span>
           </div>
@@ -64,7 +63,7 @@ export const ContainersView: React.FC = () => {
       </div>
 
       {/* Degradation Banner */}
-      {dockerData.degraded && dockerData.degraded.length > 0 && (
+      {degraded && degraded.length > 0 && (
         <div
           style={{
             backgroundColor: 'rgba(245, 158, 11, 0.1)',
@@ -79,7 +78,7 @@ export const ContainersView: React.FC = () => {
         >
           <Icon name="alert-triangle" size={16} style={{ color: '#F59E0B' }} />
           <div style={{ fontSize: '13px' }}>
-            <strong>Partial Data:</strong> {dockerData.degraded.join(', ')} are temporarily unavailable. Showing cached data.
+            <strong>Partial Data:</strong> {degraded.join(', ')} are temporarily unavailable. Showing cached data.
           </div>
         </div>
       )}
@@ -133,7 +132,7 @@ export const ContainersView: React.FC = () => {
         )}
 
         <div className="host-filter-chips">
-          {['all', ...dockerData.hosts.map(h => h.id)].map(h => (
+          {['all', ...data.hosts.map(h => h.id)].map(h => (
             <button
               key={h}
               onClick={() => setHostFilter(h)}
@@ -144,7 +143,7 @@ export const ContainersView: React.FC = () => {
                 {h === 'all'
                   ? activeTab === 'containers' ? totalContainers : activeTab === 'networks' ? totalNetworks : totalVolumes
                   : (() => {
-                      const host = dockerData.hosts.find(x => x.id === h);
+                      const host = data.hosts.find(x => x.id === h);
                       if (!host) return 0;
                       return activeTab === 'containers'
                         ? host.containers.length

@@ -79,6 +79,7 @@ export async function transformMetrics(
 
     const results = await Promise.allSettled(promises);
 
+    let hasSignozFailure = false;
     results.forEach((settled, idx) => {
       if (settled.status === 'fulfilled' && settled.value) {
         const metrics = settled.value;
@@ -97,9 +98,13 @@ export async function transformMetrics(
           server.load = metrics.load;
         }
       } else if (settled.status === 'rejected') {
-        degraded.push('signoz');
+        hasSignozFailure = true;
       }
     });
+
+    if (hasSignozFailure) {
+      degraded.push('signoz');
+    }
   } catch (error) {
     console.error('Error transforming server metrics:', error);
     degraded.push('signoz');
