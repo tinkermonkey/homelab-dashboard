@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useId } from 'react';
 
 interface SparklineProps {
   data: number[];
@@ -15,7 +15,7 @@ export const Sparkline: React.FC<SparklineProps> = ({
   color = 'currentColor',
   areaColor = 'currentColor',
 }) => {
-  const gradientId = useMemo(() => `sparkline-grad-${Math.random().toString(36).substr(2, 9)}`, []);
+  const gradientId = useId();
 
   if (!data || data.length === 0) return null;
 

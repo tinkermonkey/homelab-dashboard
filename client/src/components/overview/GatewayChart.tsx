@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useId } from 'react';
 import './GatewayChart.css';
 
 interface GatewayChartProps {
@@ -95,7 +95,7 @@ const Chart: React.FC<{
     return { value: Math.round(value), y: (i / gridLines) * chartHeight };
   });
 
-  const gradientId = useMemo(() => `gateway-chart-grad-${Math.random().toString(36).substr(2, 9)}`, []);
+  const gradientId = useId();
 
   return (
     <div className="gateway-chart">
