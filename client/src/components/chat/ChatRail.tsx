@@ -157,11 +157,13 @@ export const ChatRail: React.FC<ChatRailProps> = ({
       const reader = response.body?.getReader();
       if (!reader) return;
 
+      const decoder = new TextDecoder({ stream: true });
+
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
 
-        const chunk = new TextDecoder().decode(value);
+        const chunk = decoder.decode(value, { stream: true });
         accumulated += chunk;
 
         // Parse SSE format: "data: {json}\n\n"
@@ -169,10 +171,24 @@ export const ChatRail: React.FC<ChatRailProps> = ({
         for (let i = 0; i < lines.length - 1; i++) {
           const line = lines[i];
           if (line.startsWith('data: ')) {
+            const jsonStr = line.slice(6);
+            if (jsonStr === '[DONE]') {
+              continue;
+            }
             try {
-              const jsonStr = line.slice(6);
               const parsed = JSON.parse(jsonStr);
-              if (parsed.choices?.[0]?.delta?.content) {
+              if (parsed.error) {
+                const errorMsg: ThreadMessage = {
+                  kind: 'msg',
+                  who: activeBot,
+                  when,
+                  body: [{ p: `Error: ${parsed.error}` }],
+                };
+                setExtraMsgs(prev => ({
+                  ...prev,
+                  [activeBot]: [...(prev[activeBot] || []), errorMsg],
+                }));
+              } else if (parsed.choices?.[0]?.delta?.content) {
                 // SSE streaming chunk received
                 const content = parsed.choices[0].delta.content;
                 setExtraMsgs(prev => {
@@ -214,12 +230,6 @@ export const ChatRail: React.FC<ChatRailProps> = ({
 
         // Keep the last incomplete line in accumulated
         accumulated = lines[lines.length - 1];
-      }
-
-      // Add the complete bot message if not already added
-      const finalMsgText = accumulated;
-      if (finalMsgText && !finalMsgText.startsWith('data: ')) {
-        // Already added via streaming above
       }
     } catch (error) {
       const errorMsg: ThreadMessage = {
