@@ -157,7 +157,7 @@ export const ChatRail: React.FC<ChatRailProps> = ({
       const reader = response.body?.getReader();
       if (!reader) return;
 
-      const decoder = new TextDecoder({ stream: true });
+      const decoder = new TextDecoder();
 
       while (true) {
         const { done, value } = await reader.read();
