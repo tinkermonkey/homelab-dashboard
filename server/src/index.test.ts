@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import Fastify from 'fastify';
-import type { FastifyRequest, FastifyReply } from 'fastify';
 import cors from '@fastify/cors';
 import type { LAB_DATA, DOCKER_DATA, TOPOLOGY_DATA, STATUS_DATA, Alert } from '@homelab/shared';
+import { registerRoutes, isValidBotId } from './index.js';
 import { getCachedData, clearCache } from './cache.js';
 import { transformMetrics } from './transformers/metrics-transformer.js';
 import { transformDockerData, transformTopologyData } from './transformers/mcp-transformer.js';
@@ -112,162 +112,8 @@ describe('Server Routes', () => {
       credentials: true,
     });
 
-    // Register routes
-    fastify.get('/api/status', async (request: FastifyRequest, reply: FastifyReply) => {
-      try {
-        const { getStatusData } = await import('./mock-data.js');
-        const data = await getCachedData('status', 2, () => Promise.resolve(getStatusData()), (msg) => console.error(msg));
-        reply.send(data);
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'Unknown error';
-        reply.status(500).send({ error: 'Failed to fetch status' });
-      }
-    });
-
-    fastify.get('/api/cluster', async (request: FastifyRequest, reply: FastifyReply) => {
-      try {
-        const { getLabData } = await import('./mock-data.js');
-        const data = await getCachedData('cluster', 10, async () => {
-          const baseData = getLabData();
-          const { data: transformedData, degraded } = await transformMetrics(baseData);
-          return {
-            ...transformedData,
-            degraded,
-          };
-        }, (msg) => console.error(msg));
-
-        if (data.degraded && data.degraded.length > 0) {
-          reply.status(206);
-        }
-
-        reply.send(data);
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'Unknown error';
-        reply.status(500).send({ error: 'Failed to fetch cluster data' });
-      }
-    });
-
-    fastify.get('/api/docker', async (request: FastifyRequest, reply: FastifyReply) => {
-      try {
-        const data = await getCachedData('docker', 20, async () => {
-          const { data: dockerData, degraded } = await transformDockerData();
-          return {
-            ...dockerData,
-            degraded,
-          };
-        }, (msg) => console.error(msg));
-
-        if (data.degraded && data.degraded.length > 0) {
-          reply.status(206);
-        }
-
-        reply.send(data);
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'Unknown error';
-        reply.status(500).send({ error: 'Failed to fetch docker data' });
-      }
-    });
-
-    fastify.get('/api/topology', async (request: FastifyRequest, reply: FastifyReply) => {
-      try {
-        const data = await getCachedData('topology', 60, async () => {
-          const { data: topoData, degraded } = await transformTopologyData();
-          return {
-            ...topoData,
-            degraded,
-          };
-        }, (msg) => console.error(msg));
-
-        if (data.degraded && data.degraded.length > 0) {
-          reply.status(206);
-        }
-
-        reply.send(data);
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'Unknown error';
-        reply.status(500).send({ error: 'Failed to fetch topology data' });
-      }
-    });
-
-    fastify.get('/api/alerts', async (request: FastifyRequest, reply: FastifyReply) => {
-      try {
-        const { getActiveAlerts } = await import('./mock-data.js');
-        const data = await getCachedData('alerts', 3, async () => {
-          try {
-            const alerts = await signozClient.getActiveAlerts();
-            return {
-              alerts,
-              source: 'alertmanager',
-            };
-          } catch (error) {
-            return {
-              alerts: getActiveAlerts(),
-              source: 'mock',
-            };
-          }
-        }, (msg) => console.error(msg));
-
-        reply.send(data);
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'Unknown error';
-        reply.status(500).send({ error: 'Failed to fetch alerts' });
-      }
-    });
-
-    fastify.post<{ Params: { botId: string } }>('/api/chat/:botId', async (request: FastifyRequest<{ Params: { botId: string } }>, reply: FastifyReply) => {
-      const { botId } = request.params;
-
-      if (!/^[a-zA-Z0-9_-]{1,64}$/.test(botId)) {
-        reply.status(400).send({ error: 'Invalid bot ID format' });
-        return;
-      }
-
-      try {
-        const bodyString = JSON.stringify(request.body);
-        if (bodyString.length > 1024 * 1024) {
-          reply.status(413).send({ error: 'Request body too large' });
-          return;
-        }
-
-        const response = await fetchWithTimeout(`http://localhost:8000/chat/${botId}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: bodyString,
-          timeout: 30000,
-        });
-
-        if (!response.ok) {
-          reply.status(response.status).send({ error: 'Chat service unavailable' });
-          return;
-        }
-
-        reply.header('Content-Type', 'text/event-stream');
-        reply.header('Cache-Control', 'no-cache');
-        reply.header('Connection', 'keep-alive');
-
-        const reader = response.body?.getReader();
-        if (!reader) {
-          reply.status(500).send({ error: 'No response body' });
-          return;
-        }
-
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          const chunk = new TextDecoder().decode(value);
-          reply.raw.write(chunk);
-        }
-
-        reply.raw.end();
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'Unknown error';
-        reply.status(500).send({ error: 'Chat service error' });
-      }
-    });
-
-    fastify.get('/health', async (request: FastifyRequest, reply: FastifyReply) => {
-      reply.send({ status: 'ok' });
-    });
+    // Register the actual routes from index.ts
+    await registerRoutes(fastify);
   });
 
   afterEach(async () => {
@@ -472,8 +318,8 @@ describe('Server Routes', () => {
         payload: { message: 'hello' },
       });
 
-      // Will fail to stream body but should pass validation
-      expect(response.statusCode !== 400).toBe(true);
+      // Bot ID validation should pass (not return 400)
+      expect(response.statusCode).not.toBe(400);
     });
 
     it('returns 413 for oversized request body', async () => {

@@ -293,7 +293,7 @@ describe('transformMetrics', () => {
     vi.clearAllMocks();
   });
 
-  it('successfully transforms metrics when all services are available', async () => {
+  function setupAllMocks() {
     vi.spyOn(signozClient, 'getCpuMetrics').mockResolvedValue([[100, '0.5']]);
     vi.spyOn(signozClient, 'getMemoryMetrics').mockResolvedValue([[100, '0.6']]);
     vi.spyOn(signozClient, 'getDiskMetrics').mockResolvedValue([[100, '0.7']]);
@@ -316,8 +316,11 @@ describe('transformMetrics', () => {
     vi.spyOn(ntopngClient, 'getVpnPeers').mockResolvedValue([]);
 
     vi.spyOn(elastiflowClient, 'getHostThroughput').mockResolvedValue([[100, '125000']]);
-
     vi.spyOn(mcpClient, 'listContainers').mockResolvedValue([]);
+  }
+
+  it('successfully transforms metrics when all services are available', async () => {
+    setupAllMocks();
 
     const result = await transformMetrics(mockLabData);
 
@@ -330,26 +333,8 @@ describe('transformMetrics', () => {
   });
 
   it('degrades signoz when CPU metrics fail', async () => {
-    vi.spyOn(signozClient, 'getCpuMetrics').mockRejectedValue(new Error('Connection failed'));
-    vi.spyOn(signozClient, 'getMemoryMetrics').mockResolvedValue([]);
-    vi.spyOn(signozClient, 'getDiskMetrics').mockResolvedValue([]);
-    vi.spyOn(signozClient, 'getTemperature').mockResolvedValue('55°C');
-    vi.spyOn(signozClient, 'getLoadAverage').mockResolvedValue('1.5 / 1.8 / 2.0');
-    vi.spyOn(signozClient, 'getPowerDraw').mockResolvedValue(412);
-    vi.spyOn(signozClient, 'getClusterUptime').mockResolvedValue({ days: 127, hours: 4 });
-
-    vi.spyOn(ntopngClient, 'getWanInterfaceStats').mockResolvedValue({
-      ping: 25,
-      jitter: 5,
-      loss: 0,
-      downMbps: 500,
-      upMbps: 100,
-    });
-    vi.spyOn(ntopngClient, 'getDNSStats').mockResolvedValue({ resolved: 1000, blocked: 50 });
-    vi.spyOn(ntopngClient, 'getVpnPeers').mockResolvedValue([]);
-
-    vi.spyOn(elastiflowClient, 'getHostThroughput').mockResolvedValue([]);
-    vi.spyOn(mcpClient, 'listContainers').mockResolvedValue([]);
+    setupAllMocks();
+    vi.mocked(signozClient.getCpuMetrics).mockRejectedValue(new Error('Connection failed'));
 
     const result = await transformMetrics(mockLabData);
 
@@ -357,20 +342,8 @@ describe('transformMetrics', () => {
   });
 
   it('degrades ntopng when gateway stats fail', async () => {
-    vi.spyOn(signozClient, 'getCpuMetrics').mockResolvedValue([]);
-    vi.spyOn(signozClient, 'getMemoryMetrics').mockResolvedValue([]);
-    vi.spyOn(signozClient, 'getDiskMetrics').mockResolvedValue([]);
-    vi.spyOn(signozClient, 'getTemperature').mockResolvedValue('55°C');
-    vi.spyOn(signozClient, 'getLoadAverage').mockResolvedValue('1.5 / 1.8 / 2.0');
-    vi.spyOn(signozClient, 'getPowerDraw').mockResolvedValue(412);
-    vi.spyOn(signozClient, 'getClusterUptime').mockResolvedValue({ days: 127, hours: 4 });
-
-    vi.spyOn(ntopngClient, 'getWanInterfaceStats').mockRejectedValue(new Error('Network error'));
-    vi.spyOn(ntopngClient, 'getDNSStats').mockResolvedValue({ resolved: 1000, blocked: 50 });
-    vi.spyOn(ntopngClient, 'getVpnPeers').mockResolvedValue([]);
-
-    vi.spyOn(elastiflowClient, 'getHostThroughput').mockResolvedValue([]);
-    vi.spyOn(mcpClient, 'listContainers').mockResolvedValue([]);
+    setupAllMocks();
+    vi.mocked(ntopngClient.getWanInterfaceStats).mockRejectedValue(new Error('Network error'));
 
     const result = await transformMetrics(mockLabData);
 
@@ -378,27 +351,8 @@ describe('transformMetrics', () => {
   });
 
   it('degrades elastiflow when throughput fetch fails', async () => {
-    vi.spyOn(signozClient, 'getCpuMetrics').mockResolvedValue([]);
-    vi.spyOn(signozClient, 'getMemoryMetrics').mockResolvedValue([]);
-    vi.spyOn(signozClient, 'getDiskMetrics').mockResolvedValue([]);
-    vi.spyOn(signozClient, 'getTemperature').mockResolvedValue('55°C');
-    vi.spyOn(signozClient, 'getLoadAverage').mockResolvedValue('1.5 / 1.8 / 2.0');
-    vi.spyOn(signozClient, 'getPowerDraw').mockResolvedValue(412);
-    vi.spyOn(signozClient, 'getClusterUptime').mockResolvedValue({ days: 127, hours: 4 });
-
-    vi.spyOn(ntopngClient, 'getWanInterfaceStats').mockResolvedValue({
-      ping: 25,
-      jitter: 5,
-      loss: 0,
-      downMbps: 500,
-      upMbps: 100,
-    });
-    vi.spyOn(ntopngClient, 'getDNSStats').mockResolvedValue({ resolved: 1000, blocked: 50 });
-    vi.spyOn(ntopngClient, 'getVpnPeers').mockResolvedValue([]);
-
-    vi.spyOn(elastiflowClient, 'getHostThroughput').mockRejectedValue(new Error('Service unavailable'));
-
-    vi.spyOn(mcpClient, 'listContainers').mockResolvedValue([]);
+    setupAllMocks();
+    vi.mocked(elastiflowClient.getHostThroughput).mockRejectedValue(new Error('Service unavailable'));
 
     const result = await transformMetrics(mockLabData);
 
@@ -406,26 +360,8 @@ describe('transformMetrics', () => {
   });
 
   it('degrades phone-home when apps fetch fails', async () => {
-    vi.spyOn(signozClient, 'getCpuMetrics').mockResolvedValue([]);
-    vi.spyOn(signozClient, 'getMemoryMetrics').mockResolvedValue([]);
-    vi.spyOn(signozClient, 'getDiskMetrics').mockResolvedValue([]);
-    vi.spyOn(signozClient, 'getTemperature').mockResolvedValue('55°C');
-    vi.spyOn(signozClient, 'getLoadAverage').mockResolvedValue('1.5 / 1.8 / 2.0');
-    vi.spyOn(signozClient, 'getPowerDraw').mockResolvedValue(412);
-    vi.spyOn(signozClient, 'getClusterUptime').mockResolvedValue({ days: 127, hours: 4 });
-
-    vi.spyOn(ntopngClient, 'getWanInterfaceStats').mockResolvedValue({
-      ping: 25,
-      jitter: 5,
-      loss: 0,
-      downMbps: 500,
-      upMbps: 100,
-    });
-    vi.spyOn(ntopngClient, 'getDNSStats').mockResolvedValue({ resolved: 1000, blocked: 50 });
-    vi.spyOn(ntopngClient, 'getVpnPeers').mockResolvedValue([]);
-
-    vi.spyOn(elastiflowClient, 'getHostThroughput').mockResolvedValue([]);
-    vi.spyOn(mcpClient, 'listContainers').mockRejectedValue(new Error('Connection refused'));
+    setupAllMocks();
+    vi.mocked(mcpClient.listContainers).mockRejectedValue(new Error('Connection refused'));
 
     const result = await transformMetrics(mockLabData);
 
@@ -433,20 +369,15 @@ describe('transformMetrics', () => {
   });
 
   it('handles multiple simultaneous failures', async () => {
-    vi.spyOn(signozClient, 'getCpuMetrics').mockRejectedValue(new Error('Error'));
-    vi.spyOn(signozClient, 'getMemoryMetrics').mockRejectedValue(new Error('Error'));
-    vi.spyOn(signozClient, 'getDiskMetrics').mockRejectedValue(new Error('Error'));
-    vi.spyOn(signozClient, 'getTemperature').mockResolvedValue('55°C');
-    vi.spyOn(signozClient, 'getLoadAverage').mockResolvedValue('1.5 / 1.8 / 2.0');
-    vi.spyOn(signozClient, 'getPowerDraw').mockRejectedValue(new Error('Error'));
-    vi.spyOn(signozClient, 'getClusterUptime').mockRejectedValue(new Error('Error'));
-
-    vi.spyOn(ntopngClient, 'getWanInterfaceStats').mockRejectedValue(new Error('Error'));
-    vi.spyOn(ntopngClient, 'getDNSStats').mockResolvedValue({ resolved: 1000, blocked: 50 });
-    vi.spyOn(ntopngClient, 'getVpnPeers').mockResolvedValue([]);
-
-    vi.spyOn(elastiflowClient, 'getHostThroughput').mockRejectedValue(new Error('Error'));
-    vi.spyOn(mcpClient, 'listContainers').mockRejectedValue(new Error('Error'));
+    setupAllMocks();
+    vi.mocked(signozClient.getCpuMetrics).mockRejectedValue(new Error('Error'));
+    vi.mocked(signozClient.getMemoryMetrics).mockRejectedValue(new Error('Error'));
+    vi.mocked(signozClient.getDiskMetrics).mockRejectedValue(new Error('Error'));
+    vi.mocked(signozClient.getPowerDraw).mockRejectedValue(new Error('Error'));
+    vi.mocked(signozClient.getClusterUptime).mockRejectedValue(new Error('Error'));
+    vi.mocked(ntopngClient.getWanInterfaceStats).mockRejectedValue(new Error('Error'));
+    vi.mocked(elastiflowClient.getHostThroughput).mockRejectedValue(new Error('Error'));
+    vi.mocked(mcpClient.listContainers).mockRejectedValue(new Error('Error'));
 
     const result = await transformMetrics(mockLabData);
 
@@ -457,26 +388,8 @@ describe('transformMetrics', () => {
   });
 
   it('preserves original data structure when transformations fail', async () => {
-    vi.spyOn(signozClient, 'getCpuMetrics').mockRejectedValue(new Error('Error'));
-    vi.spyOn(signozClient, 'getMemoryMetrics').mockResolvedValue([]);
-    vi.spyOn(signozClient, 'getDiskMetrics').mockResolvedValue([]);
-    vi.spyOn(signozClient, 'getTemperature').mockResolvedValue('55°C');
-    vi.spyOn(signozClient, 'getLoadAverage').mockResolvedValue('1.5 / 1.8 / 2.0');
-    vi.spyOn(signozClient, 'getPowerDraw').mockResolvedValue(412);
-    vi.spyOn(signozClient, 'getClusterUptime').mockResolvedValue({ days: 127, hours: 4 });
-
-    vi.spyOn(ntopngClient, 'getWanInterfaceStats').mockResolvedValue({
-      ping: 25,
-      jitter: 5,
-      loss: 0,
-      downMbps: 500,
-      upMbps: 100,
-    });
-    vi.spyOn(ntopngClient, 'getDNSStats').mockResolvedValue({ resolved: 1000, blocked: 50 });
-    vi.spyOn(ntopngClient, 'getVpnPeers').mockResolvedValue([]);
-
-    vi.spyOn(elastiflowClient, 'getHostThroughput').mockResolvedValue([]);
-    vi.spyOn(mcpClient, 'listContainers').mockResolvedValue([]);
+    setupAllMocks();
+    vi.mocked(signozClient.getCpuMetrics).mockRejectedValue(new Error('Error'));
 
     const result = await transformMetrics(mockLabData);
 
@@ -486,29 +399,9 @@ describe('transformMetrics', () => {
   });
 
   it('updates metrics when data is provided', async () => {
-    vi.spyOn(signozClient, 'getCpuMetrics').mockResolvedValue([[100, '0.5']]);
-    vi.spyOn(signozClient, 'getMemoryMetrics').mockResolvedValue([[200, '0.6']]);
-    vi.spyOn(signozClient, 'getDiskMetrics').mockResolvedValue([[300, '0.7']]);
-    vi.spyOn(signozClient, 'getTemperature').mockResolvedValue('55°C');
-    vi.spyOn(signozClient, 'getLoadAverage').mockResolvedValue('1.5 / 1.8 / 2.0');
-    vi.spyOn(signozClient, 'getPowerDraw').mockResolvedValue(412);
-    vi.spyOn(signozClient, 'getClusterUptime').mockResolvedValue({ days: 127, hours: 4 });
-
-    vi.spyOn(ntopngClient, 'getWanInterfaceStats').mockResolvedValue({
-      ping: 25,
-      jitter: 5,
-      loss: 0,
-      downMbps: 500,
-      upMbps: 100,
-    });
-    vi.spyOn(ntopngClient, 'getDNSStats').mockResolvedValue({
-      resolved: 1000,
-      blocked: 50,
-    });
-    vi.spyOn(ntopngClient, 'getVpnPeers').mockResolvedValue([]);
-
-    vi.spyOn(elastiflowClient, 'getHostThroughput').mockResolvedValue([[100, '125000']]);
-    vi.spyOn(mcpClient, 'listContainers').mockResolvedValue([]);
+    setupAllMocks();
+    vi.mocked(signozClient.getMemoryMetrics).mockResolvedValue([[200, '0.6']]);
+    vi.mocked(signozClient.getDiskMetrics).mockResolvedValue([[300, '0.7']]);
 
     const result = await transformMetrics(mockLabData);
 
@@ -521,29 +414,14 @@ describe('transformMetrics', () => {
   });
 
   it('updates gateway metrics when data is provided', async () => {
-    vi.spyOn(signozClient, 'getCpuMetrics').mockResolvedValue([]);
-    vi.spyOn(signozClient, 'getMemoryMetrics').mockResolvedValue([]);
-    vi.spyOn(signozClient, 'getDiskMetrics').mockResolvedValue([]);
-    vi.spyOn(signozClient, 'getTemperature').mockResolvedValue('55°C');
-    vi.spyOn(signozClient, 'getLoadAverage').mockResolvedValue('1.5 / 1.8 / 2.0');
-    vi.spyOn(signozClient, 'getPowerDraw').mockResolvedValue(412);
-    vi.spyOn(signozClient, 'getClusterUptime').mockResolvedValue({ days: 127, hours: 4 });
-
-    vi.spyOn(ntopngClient, 'getWanInterfaceStats').mockResolvedValue({
+    setupAllMocks();
+    vi.mocked(ntopngClient.getWanInterfaceStats).mockResolvedValue({
       ping: 25,
       jitter: 5,
       loss: 2,
       downMbps: 500,
       upMbps: 100,
     });
-    vi.spyOn(ntopngClient, 'getDNSStats').mockResolvedValue({
-      resolved: 1000,
-      blocked: 50,
-    });
-    vi.spyOn(ntopngClient, 'getVpnPeers').mockResolvedValue([]);
-
-    vi.spyOn(elastiflowClient, 'getHostThroughput').mockResolvedValue([]);
-    vi.spyOn(mcpClient, 'listContainers').mockResolvedValue([]);
 
     const result = await transformMetrics(mockLabData);
 
@@ -557,28 +435,11 @@ describe('transformMetrics', () => {
   });
 
   it('skips server metric updates when histogram is empty', async () => {
+    setupAllMocks();
     const originalCpu = mockLabData.servers[0].cpu.hist;
-
-    vi.spyOn(signozClient, 'getCpuMetrics').mockResolvedValue([]);
-    vi.spyOn(signozClient, 'getMemoryMetrics').mockResolvedValue([]);
-    vi.spyOn(signozClient, 'getDiskMetrics').mockResolvedValue([]);
-    vi.spyOn(signozClient, 'getTemperature').mockResolvedValue('55°C');
-    vi.spyOn(signozClient, 'getLoadAverage').mockResolvedValue('1.5 / 1.8 / 2.0');
-    vi.spyOn(signozClient, 'getPowerDraw').mockResolvedValue(412);
-    vi.spyOn(signozClient, 'getClusterUptime').mockResolvedValue({ days: 127, hours: 4 });
-
-    vi.spyOn(ntopngClient, 'getWanInterfaceStats').mockResolvedValue({
-      ping: 25,
-      jitter: 5,
-      loss: 0,
-      downMbps: 500,
-      upMbps: 100,
-    });
-    vi.spyOn(ntopngClient, 'getDNSStats').mockResolvedValue({ resolved: 1000, blocked: 50 });
-    vi.spyOn(ntopngClient, 'getVpnPeers').mockResolvedValue([]);
-
-    vi.spyOn(elastiflowClient, 'getHostThroughput').mockResolvedValue([]);
-    vi.spyOn(mcpClient, 'listContainers').mockResolvedValue([]);
+    vi.mocked(signozClient.getCpuMetrics).mockResolvedValue([]);
+    vi.mocked(signozClient.getMemoryMetrics).mockResolvedValue([]);
+    vi.mocked(signozClient.getDiskMetrics).mockResolvedValue([]);
 
     const result = await transformMetrics(mockLabData);
 
@@ -587,6 +448,7 @@ describe('transformMetrics', () => {
   });
 
   it('updates apps when valid app data is provided', async () => {
+    setupAllMocks();
     const mockApps = [
       {
         id: 'app1',
@@ -598,26 +460,7 @@ describe('transformMetrics', () => {
       },
     ];
 
-    vi.spyOn(signozClient, 'getCpuMetrics').mockResolvedValue([]);
-    vi.spyOn(signozClient, 'getMemoryMetrics').mockResolvedValue([]);
-    vi.spyOn(signozClient, 'getDiskMetrics').mockResolvedValue([]);
-    vi.spyOn(signozClient, 'getTemperature').mockResolvedValue('55°C');
-    vi.spyOn(signozClient, 'getLoadAverage').mockResolvedValue('1.5 / 1.8 / 2.0');
-    vi.spyOn(signozClient, 'getPowerDraw').mockResolvedValue(412);
-    vi.spyOn(signozClient, 'getClusterUptime').mockResolvedValue({ days: 127, hours: 4 });
-
-    vi.spyOn(ntopngClient, 'getWanInterfaceStats').mockResolvedValue({
-      ping: 25,
-      jitter: 5,
-      loss: 0,
-      downMbps: 500,
-      upMbps: 100,
-    });
-    vi.spyOn(ntopngClient, 'getDNSStats').mockResolvedValue({ resolved: 1000, blocked: 50 });
-    vi.spyOn(ntopngClient, 'getVpnPeers').mockResolvedValue([]);
-
-    vi.spyOn(elastiflowClient, 'getHostThroughput').mockResolvedValue([]);
-    vi.spyOn(mcpClient, 'listContainers').mockResolvedValue(mockApps);
+    vi.mocked(mcpClient.listContainers).mockResolvedValue(mockApps);
 
     const result = await transformMetrics(mockLabData);
 
@@ -625,26 +468,8 @@ describe('transformMetrics', () => {
   });
 
   it('ignores invalid apps data', async () => {
-    vi.spyOn(signozClient, 'getCpuMetrics').mockResolvedValue([]);
-    vi.spyOn(signozClient, 'getMemoryMetrics').mockResolvedValue([]);
-    vi.spyOn(signozClient, 'getDiskMetrics').mockResolvedValue([]);
-    vi.spyOn(signozClient, 'getTemperature').mockResolvedValue('55°C');
-    vi.spyOn(signozClient, 'getLoadAverage').mockResolvedValue('1.5 / 1.8 / 2.0');
-    vi.spyOn(signozClient, 'getPowerDraw').mockResolvedValue(412);
-    vi.spyOn(signozClient, 'getClusterUptime').mockResolvedValue({ days: 127, hours: 4 });
-
-    vi.spyOn(ntopngClient, 'getWanInterfaceStats').mockResolvedValue({
-      ping: 25,
-      jitter: 5,
-      loss: 0,
-      downMbps: 500,
-      upMbps: 100,
-    });
-    vi.spyOn(ntopngClient, 'getDNSStats').mockResolvedValue({ resolved: 1000, blocked: 50 });
-    vi.spyOn(ntopngClient, 'getVpnPeers').mockResolvedValue([]);
-
-    vi.spyOn(elastiflowClient, 'getHostThroughput').mockResolvedValue([]);
-    vi.spyOn(mcpClient, 'listContainers').mockResolvedValue({ not: 'array' });
+    setupAllMocks();
+    vi.mocked(mcpClient.listContainers).mockResolvedValue({ not: 'array' } as any);
 
     const result = await transformMetrics(mockLabData);
 
