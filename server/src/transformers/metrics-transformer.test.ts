@@ -313,7 +313,7 @@ describe('transformMetrics', () => {
       resolved: 1000,
       blocked: 50,
     });
-    vi.spyOn(ntopngClient, 'getVpnPeers').mockResolvedValue([]);
+    vi.spyOn(ntopngClient, 'getVpnPeers').mockResolvedValue(0);
 
     vi.spyOn(elastiflowClient, 'getHostThroughput').mockResolvedValue([[100, '125000']]);
     vi.spyOn(mcpClient, 'listContainers').mockResolvedValue([]);
