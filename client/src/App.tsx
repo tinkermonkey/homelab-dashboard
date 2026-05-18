@@ -60,7 +60,7 @@ const AppContent: React.FC = () => {
   const [density] = usePersistedState('density', 'regular');
   const [showAlerts, setShowAlerts] = usePersistedState('showAlerts', true);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
-  const { data: clusterData, isLoading, error } = useCluster();
+  const { data: clusterData, isLoading, error, refetch } = useCluster();
   const statusbarContent = useStatusbarContent(clusterData);
 
   const currentRoute = ROUTES.find(r => r.path === location.pathname) || ROUTES[0];
@@ -123,6 +123,17 @@ const AppContent: React.FC = () => {
     },
   ];
 
+  const iconButtonBaseStyle: React.CSSProperties = {
+    background: 'none',
+    border: 'none',
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: '4px',
+    color: 'rgb(var(--shell-fg-1))',
+  };
+
   const viewContent = isLoading ? (
     <PlaceholderView routeName="Overview" />
   ) : error ? (
@@ -170,32 +181,14 @@ const AppContent: React.FC = () => {
               <button
                 onClick={() => setShowAlerts(!showAlerts)}
                 title="Activity"
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: 'rgb(var(--shell-fg-1))',
-                  padding: '4px',
-                }}
+                style={iconButtonBaseStyle}
               >
                 <HeimdallIcon name="bell" size={16} />
               </button>
               <button
-                onClick={() => window.location.reload()}
+                onClick={() => refetch()}
                 title="Refresh"
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: 'rgb(var(--shell-fg-1))',
-                  padding: '4px',
-                }}
+                style={iconButtonBaseStyle}
               >
                 <HeimdallIcon name="reload" size={16} />
               </button>
@@ -203,14 +196,9 @@ const AppContent: React.FC = () => {
                 onClick={() => setChatVisible(!chatVisible)}
                 title={chatVisible ? 'Close bot console' : 'Open bot console'}
                 style={{
+                  ...iconButtonBaseStyle,
                   background: chatVisible ? 'rgb(var(--shell-surface))' : 'none',
-                  border: 'none',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
                   color: chatVisible ? 'rgb(var(--accent-cyan))' : 'rgb(var(--shell-fg-1))',
-                  padding: '4px',
                 }}
               >
                 <HeimdallIcon name="user" size={16} />

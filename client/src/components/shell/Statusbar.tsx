@@ -1,5 +1,16 @@
 import { useState, useEffect, type ReactNode } from 'react';
+import { Icon as HeimdallIcon } from '@tinkermonkey/heimdall-ui';
 import type { LAB_DATA } from '@homelab/shared';
+
+const metricsItemStyle: React.CSSProperties = {
+  fontSize: '11px',
+  color: 'rgb(var(--shell-fg-2))',
+};
+
+const monoStyle: React.CSSProperties = {
+  fontFamily: 'var(--font-mono)',
+  color: 'rgb(var(--shell-fg-1))',
+};
 
 export const useStatusbarContent = (clusterData?: LAB_DATA & { degraded?: string[] }): { left: ReactNode; right: ReactNode } => {
   const getInitialTicker = () => ({
@@ -52,14 +63,25 @@ export const useStatusbarContent = (clusterData?: LAB_DATA & { degraded?: string
 
   const primaryAlert = getPrimaryAlert();
   const alertCount = clusterData?.cluster.activeAlerts || 0;
+  const hostCount = clusterData?.servers.length || 4;
+  const appCount = clusterData?.apps.length || 28;
+  const containerCount = 47; // Not available in current API scope
 
   const leftMetrics = (
     <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-      <div style={{ fontSize: '11px', color: 'rgb(var(--shell-fg-2))' }}>
-        Prometheus <span style={{ fontFamily: 'var(--font-mono)', color: 'rgb(var(--shell-fg-1))' }}>:9090</span>
+      <div style={metricsItemStyle}>
+        <span className="pulse" style={{
+          display: 'inline-block',
+          width: '6px',
+          height: '6px',
+          borderRadius: '50%',
+          backgroundColor: 'rgb(var(--status-ok))',
+          marginRight: '6px',
+        }} />
+        Prometheus <span style={monoStyle}>:9090</span>
       </div>
-      <div style={{ fontSize: '11px', color: 'rgb(var(--shell-fg-2))' }}>
-        4 hosts · 28 apps · 47 containers
+      <div style={metricsItemStyle}>
+        {hostCount} host{hostCount > 1 ? 's' : ''} · {appCount} app{appCount > 1 ? 's' : ''} · {containerCount} container{containerCount > 1 ? 's' : ''}
       </div>
       {alertCount > 0 && (
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px' }}>
@@ -75,7 +97,7 @@ export const useStatusbarContent = (clusterData?: LAB_DATA & { degraded?: string
             {alertCount} alert{alertCount !== 1 ? 's' : ''} open
           </span>
           {primaryAlert && (
-            <span style={{ fontFamily: 'var(--font-mono)', color: 'rgb(var(--shell-fg-1))' }}>
+            <span style={monoStyle}>
               {primaryAlert}
             </span>
           )}
@@ -86,24 +108,26 @@ export const useStatusbarContent = (clusterData?: LAB_DATA & { degraded?: string
 
   const rightMetrics = (
     <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-      <div style={{ fontSize: '11px', color: 'rgb(var(--shell-fg-2))' }}>
-        <span style={{ fontFamily: 'var(--font-mono)', color: 'rgb(var(--shell-fg-1))' }}>
+      <div style={metricsItemStyle}>
+        <span style={monoStyle}>
           ping {ticker.ping} ms
         </span>
       </div>
-      <div style={{ fontSize: '11px', color: 'rgb(var(--shell-fg-2))' }}>
-        <span style={{ fontFamily: 'var(--font-mono)', color: 'rgb(var(--shell-fg-1))' }}>
+      <div style={metricsItemStyle}>
+        <span style={monoStyle}>
           ↓ {ticker.down} ↑ {ticker.up} Mbps
         </span>
       </div>
-      <div style={{ fontSize: '11px', color: 'rgb(var(--shell-fg-2))' }}>
-        <span style={{ fontFamily: 'var(--font-mono)', color: 'rgb(var(--shell-fg-1))' }}>
+      <div style={metricsItemStyle}>
+        <span style={monoStyle}>
           cluster cpu {ticker.cpu}%
         </span>
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', color: 'rgb(var(--shell-fg-2))' }}>
-        <span style={{ color: 'rgb(var(--status-ok))' }}>✓</span>
-        <span style={{ fontFamily: 'var(--font-mono)', color: 'rgb(var(--shell-fg-1))' }}>
+        <span style={{ color: 'rgb(var(--status-ok))' }}>
+          <HeimdallIcon name="check" size={11} />
+        </span>
+        <span style={monoStyle}>
           synced {clusterData?.cluster.lastSync || '14s ago'}
         </span>
       </div>
