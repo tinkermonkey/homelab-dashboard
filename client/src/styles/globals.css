@@ -1,0 +1,86 @@
+/* Font imports */
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap");
+
+/* Token overrides — applied after Heimdall to override defaults */
+:root {
+  /* Override Heimdall's amber accent with dashboard's cyan */
+  --accent-primary: #22D3EE;
+  --accent-primary-hover: #06B6D4;
+  --accent-primary-deep: #0E7EA3;
+  --accent-primary-ring: rgba(34, 211, 238, 0.15);
+
+  /* Override Heimdall's shell colors */
+  --shell-bg: #0B0F14;
+  --shell-bg-2: #0F141B;
+  --shell-surface: #131A23;
+  --shell-fg-1: #E6EDF3;
+  --shell-fg-2: #8B949E;
+  --shell-border: #1E2733;
+
+  /* Canvas colors — dark and light */
+  --canvas-bg-dark: #14191F;
+  --canvas-bg-light: #FFFFFF;
+  --canvas-fg-1-dark: #E6EDF3;
+  --canvas-fg-1-light: #0B1220;
+  --canvas-bd-dark: #2A323C;
+  --canvas-bd-light: #D1D5DB;
+
+  /* Host tints */
+  --host-nyx-tint: #22D3EE;
+  --host-helios-tint: #10B981;
+  --host-aether-tint: #A78BFA;
+  --host-vega-tint: #F59E0B;
+
+  /* Status colors */
+  --status-ok: #10B981;
+  --status-warn: #F59E0B;
+  --status-error: #F43F5E;
+  --status-updating: #22D3EE;
+
+  /* Fonts */
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+               "Helvetica Neue", Arial, sans-serif;
+  --font-mono: "JetBrains Mono", Menlo, ui-monospace, SFMono-Regular, Monaco,
+               Consolas, "Liberation Mono", "Courier New", monospace;
+}
+
+/* Default canvas is dark */
+:root {
+  --canvas-bg: var(--canvas-bg-dark);
+  --canvas-fg-1: var(--canvas-fg-1-dark);
+  --canvas-bd: var(--canvas-bd-dark);
+}
+
+/* Light mode canvas when dark-canvas class is removed from body */
+body:not(.dark-canvas) {
+  --canvas-bg: var(--canvas-bg-light);
+  --canvas-fg-1: var(--canvas-fg-1-light);
+  --canvas-bd: var(--canvas-bd-light);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  font-family: var(--font-sans);
+  color: var(--canvas-fg-1);
+  background: var(--canvas-bg);
+  line-height: 1.5;
+}
+
+#root {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+code, pre, .monospace {
+  font-family: var(--font-mono);
+}
