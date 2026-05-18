@@ -1,73 +1,101 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { config } from './config';
 
 describe('config', () => {
   const originalEnv = { ...process.env };
 
-  beforeEach(() => {
+  afterEach(() => {
+    process.env = { ...originalEnv };
     vi.resetModules();
   });
 
-  afterEach(() => {
-    process.env = { ...originalEnv };
+  it('reads PORT from environment with numeric parsing', async () => {
+    process.env.PORT = '9999';
+    vi.resetModules();
+    const { config } = await import('./config.js');
+    expect(config.port).toBe(9999);
   });
 
-  it('reads PORT from environment with numeric parsing', () => {
-    expect(config.port).toBe(parseInt(process.env.PORT || '3001', 10));
+  it('defaults PORT to 3001', async () => {
+    delete process.env.PORT;
+    vi.resetModules();
+    const { config } = await import('./config.js');
+    expect(config.port).toBe(3001);
   });
 
-  it('defaults PORT to 3001', () => {
-    expect(config.port).toBeGreaterThan(0);
+  it('reads HOST from environment', async () => {
+    process.env.HOST = 'example.com';
+    vi.resetModules();
+    const { config } = await import('./config.js');
+    expect(config.host).toBe('example.com');
   });
 
-  it('reads HOST from environment', () => {
-    expect(config.host).toBeDefined();
-    expect(typeof config.host).toBe('string');
+  it('defaults HOST to localhost', async () => {
+    delete process.env.HOST;
+    vi.resetModules();
+    const { config } = await import('./config.js');
+    expect(config.host).toBe('localhost');
   });
 
-  it('provides SigNoz URL', () => {
-    expect(config.signozUrl).toBeDefined();
-    expect(config.signozUrl).toMatch(/^http/);
+  it('reads SIGNOZ_URL from environment', async () => {
+    process.env.SIGNOZ_URL = 'http://signoz:4317';
+    vi.resetModules();
+    const { config } = await import('./config.js');
+    expect(config.signozUrl).toBe('http://signoz:4317');
   });
 
-  it('provides SigNoz API token (may be empty)', () => {
-    expect(config.signozApiToken).toBeDefined();
-    expect(typeof config.signozApiToken).toBe('string');
+  it('reads SIGNOZ_API_TOKEN from environment', async () => {
+    process.env.SIGNOZ_API_TOKEN = 'test-token';
+    vi.resetModules();
+    const { config } = await import('./config.js');
+    expect(config.signozApiToken).toBe('test-token');
   });
 
-  it('provides ntopng credentials', () => {
-    expect(config.ntopngUser).toBeDefined();
-    expect(config.ntopngPassword).toBeDefined();
-    expect(typeof config.ntopngUser).toBe('string');
-    expect(typeof config.ntopngPassword).toBe('string');
+  it('reads ntopng credentials from environment', async () => {
+    process.env.NTOPNG_USER = 'custom-user';
+    process.env.NTOPNG_PASSWORD = 'custom-pass';
+    vi.resetModules();
+    const { config } = await import('./config.js');
+    expect(config.ntopngUser).toBe('custom-user');
+    expect(config.ntopngPassword).toBe('custom-pass');
   });
 
-  it('defaults ntopng credentials to admin/admin', () => {
-    // This tests the current behavior; in production, these should be set via env
-    expect(config.ntopngUser).toBeDefined();
-    expect(config.ntopngPassword).toBeDefined();
+  it('defaults ntopng credentials to admin/admin', async () => {
+    delete process.env.NTOPNG_USER;
+    delete process.env.NTOPNG_PASSWORD;
+    vi.resetModules();
+    const { config } = await import('./config.js');
+    expect(config.ntopngUser).toBe('admin');
+    expect(config.ntopngPassword).toBe('admin');
   });
 
-  it('provides ElastiFlow URL', () => {
-    expect(config.elastiflowUrl).toBeDefined();
-    expect(config.elastiflowUrl).toMatch(/^http/);
+  it('reads ElastiFlow URL from environment', async () => {
+    process.env.ELASTIFLOW_URL = 'http://elastiflow:9090';
+    vi.resetModules();
+    const { config } = await import('./config.js');
+    expect(config.elastiflowUrl).toBe('http://elastiflow:9090');
   });
 
-  it('provides phone-home URLs', () => {
-    expect(config.phoneHomeUrl).toBeDefined();
-    expect(config.phoneHomeMcpUrl).toBeDefined();
-    expect(config.phoneHomeChatUrl).toBeDefined();
-    expect(config.phoneHomeUrl).toMatch(/^http/);
-    expect(config.phoneHomeMcpUrl).toMatch(/^http/);
-    expect(config.phoneHomeChatUrl).toMatch(/^http/);
+  it('reads phone-home URLs from environment', async () => {
+    process.env.PHONE_HOME_URL = 'http://phone-home:8000';
+    process.env.PHONE_HOME_MCP_URL = 'http://phone-home:3210/mcp/';
+    process.env.PHONE_HOME_CHAT_URL = 'http://phone-home:8000/chat';
+    vi.resetModules();
+    const { config } = await import('./config.js');
+    expect(config.phoneHomeUrl).toBe('http://phone-home:8000');
+    expect(config.phoneHomeMcpUrl).toBe('http://phone-home:3210/mcp/');
+    expect(config.phoneHomeChatUrl).toBe('http://phone-home:8000/chat');
   });
 
-  it('provides log level with default', () => {
-    expect(config.logLevel).toBeDefined();
-    expect(typeof config.logLevel).toBe('string');
+  it('reads LOG_LEVEL from environment', async () => {
+    process.env.LOG_LEVEL = 'debug';
+    vi.resetModules();
+    const { config } = await import('./config.js');
+    expect(config.logLevel).toBe('debug');
   });
 
-  it('includes all expected properties', () => {
+  it('includes all expected properties', async () => {
+    vi.resetModules();
+    const { config } = await import('./config.js');
     const expectedKeys = [
       'port',
       'host',

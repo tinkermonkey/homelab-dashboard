@@ -6,6 +6,7 @@ import { fileURLToPath } from 'url';
 import type { LAB_DATA, DOCKER_DATA, TOPOLOGY_DATA, STATUS_DATA } from '@homelab/shared';
 import { getLabData, getDockerData, getTopologyData, getStatusData, getActiveAlerts } from './mock-data.js';
 import { config } from './config.js';
+import { getCachedData } from './cache.js';
 import { transformMetrics } from './transformers/metrics-transformer.js';
 import { transformDockerData, transformTopologyData } from './transformers/mcp-transformer.js';
 import { signozClient } from './clients/signoz-client.js';
@@ -40,41 +41,10 @@ if (isProduction) {
   });
 }
 
-// Cache with TTL
-interface CacheEntry {
-  data: unknown;
-  timestamp: number;
-  ttl: number;
-}
-
-const cache = new Map<string, CacheEntry>();
-
-function getCachedData<T>(
-  key: string,
-  ttl: number,
-  generator: () => Promise<T>
-): Promise<T> {
-  const now = Date.now();
-  const entry = cache.get(key);
-
-  if (entry && now - entry.timestamp < entry.ttl * 1000) {
-    return Promise.resolve(entry.data as T);
-  }
-
-  return generator().then((data) => {
-    cache.set(key, { data, timestamp: now, ttl });
-    return data;
-  }).catch((error) => {
-    const message = error instanceof Error ? error.message : 'Unknown error';
-    fastify.log.error(`Cache generator error for key "${key}": ${message}`);
-    throw error;
-  });
-}
-
 // GET /api/status (2.2s cadence, 2s cache)
 fastify.get('/api/status', async (request, reply) => {
   try {
-    const data = await getCachedData('status', 2, () => Promise.resolve(getStatusData()));
+    const data = await getCachedData('status', 2, () => Promise.resolve(getStatusData()), (msg) => fastify.log.error(msg));
     reply.send(data);
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
@@ -94,7 +64,7 @@ fastify.get('/api/cluster', async (request, reply) => {
         ...transformedData,
         degraded,
       };
-    });
+    }, (msg) => fastify.log.error(msg));
 
     if (data.degraded && data.degraded.length > 0) {
       reply.status(206);
@@ -117,7 +87,7 @@ fastify.get('/api/docker', async (request, reply) => {
         ...dockerData,
         degraded,
       };
-    });
+    }, (msg) => fastify.log.error(msg));
 
     if (data.degraded && data.degraded.length > 0) {
       reply.status(206);
@@ -140,7 +110,7 @@ fastify.get('/api/topology', async (request, reply) => {
         ...topoData,
         degraded,
       };
-    });
+    }, (msg) => fastify.log.error(msg));
 
     if (data.degraded && data.degraded.length > 0) {
       reply.status(206);
@@ -174,7 +144,7 @@ fastify.get('/api/alerts', async (request, reply) => {
           source: 'mock',
         };
       }
-    });
+    }, (msg) => fastify.log.error(msg));
 
     reply.send(data);
   } catch (error) {

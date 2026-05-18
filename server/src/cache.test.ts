@@ -1,36 +1,9 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-
-// Recreate the cache logic for testing
-interface CacheEntry {
-  data: unknown;
-  timestamp: number;
-  ttl: number;
-}
-
-const cache = new Map<string, CacheEntry>();
-
-function getCachedData<T>(
-  key: string,
-  ttl: number,
-  generator: () => Promise<T>
-): Promise<T> {
-  const now = Date.now();
-  const entry = cache.get(key);
-
-  if (entry && now - entry.timestamp < entry.ttl * 1000) {
-    return Promise.resolve(entry.data as T);
-  }
-
-  return generator()
-    .then((data) => {
-      cache.set(key, { data, timestamp: now, ttl });
-      return data;
-    });
-}
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { getCachedData, clearCache } from './cache.js';
 
 describe('getCachedData', () => {
   beforeEach(() => {
-    cache.clear();
+    clearCache();
     vi.useFakeTimers();
   });
 
@@ -93,17 +66,13 @@ describe('getCachedData', () => {
     expect(generator).toHaveBeenCalledTimes(2);
   });
 
-  it('stores correct metadata', async () => {
-    const generator = vi.fn().mockResolvedValue({ value: 'test' });
-    const startTime = Date.now();
+  it('calls error handler on generator failure', async () => {
+    const errorHandler = vi.fn();
+    const error = new Error('Generator failed');
+    const generator = vi.fn().mockRejectedValue(error);
 
-    await getCachedData('test-key', 5, generator);
-
-    const entry = cache.get('test-key');
-    expect(entry).toBeDefined();
-    expect(entry!.data).toEqual({ value: 'test' });
-    expect(entry!.ttl).toBe(5);
-    expect(entry!.timestamp).toBeGreaterThanOrEqual(startTime);
+    await expect(getCachedData('key', 5, generator, errorHandler)).rejects.toThrow('Generator failed');
+    expect(errorHandler).toHaveBeenCalledWith('Cache generator error for key "key": Generator failed');
   });
 
   it('handles multiple independent cache keys', async () => {

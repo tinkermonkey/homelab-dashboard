@@ -1,25 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-
-// Recreate fetchJSON for testing
-interface APIResponse<T> {
-  data: T;
-  degraded?: string[];
-}
-
-async function fetchJSON<T>(url: string): Promise<APIResponse<T>> {
-  const response = await fetch(url);
-
-  if (!response.ok && response.status !== 206) {
-    throw new Error(`API error: ${response.status}`);
-  }
-
-  const data = await response.json();
-
-  return {
-    data,
-    degraded: response.status === 206 ? data.degraded : undefined,
-  };
-}
+import { fetchJSON } from './useAPI.js';
 
 describe('useAPI - fetchJSON', () => {
   beforeEach(() => {
@@ -264,24 +244,4 @@ describe('useAPI - fetchJSON', () => {
     });
   });
 
-  describe('polling cadence contract', () => {
-    it('allows caller to implement different refresh intervals', async () => {
-      // The function itself doesn't enforce cadence,
-      // but the hook implementations do via queryFn
-      const intervals = [2200, 5000, 15000, 30000, 60000];
-
-      // Just verify fetch can be called multiple times
-      global.fetch = vi.fn().mockResolvedValue({
-        ok: true,
-        status: 200,
-        json: async () => ({ test: 'data' }),
-      });
-
-      for (let i = 0; i < intervals.length; i++) {
-        await fetchJSON('/api/test');
-      }
-
-      expect(global.fetch).toHaveBeenCalledTimes(intervals.length);
-    });
-  });
 });

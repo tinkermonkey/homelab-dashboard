@@ -8,7 +8,7 @@ interface APIResponse<T> {
   degraded?: string[];
 }
 
-async function fetchJSON<T>(url: string): Promise<APIResponse<T>> {
+export async function fetchJSON<T>(url: string): Promise<APIResponse<T>> {
   const response = await fetch(url);
 
   if (!response.ok && response.status !== 206) {

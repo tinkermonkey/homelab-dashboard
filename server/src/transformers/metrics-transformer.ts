@@ -7,26 +7,26 @@ import { getLabData } from '../mock-data.js';
 const HOSTS = ['nyx', 'helios', 'aether', 'vega'];
 
 // Convert Prometheus decimal ratio (0-1) to percentage (0-100)
-function prometheusRatioToPercent(value: string): number {
+export function prometheusRatioToPercent(value: string): number {
   const num = parseFloat(value);
   return Math.round(num * 10000) / 100;
 }
 
 // Convert bytes/sec to Mbps (1 Mbps = 125,000 bytes/sec)
-function prometheusBytesPerSecToMbps(value: string): number {
+export function prometheusBytesPerSecToMbps(value: string): number {
   const num = parseFloat(value);
   return Math.round((num / 125000) * 1000) / 1000;
 }
 
 // Convert Prometheus timestamp and value pairs to percentage histogram (0-100)
-function histogramFromPrometheus(values: Array<[number, string]>): number[] {
+export function histogramFromPrometheus(values: Array<[number, string]>): number[] {
   return values
     .slice(-48) // Last 48 points (30-min buckets over 24h)
     .map(([, value]) => prometheusRatioToPercent(value));
 }
 
 // Convert Prometheus timestamp and value pairs to network throughput histogram (Mbps)
-function histogramFromPrometheusMbps(values: Array<[number, string]>): number[] {
+export function histogramFromPrometheusMbps(values: Array<[number, string]>): number[] {
   return values
     .slice(-48) // Last 48 points (30-min buckets over 24h)
     .map(([, value]) => prometheusBytesPerSecToMbps(value));

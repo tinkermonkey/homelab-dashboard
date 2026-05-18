@@ -1,27 +1,10 @@
 import { describe, it, expect } from 'vitest';
-
-// Helper functions from metrics-transformer
-function prometheusRatioToPercent(value: string): number {
-  const num = parseFloat(value);
-  return Math.round(num * 10000) / 100;
-}
-
-function prometheusBytesPerSecToMbps(value: string): number {
-  const num = parseFloat(value);
-  return Math.round((num / 125000) * 1000) / 1000;
-}
-
-function histogramFromPrometheus(values: Array<[number, string]>): number[] {
-  return values
-    .slice(-48)
-    .map(([, value]) => prometheusRatioToPercent(value));
-}
-
-function histogramFromPrometheusMbps(values: Array<[number, string]>): number[] {
-  return values
-    .slice(-48)
-    .map(([, value]) => prometheusBytesPerSecToMbps(value));
-}
+import {
+  prometheusRatioToPercent,
+  prometheusBytesPerSecToMbps,
+  histogramFromPrometheus,
+  histogramFromPrometheusMbps,
+} from './metrics-transformer.js';
 
 describe('Metrics Transformer', () => {
   describe('prometheusRatioToPercent', () => {
