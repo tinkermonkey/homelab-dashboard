@@ -17,9 +17,9 @@ const __dirname = path.dirname(__filename);
 
 const fastify = Fastify({ logger: true });
 
-// Validate botId: alphanumeric and underscore only, max 64 chars
+// Validate botId: alphanumeric, underscore, and hyphen only, max 64 chars
 function isValidBotId(botId: string): boolean {
-  return /^[a-zA-Z0-9_]{1,64}$/.test(botId);
+  return /^[a-zA-Z0-9_-]{1,64}$/.test(botId);
 }
 
 // Max request body size: 1MB
@@ -169,8 +169,7 @@ fastify.post<{ Params: { botId: string } }>('/api/chat/:botId', async (request, 
 
   // Validate botId to prevent path traversal
   if (!isValidBotId(botId)) {
-    reply.status(400);
-    reply.send(`data: ${JSON.stringify({ error: 'Invalid bot ID format' })}\n\n`);
+    reply.status(400).send({ error: 'Invalid bot ID format' });
     return;
   }
 
@@ -178,8 +177,7 @@ fastify.post<{ Params: { botId: string } }>('/api/chat/:botId', async (request, 
     // Validate request body size
     const bodyString = JSON.stringify(request.body);
     if (bodyString.length > MAX_BODY_SIZE) {
-      reply.status(413);
-      reply.send(`data: ${JSON.stringify({ error: 'Request body too large' })}\n\n`);
+      reply.status(413).send({ error: 'Request body too large' });
       return;
     }
 
@@ -200,15 +198,14 @@ fastify.post<{ Params: { botId: string } }>('/api/chat/:botId', async (request, 
     });
 
     if (!response.ok) {
-      reply.status(response.status);
-      reply.send(`data: ${JSON.stringify({ error: 'Chat service unavailable' })}\n\n`);
+      reply.status(response.status).send({ error: 'Chat service unavailable' });
       return;
     }
 
     // Stream the response
     const reader = response.body?.getReader();
     if (!reader) {
-      reply.send(`data: ${JSON.stringify({ error: 'No response body' })}\n\n`);
+      reply.status(500).send({ error: 'No response body' });
       return;
     }
 
@@ -223,8 +220,8 @@ fastify.post<{ Params: { botId: string } }>('/api/chat/:botId', async (request, 
     reply.raw.end();
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
-    reply.status(500);
-    reply.send(`data: ${JSON.stringify({ error: message })}\n\n`);
+    fastify.log.error(`Chat proxy error for botId ${botId}: ${message}`);
+    reply.status(500).send({ error: 'Chat service error' });
   }
 });
 
