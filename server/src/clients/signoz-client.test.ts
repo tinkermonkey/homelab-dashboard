@@ -123,7 +123,7 @@ describe('SigNozClient', () => {
       await client.query('instant_query');
 
       const url = new URL(fetchMock.mock.calls[0][0] as string);
-      expect(url.pathname).toContain('/api/v5/query');
+      expect(url.pathname).toContain('/api/v1/query');
       expect(url.searchParams.get('query')).toBe('instant_query');
     });
 
@@ -589,10 +589,10 @@ describe('SigNozClient', () => {
       await client.query('test');
 
       const headers = fetchMock.mock.calls[0][1].headers as Record<string, string>;
-      expect(headers.Authorization).toBe('Bearer test-token');
+      expect(headers['SIGNOZ-API-KEY']).toBe('test-token');
     });
 
-    it('does not include Authorization header when token is empty', async () => {
+    it('does not include SIGNOZ-API-KEY header when token is empty', async () => {
       const mockResponse = {
         status: 'success',
         data: { resultType: 'vector', result: [] },
@@ -608,7 +608,7 @@ describe('SigNozClient', () => {
       await client.query('test');
 
       const headers = fetchMock.mock.calls[0][1].headers as Record<string, string>;
-      expect(headers.Authorization).toBeUndefined();
+      expect(headers['SIGNOZ-API-KEY']).toBeUndefined();
     });
   });
 
@@ -629,8 +629,8 @@ describe('SigNozClient', () => {
       await client.query('test');
 
       const url = fetchMock.mock.calls[0][0] as string;
-      expect(url).toContain('http://localhost:4317/api/v5/query');
-      expect(url).not.toContain('http://localhost:4317//api/v5/query');
+      expect(url).toContain('http://localhost:4317/api/v1/query');
+      expect(url).not.toContain('http://localhost:4317//api/v1/query');
     });
   });
 });
