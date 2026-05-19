@@ -7,3 +7,5 @@ build/
 .env.local
 .vite/
 .eslintcache
+.playwright-mcp/
+screenshots/

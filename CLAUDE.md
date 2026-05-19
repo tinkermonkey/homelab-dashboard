@@ -87,6 +87,10 @@ These must survive page reloads (localStorage or equivalent):
 
 The server component for this dashboard should consume the same MCP endpoint to fetch live homelab data, translating it into the data shapes documented in `design/README.md`.
 
+## Browser Testing & Screenshots
+
+When using browser automation (Playwright MCP or similar), save all screenshots to `.playwright-mcp/` or `screenshots/` — both are gitignored. Never save screenshots to the repo root.
+
 ## Routes
 
 ```
