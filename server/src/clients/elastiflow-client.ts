@@ -1,17 +1,23 @@
 import { config } from '../config.js';
 import { fetchWithTimeout } from '../utils/fetch-with-timeout.js';
 
-interface PrometheusResponse {
-  status: string;
-  data: {
-    resultType: string;
-    result: Array<{
-      metric: Record<string, string>;
-      value?: [number, string];
-      values?: Array<[number, string]>;
-    }>;
+interface EsAggResponse {
+  aggregations: {
+    over_time: {
+      buckets: Array<{
+        key: number;
+        bytes: { value: number | null };
+      }>;
+    };
   };
 }
+
+// Maps dashboard server ID → LAN IP for flow matching
+const SERVER_IP_MAP: Record<string, string> = {
+  nyx: '192.168.0.117',
+  helios: '192.168.0.245',
+  aether: '192.168.0.72',
+};
 
 export class ElastiFlowClient {
   private baseUrl: string;
@@ -29,89 +35,66 @@ export class ElastiFlowClient {
   }
 
   private getHeaders(): Record<string, string> {
-    return this.authHeader ? { Authorization: this.authHeader } : {};
+    const h: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (this.authHeader) h['Authorization'] = this.authHeader;
+    return h;
   }
 
-  async query(query: string): Promise<PrometheusResponse> {
-    const url = new URL(`${this.baseUrl}/api/v1/query`);
-    url.searchParams.set('query', query);
+  // Returns 48 half-hour buckets of bytes/sec for a server (by LAN IP)
+  // hostname here is the dashboard server ID (nyx/helios/aether)
+  async getHostThroughput(hostname: string): Promise<number[]> {
+    const ip = SERVER_IP_MAP[hostname];
+    if (!ip) return [];
 
-    try {
-      const response = await fetchWithTimeout(url.toString(), {
-        method: 'GET',
-        headers: this.getHeaders(),
-        timeout: 15000,
-      });
+    const now = Date.now();
+    const start = now - 24 * 60 * 60 * 1000;
 
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-
-      return (await response.json()) as PrometheusResponse;
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error';
-      throw new Error(`ElastiFlow query failed: ${message}`);
-    }
-  }
-
-  async queryRange(
-    query: string,
-    start: number,
-    end: number,
-    step: string = '5m'
-  ): Promise<PrometheusResponse> {
-    const url = new URL(`${this.baseUrl}/api/v1/query_range`);
-    url.searchParams.set('query', query);
-    url.searchParams.set('start', String(start));
-    url.searchParams.set('end', String(end));
-    url.searchParams.set('step', step);
-
-    try {
-      const response = await fetchWithTimeout(url.toString(), {
-        method: 'GET',
-        headers: this.getHeaders(),
-        timeout: 15000,
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-
-      return (await response.json()) as PrometheusResponse;
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error';
-      throw new Error(`ElastiFlow query failed: ${message}`);
-    }
-  }
-
-  // Get network throughput for a host (24h history, bytes/sec from Prometheus)
-  async getHostThroughput(hostname: string): Promise<Array<[number, string]>> {
-    const now = Math.floor(Date.now() / 1000);
-    const start = now - 24 * 60 * 60; // 24 hours
-
-    const response = await this.queryRange(
-      `rate(flow_bytes_total{hostname="${hostname}"}[5m])`,
-      start,
-      now,
-      '30m'
-    );
-
-    return response.data.result[0]?.values || [];
-  }
-
-  // Get current throughput for a host (bytes/sec from Prometheus)
-  async getCurrentThroughput(hostname: string): Promise<{ down: number; up: number }> {
-    const response = await this.query(
-      `rate(flow_bytes_sent_total{hostname="${hostname}"}[5m]), rate(flow_bytes_rcvd_total{hostname="${hostname}"}[5m])`
-    );
-
-    const down = response.data.result[0]?.value?.[1];
-    const up = response.data.result[1]?.value?.[1];
-
-    return {
-      down: down ? parseFloat(down) : 0, // bytes/sec
-      up: up ? parseFloat(up) : 0,
+    const url = `${this.baseUrl}/elastiflow-flow-ecs-*/_search`;
+    const body = {
+      size: 0,
+      query: {
+        bool: {
+          should: [
+            { term: { 'source.ip': ip } },
+            { term: { 'destination.ip': ip } },
+          ],
+          minimum_should_match: 1,
+          filter: [{ range: { '@timestamp': { gte: start, lte: now } } }],
+        },
+      },
+      aggs: {
+        over_time: {
+          date_histogram: { field: '@timestamp', fixed_interval: '30m' },
+          aggs: { bytes: { sum: { field: 'network.bytes' } } },
+        },
+      },
     };
+
+    try {
+      const response = await fetchWithTimeout(url, {
+        method: 'POST',
+        headers: this.getHeaders(),
+        body: JSON.stringify(body),
+        timeout: 15000,
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const data = (await response.json()) as EsAggResponse;
+
+      return data.aggregations.over_time.buckets
+        .slice(-48)
+        .map((b) => {
+          const bytes = b.bytes.value ?? 0;
+          // Convert bytes per 30-min bucket to Mbps average
+          return Math.round((bytes / (30 * 60) / 125000) * 1000) / 1000;
+        });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      throw new Error(`ElastiFlow query failed: ${message}`);
+    }
   }
 }
 

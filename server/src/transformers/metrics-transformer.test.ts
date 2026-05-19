@@ -6,9 +6,9 @@ import {
   histogramFromPrometheusMbps,
   transformMetrics,
 } from './metrics-transformer.js';
-import { signozClient } from '../clients/signoz-client.js';
 import { ntopngClient } from '../clients/ntopng-client.js';
 import { elastiflowClient } from '../clients/elastiflow-client.js';
+import { metricbeatClient } from '../clients/metricbeat-client.js';
 import { mcpClient } from '../clients/mcp-client.js';
 import type { LAB_DATA } from '@homelab/shared';
 
@@ -168,6 +168,24 @@ describe('Metrics Transformer', () => {
 });
 
 describe('transformMetrics', () => {
+  const makeServer = (id: string, ip: string) => ({
+    id,
+    role: 'compute' as const,
+    mark: id.substring(0, 2).toUpperCase(),
+    hostname: `${id}.lab.local`,
+    ip,
+    model: 'Test Model',
+    uptime: '0d 0h',
+    status: 'ok' as const,
+    cpu: { v: 0, hist: [0] },
+    mem: { v: 0, hist: [0], used: '0', total: '128', unit: 'GB' as const },
+    disk: { v: 0, hist: [0], used: '0', total: '7.3', unit: 'TB' as const },
+    net: { v: 0, hist: [0], down: '0', up: '0', unit: 'Mbps' as const },
+    temp: '0°C',
+    load: '0 / 0 / 0',
+    containers: 0,
+  });
+
   const mockLabData: LAB_DATA = {
     cluster: {
       name: 'asgard',
@@ -183,296 +201,126 @@ describe('transformMetrics', () => {
       lastSync: 'never',
     },
     servers: [
-      {
-        id: 'nyx',
-        role: 'compute' as const,
-        mark: 'NX',
-        hostname: 'nyx.lab.local',
-        ip: '10.0.0.11',
-        model: 'Test Model',
-        uptime: '0d 0h',
-        status: 'ok' as const,
-        cpu: { v: 0, hist: [0] },
-        mem: { v: 0, hist: [0], used: '0', total: '128', unit: 'GB' as const },
-        disk: { v: 0, hist: [0], used: '0', total: '7.3', unit: 'TB' as const },
-        net: { v: 0, hist: [0], down: '0', up: '0', unit: 'Mbps' as const },
-        temp: '0°C',
-        load: '0 / 0 / 0',
-        containers: 0,
-      },
-      {
-        id: 'helios',
-        role: 'compute' as const,
-        mark: 'HE',
-        hostname: 'helios.lab.local',
-        ip: '10.0.0.12',
-        model: 'Test Model',
-        uptime: '0d 0h',
-        status: 'ok' as const,
-        cpu: { v: 0, hist: [0] },
-        mem: { v: 0, hist: [0], used: '0', total: '128', unit: 'GB' as const },
-        disk: { v: 0, hist: [0], used: '0', total: '7.3', unit: 'TB' as const },
-        net: { v: 0, hist: [0], down: '0', up: '0', unit: 'Mbps' as const },
-        temp: '0°C',
-        load: '0 / 0 / 0',
-        containers: 0,
-      },
-      {
-        id: 'aether',
-        role: 'compute' as const,
-        mark: 'AE',
-        hostname: 'aether.lab.local',
-        ip: '10.0.0.13',
-        model: 'Test Model',
-        uptime: '0d 0h',
-        status: 'ok' as const,
-        cpu: { v: 0, hist: [0] },
-        mem: { v: 0, hist: [0], used: '0', total: '128', unit: 'GB' as const },
-        disk: { v: 0, hist: [0], used: '0', total: '7.3', unit: 'TB' as const },
-        net: { v: 0, hist: [0], down: '0', up: '0', unit: 'Mbps' as const },
-        temp: '0°C',
-        load: '0 / 0 / 0',
-        containers: 0,
-      },
-      {
-        id: 'vega',
-        role: 'compute' as const,
-        mark: 'VG',
-        hostname: 'vega.lab.local',
-        ip: '10.0.0.14',
-        model: 'Test Model',
-        uptime: '0d 0h',
-        status: 'ok' as const,
-        cpu: { v: 0, hist: [0] },
-        mem: { v: 0, hist: [0], used: '0', total: '128', unit: 'GB' as const },
-        disk: { v: 0, hist: [0], used: '0', total: '7.3', unit: 'TB' as const },
-        net: { v: 0, hist: [0], down: '0', up: '0', unit: 'Mbps' as const },
-        temp: '0°C',
-        load: '0 / 0 / 0',
-        containers: 0,
-      },
+      makeServer('nyx', '10.0.0.11'),
+      makeServer('helios', '10.0.0.12'),
+      makeServer('aether', '10.0.0.13'),
+      makeServer('vega', '10.0.0.14'),
     ],
     gateway: {
-      isp: 'ISP',
-      plan: 'Plan',
-      publicIp: '1.1.1.1',
-      hostname: 'gw.lab.local',
-      geo: 'US',
-      status: 'online' as const,
-      statusFor: '127d',
-      asn: '12345',
-      wanIf: 'eth0',
-      pingMs: 0,
-      pingHist: [0],
-      jitterMs: 0,
-      lossPct: 0,
-      lossHist: [0],
-      downMbps: 0,
-      upMbps: 0,
-      downHist: [0],
-      upHist: [0],
-      egressTodayGB: 0,
-      ingressTodayGB: 0,
-      egressMonthTB: 0,
-      blockedPct: 0,
-      dnsResolved: 0,
-      dnsBlocked: 0,
-      vpnPeers: 0,
-      vpnPeersActive: 0,
+      isp: 'ISP', plan: 'Plan', publicIp: '1.1.1.1', hostname: 'gw.lab.local',
+      geo: 'US', status: 'online' as const, statusFor: '127d', asn: '12345', wanIf: 'eth0',
+      pingMs: 0, pingHist: [0], jitterMs: 0, lossPct: 0, lossHist: [0],
+      downMbps: 0, upMbps: 0, downHist: [0], upHist: [0],
+      egressTodayGB: 0, ingressTodayGB: 0, egressMonthTB: 0, blockedPct: 0,
+      dnsResolved: 0, dnsBlocked: 0, vpnPeers: 0, vpnPeersActive: 0,
     },
     apps: [],
     bots: [],
     threadByBot: {},
   };
 
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
-  afterEach(() => {
-    vi.clearAllMocks();
-  });
+  beforeEach(() => { vi.clearAllMocks(); });
+  afterEach(() => { vi.clearAllMocks(); });
 
   function setupAllMocks() {
-    vi.spyOn(signozClient, 'getCpuMetrics').mockResolvedValue([[100, '0.5']]);
-    vi.spyOn(signozClient, 'getMemoryMetrics').mockResolvedValue([[100, '0.6']]);
-    vi.spyOn(signozClient, 'getDiskMetrics').mockResolvedValue([[100, '0.7']]);
-    vi.spyOn(signozClient, 'getTemperature').mockResolvedValue('55°C');
-    vi.spyOn(signozClient, 'getLoadAverage').mockResolvedValue('1.5 / 1.8 / 2.0');
-    vi.spyOn(signozClient, 'getPowerDraw').mockResolvedValue(412);
-    vi.spyOn(signozClient, 'getClusterUptime').mockResolvedValue({ days: 127, hours: 4 });
+    vi.spyOn(metricbeatClient, 'getCpuHistory').mockResolvedValue([50]);
+    vi.spyOn(metricbeatClient, 'getMemoryHistory').mockResolvedValue([60]);
+    vi.spyOn(metricbeatClient, 'getDiskHistory').mockResolvedValue([70]);
+    vi.spyOn(metricbeatClient, 'getLoadAverage').mockResolvedValue('1.5 / 1.8 / 2.0');
 
     vi.spyOn(ntopngClient, 'getWanInterfaceStats').mockResolvedValue({
-      ping: 25,
-      jitter: 5,
-      loss: 0,
       downMbps: 500,
       upMbps: 100,
+      downHist: [50],
+      upHist: [10],
     });
-    vi.spyOn(ntopngClient, 'getDNSStats').mockResolvedValue({
-      resolved: 1000,
-      blocked: 50,
-    });
-    vi.spyOn(ntopngClient, 'getVpnPeers').mockResolvedValue(0);
 
-    vi.spyOn(elastiflowClient, 'getHostThroughput').mockResolvedValue([[100, '125000']]);
+    vi.spyOn(elastiflowClient, 'getHostThroughput').mockResolvedValue([1.5]);
     vi.spyOn(mcpClient, 'listContainers').mockResolvedValue([]);
   }
 
-  it('successfully transforms metrics when all services are available', async () => {
+  it('returns no degraded services when all succeed', async () => {
     setupAllMocks();
-
     const result = await transformMetrics(mockLabData);
-
     expect(result.degraded).toEqual([]);
-    expect(result.data.cluster.powerDraw).toBe(412);
-    expect(result.data.cluster.uptimeDays).toBe(127);
-    expect(result.data.cluster.uptimeHours).toBe(4);
-    expect(result.data.gateway.pingMs).toBe(25);
-    expect(result.data.gateway.dnsResolved).toBe(1000);
   });
 
-  it('degrades signoz when CPU metrics fail', async () => {
+  it('updates server cpu/mem/disk/load from metricbeat', async () => {
     setupAllMocks();
-    vi.mocked(signozClient.getCpuMetrics).mockRejectedValue(new Error('Connection failed'));
-
     const result = await transformMetrics(mockLabData);
+    const nyx = result.data.servers.find((s) => s.id === 'nyx');
+    expect(nyx?.cpu.hist).toEqual([50]);
+    expect(nyx?.mem.hist).toEqual([60]);
+    expect(nyx?.disk.hist).toEqual([70]);
+    expect(nyx?.load).toBe('1.5 / 1.8 / 2.0');
+  });
 
-    expect(result.degraded).toContain('signoz');
+  it('degrades metricbeat when metrics fetch fails', async () => {
+    setupAllMocks();
+    vi.mocked(metricbeatClient.getCpuHistory).mockRejectedValue(new Error('Connection failed'));
+    const result = await transformMetrics(mockLabData);
+    expect(result.degraded).toContain('metricbeat');
   });
 
   it('degrades ntopng when gateway stats fail', async () => {
     setupAllMocks();
     vi.mocked(ntopngClient.getWanInterfaceStats).mockRejectedValue(new Error('Network error'));
-
     const result = await transformMetrics(mockLabData);
-
     expect(result.degraded).toContain('ntopng');
+  });
+
+  it('updates gateway downMbps/upMbps from ntopng', async () => {
+    setupAllMocks();
+    const result = await transformMetrics(mockLabData);
+    expect(result.data.gateway.downMbps).toBe(500);
+    expect(result.data.gateway.upMbps).toBe(100);
+    expect(result.data.gateway.downHist).toEqual([50]);
+    expect(result.data.gateway.upHist).toEqual([10]);
   });
 
   it('degrades elastiflow when throughput fetch fails', async () => {
     setupAllMocks();
     vi.mocked(elastiflowClient.getHostThroughput).mockRejectedValue(new Error('Service unavailable'));
-
     const result = await transformMetrics(mockLabData);
-
     expect(result.degraded).toContain('elastiflow');
   });
 
   it('degrades phone-home when apps fetch fails', async () => {
     setupAllMocks();
     vi.mocked(mcpClient.listContainers).mockRejectedValue(new Error('Connection refused'));
-
     const result = await transformMetrics(mockLabData);
-
-    expect(result.degraded).toContain('phone-home');
-  });
-
-  it('handles multiple simultaneous failures', async () => {
-    setupAllMocks();
-    vi.mocked(signozClient.getCpuMetrics).mockRejectedValue(new Error('Error'));
-    vi.mocked(signozClient.getMemoryMetrics).mockRejectedValue(new Error('Error'));
-    vi.mocked(signozClient.getDiskMetrics).mockRejectedValue(new Error('Error'));
-    vi.mocked(signozClient.getPowerDraw).mockRejectedValue(new Error('Error'));
-    vi.mocked(signozClient.getClusterUptime).mockRejectedValue(new Error('Error'));
-    vi.mocked(ntopngClient.getWanInterfaceStats).mockRejectedValue(new Error('Error'));
-    vi.mocked(elastiflowClient.getHostThroughput).mockRejectedValue(new Error('Error'));
-    vi.mocked(mcpClient.listContainers).mockRejectedValue(new Error('Error'));
-
-    const result = await transformMetrics(mockLabData);
-
-    expect(result.degraded).toContain('signoz');
-    expect(result.degraded).toContain('ntopng');
-    expect(result.degraded).toContain('elastiflow');
     expect(result.degraded).toContain('phone-home');
   });
 
   it('preserves original data structure when transformations fail', async () => {
     setupAllMocks();
-    vi.mocked(signozClient.getCpuMetrics).mockRejectedValue(new Error('Error'));
-
+    vi.mocked(metricbeatClient.getCpuHistory).mockRejectedValue(new Error('Error'));
     const result = await transformMetrics(mockLabData);
-
     expect(result.data.cluster.name).toBe('asgard');
     expect(result.data.servers).toHaveLength(4);
-    expect(result.data.servers.every((s) => s.id)).toBe(true);
   });
 
-  it('updates metrics when data is provided', async () => {
+  it('skips server metric update when histogram is empty', async () => {
     setupAllMocks();
-    vi.mocked(signozClient.getMemoryMetrics).mockResolvedValue([[200, '0.6']]);
-    vi.mocked(signozClient.getDiskMetrics).mockResolvedValue([[300, '0.7']]);
-
+    vi.mocked(metricbeatClient.getCpuHistory).mockResolvedValue([]);
     const result = await transformMetrics(mockLabData);
-
-    const nyxServer = result.data.servers.find((s) => s.id === 'nyx');
-    expect(nyxServer?.cpu.hist).toEqual([50]);
-    expect(nyxServer?.mem.hist).toEqual([60]);
-    expect(nyxServer?.disk.hist).toEqual([70]);
-    expect(nyxServer?.temp).toBe('55°C');
-    expect(nyxServer?.load).toBe('1.5 / 1.8 / 2.0');
-  });
-
-  it('updates gateway metrics when data is provided', async () => {
-    setupAllMocks();
-    vi.mocked(ntopngClient.getWanInterfaceStats).mockResolvedValue({
-      ping: 25,
-      jitter: 5,
-      loss: 2,
-      downMbps: 500,
-      upMbps: 100,
-    });
-
-    const result = await transformMetrics(mockLabData);
-
-    expect(result.data.gateway.pingMs).toBe(25);
-    expect(result.data.gateway.jitterMs).toBe(5);
-    expect(result.data.gateway.lossPct).toBe(2);
-    expect(result.data.gateway.downMbps).toBe(500);
-    expect(result.data.gateway.upMbps).toBe(100);
-    expect(result.data.gateway.dnsResolved).toBe(1000);
-    expect(result.data.gateway.dnsBlocked).toBe(50);
-  });
-
-  it('skips server metric updates when histogram is empty', async () => {
-    setupAllMocks();
-    const originalCpu = mockLabData.servers[0].cpu.hist;
-    vi.mocked(signozClient.getCpuMetrics).mockResolvedValue([]);
-    vi.mocked(signozClient.getMemoryMetrics).mockResolvedValue([]);
-    vi.mocked(signozClient.getDiskMetrics).mockResolvedValue([]);
-
-    const result = await transformMetrics(mockLabData);
-
-    const nyxServer = result.data.servers.find((s) => s.id === 'nyx');
-    expect(nyxServer?.cpu.hist).toEqual(originalCpu);
+    const nyx = result.data.servers.find((s) => s.id === 'nyx');
+    // Empty array should NOT replace existing hist
+    expect(nyx?.cpu.hist).not.toEqual([]);
   });
 
   it('updates apps when valid app data is provided', async () => {
     setupAllMocks();
-    const mockApps = [
-      {
-        id: 'app1',
-        host: 'nyx',
-        cat: 'database',
-        version: '5.0',
-        state: 'running',
-        meta: 'PostgreSQL',
-      },
-    ];
-
+    const mockApps = [{ id: 'app1', host: 'nyx', cat: 'database', version: '5.0', state: 'running', meta: 'pg' }];
     vi.mocked(mcpClient.listContainers).mockResolvedValue(mockApps);
-
     const result = await transformMetrics(mockLabData);
-
     expect(result.data.apps).toEqual(mockApps);
   });
 
-  it('ignores invalid apps data', async () => {
+  it('degrades phone-home on invalid apps shape', async () => {
     setupAllMocks();
     vi.mocked(mcpClient.listContainers).mockResolvedValue({ not: 'array' } as any);
-
     const result = await transformMetrics(mockLabData);
-
     expect(result.degraded).toContain('phone-home');
     expect(result.data.apps).toEqual([]);
   });

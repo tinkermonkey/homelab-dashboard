@@ -1,27 +1,10 @@
 import { config } from '../config.js';
 import { fetchWithTimeout } from '../utils/fetch-with-timeout.js';
 
-export interface NtopngInterface {
-  name: string;
-  stats: {
-    bytes_sent: number;
-    bytes_rcvd: number;
-    packets_sent: number;
-    packets_rcvd: number;
-    drops: number;
-  };
-}
-
-export interface NtopngHost {
-  ip: string;
-  name: string;
-  bytes_sent: number;
-  bytes_rcvd: number;
-  packets_sent: number;
-  packets_rcvd: number;
-}
-
 const API_V2 = '/lua/rest/v2';
+
+// ifid=2 is enp0s25, the primary LAN/WAN interface on t5610
+const WAN_IFID = 2;
 
 export class NtopngClient {
   private baseUrl: string;
@@ -72,53 +55,27 @@ export class NtopngClient {
   }
 
   async getWanInterfaceStats(): Promise<{
-    ping: number;
-    jitter: number;
-    loss: number;
     downMbps: number;
     upMbps: number;
+    downHist: number[];
+    upHist: number[];
   }> {
-    const iface = await this.fetch(`${API_V2}/get/interface/data.lua`, { ifid: 0 }) as Record<string, unknown>;
+    const iface = await this.fetch(`${API_V2}/get/interface/data.lua`, { ifid: WAN_IFID }) as Record<string, unknown>;
+
+    const chart = iface.download_upload_chart as { download?: number[]; upload?: number[] } | undefined;
+    const downHist = chart?.download ?? [];
+    const upHist = chart?.upload ?? [];
+
+    // chart values are in Kbps; convert last value to Mbps for current throughput
+    const downMbps = downHist.length > 0 ? this.toNumber(downHist[downHist.length - 1]) / 1000 : 0;
+    const upMbps = upHist.length > 0 ? this.toNumber(upHist[upHist.length - 1]) / 1000 : 0;
+
     return {
-      ping: this.toNumber(iface.ping),
-      jitter: this.toNumber(iface.jitter),
-      loss: this.toNumber(iface.loss),
-      downMbps: this.toNumber(iface.throughput_bps_down) / 1_000_000,
-      upMbps: this.toNumber(iface.throughput_bps_up) / 1_000_000,
+      downMbps: Math.round(downMbps * 100) / 100,
+      upMbps: Math.round(upMbps * 100) / 100,
+      downHist: downHist.map((v) => this.toNumber(v)),
+      upHist: upHist.map((v) => this.toNumber(v)),
     };
-  }
-
-  async getWanPing(): Promise<number> {
-    return (await this.getWanInterfaceStats()).ping;
-  }
-
-  async getWanJitter(): Promise<number> {
-    return (await this.getWanInterfaceStats()).jitter;
-  }
-
-  async getWanLoss(): Promise<number> {
-    return (await this.getWanInterfaceStats()).loss;
-  }
-
-  async getDNSStats(): Promise<{ resolved: number; blocked: number }> {
-    const data = await this.fetch(`${API_V2}/get/dns/stats.lua`) as Record<string, unknown>;
-    return {
-      resolved: this.toNumber(data.dns_resolved),
-      blocked: this.toNumber(data.dns_blocked),
-    };
-  }
-
-  async getVpnPeers(): Promise<number> {
-    const data = await this.fetch(`${API_V2}/get/vpn/peers.lua`);
-    if (!Array.isArray(data)) {
-      throw new Error('Invalid VPN peers format');
-    }
-    return data.length;
-  }
-
-  async getThroughput(): Promise<{ down: number; up: number }> {
-    const stats = await this.getWanInterfaceStats();
-    return { down: stats.downMbps, up: stats.upMbps };
   }
 }
 
