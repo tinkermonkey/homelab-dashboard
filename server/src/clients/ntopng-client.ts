@@ -21,50 +21,45 @@ export interface NtopngHost {
   packets_rcvd: number;
 }
 
+const API_V2 = '/lua/rest/v2';
+
 export class NtopngClient {
   private baseUrl: string;
-  private user: string;
-  private password: string;
+  private token: string;
 
   constructor(
     baseUrl: string = config.ntopngUrl,
-    user: string = config.ntopngUser,
-    password: string = config.ntopngPassword
+    token: string = config.ntopngToken
   ) {
     this.baseUrl = baseUrl.replace(/\/$/, '');
-    this.user = user;
-    this.password = password;
+    this.token = token;
   }
 
-  private async fetchWithAuth(path: string): Promise<unknown> {
-    const auth = Buffer.from(`${this.user}:${this.password}`).toString('base64');
-    const url = `${this.baseUrl}${path}`;
+  private async fetch(path: string, params: Record<string, string | number> = {}): Promise<unknown> {
+    const url = new URL(`${this.baseUrl}${path}`);
+    url.searchParams.set('token', this.token);
+    for (const [k, v] of Object.entries(params)) {
+      url.searchParams.set(k, String(v));
+    }
 
     try {
-      const response = await fetchWithTimeout(url, {
-        headers: {
-          Authorization: `Basic ${auth}`,
-        },
-        timeout: 10000,
-      });
+      const response = await fetchWithTimeout(url.toString(), { timeout: 10000 });
 
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
 
-      return await response.json();
+      const data = await response.json() as Record<string, unknown>;
+
+      // ntopng REST v2 envelope: {"rc": 0, "rc_str": "OK", "rsp": <payload>}
+      if ('rsp' in data) {
+        return data.rsp;
+      }
+      return data;
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
       throw new Error(`ntopng request failed: ${message}`);
     }
-  }
-
-  private async getInterfaceData(): Promise<Record<string, unknown>> {
-    const data = await this.fetchWithAuth('/lua/get_interface_data.lua?ifid=0');
-    if (!data || typeof data !== 'object') {
-      throw new Error('Invalid interface data format');
-    }
-    return data as Record<string, unknown>;
   }
 
   private toNumber(value: unknown, fallback = 0): number {
@@ -76,49 +71,6 @@ export class NtopngClient {
     return fallback;
   }
 
-  async getWanPing(): Promise<number> {
-    const iface = await this.getInterfaceData();
-    return this.toNumber(iface.ping);
-  }
-
-  async getWanJitter(): Promise<number> {
-    const iface = await this.getInterfaceData();
-    return this.toNumber(iface.jitter);
-  }
-
-  async getWanLoss(): Promise<number> {
-    const iface = await this.getInterfaceData();
-    return this.toNumber(iface.loss);
-  }
-
-  async getDNSStats(): Promise<{ resolved: number; blocked: number }> {
-    const data = await this.fetchWithAuth('/lua/get_dns_stats.lua');
-    if (!data || typeof data !== 'object') {
-      throw new Error('Invalid DNS stats format');
-    }
-    const stats = data as Record<string, unknown>;
-    return {
-      resolved: this.toNumber(stats.dns_resolved),
-      blocked: this.toNumber(stats.dns_blocked),
-    };
-  }
-
-  async getVpnPeers(): Promise<number> {
-    const data = await this.fetchWithAuth('/lua/get_vpn_peers.lua');
-    if (!Array.isArray(data)) {
-      throw new Error('Invalid VPN peers format');
-    }
-    return data.length;
-  }
-
-  async getThroughput(): Promise<{ down: number; up: number }> {
-    const iface = await this.getInterfaceData();
-    return {
-      down: this.toNumber(iface.throughput_down),
-      up: this.toNumber(iface.throughput_up),
-    };
-  }
-
   async getWanInterfaceStats(): Promise<{
     ping: number;
     jitter: number;
@@ -126,14 +78,47 @@ export class NtopngClient {
     downMbps: number;
     upMbps: number;
   }> {
-    const iface = await this.getInterfaceData();
+    const iface = await this.fetch(`${API_V2}/get/interface/data.lua`, { ifid: 0 }) as Record<string, unknown>;
     return {
       ping: this.toNumber(iface.ping),
       jitter: this.toNumber(iface.jitter),
       loss: this.toNumber(iface.loss),
-      downMbps: this.toNumber(iface.throughput_down),
-      upMbps: this.toNumber(iface.throughput_up),
+      downMbps: this.toNumber(iface.throughput_bps_down) / 1_000_000,
+      upMbps: this.toNumber(iface.throughput_bps_up) / 1_000_000,
     };
+  }
+
+  async getWanPing(): Promise<number> {
+    return (await this.getWanInterfaceStats()).ping;
+  }
+
+  async getWanJitter(): Promise<number> {
+    return (await this.getWanInterfaceStats()).jitter;
+  }
+
+  async getWanLoss(): Promise<number> {
+    return (await this.getWanInterfaceStats()).loss;
+  }
+
+  async getDNSStats(): Promise<{ resolved: number; blocked: number }> {
+    const data = await this.fetch(`${API_V2}/get/dns/stats.lua`) as Record<string, unknown>;
+    return {
+      resolved: this.toNumber(data.dns_resolved),
+      blocked: this.toNumber(data.dns_blocked),
+    };
+  }
+
+  async getVpnPeers(): Promise<number> {
+    const data = await this.fetch(`${API_V2}/get/vpn/peers.lua`);
+    if (!Array.isArray(data)) {
+      throw new Error('Invalid VPN peers format');
+    }
+    return data.length;
+  }
+
+  async getThroughput(): Promise<{ down: number; up: number }> {
+    const stats = await this.getWanInterfaceStats();
+    return { down: stats.downMbps, up: stats.upMbps };
   }
 }
 

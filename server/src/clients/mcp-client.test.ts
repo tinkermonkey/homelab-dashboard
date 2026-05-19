@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { MCPClient } from './mcp-client.js';
-import { config } from '../config.js';
 
 describe('MCPClient', () => {
   beforeEach(() => {
@@ -11,201 +10,154 @@ describe('MCPClient', () => {
     vi.clearAllMocks();
   });
 
-  describe('call method', () => {
-    it('successfully calls MCP method with result', async () => {
-      const mockResponse = {
-        jsonrpc: '2.0' as const,
-        id: 1,
-        result: { data: 'test' },
-      };
+  const successResponse = (result: unknown) => ({
+    ok: true,
+    json: async () => ({
+      server: 'homelab-data',
+      tool: 'test_tool',
+      is_error: false,
+      content: [],
+      structured_content: result,
+    }),
+  });
 
-      global.fetch = vi.fn().mockResolvedValue({
-        ok: true,
-        json: async () => mockResponse,
-      });
+  describe('callTool', () => {
+    it('returns structured_content on success', async () => {
+      global.fetch = vi.fn().mockResolvedValue(successResponse({ data: 'test' }));
 
-      const client = new MCPClient();
-      const result = await client.call('test_method');
+      const client = new MCPClient('http://localhost:8000', 'my-token');
+      const result = await client.callTool('homelab-data', 'my_tool');
 
       expect(result).toEqual({ data: 'test' });
-      expect(global.fetch).toHaveBeenCalledTimes(1);
     });
 
-    it('sends correct request structure', async () => {
-      const mockResponse = {
-        jsonrpc: '2.0' as const,
-        id: 1,
-        result: null,
-      };
-
-      const fetchMock = vi.fn().mockResolvedValue({
-        ok: true,
-        json: async () => mockResponse,
-      });
+    it('builds correct REST URL', async () => {
+      const fetchMock = vi.fn().mockResolvedValue(successResponse(null));
       global.fetch = fetchMock;
 
-      const client = new MCPClient('http://localhost:8000/mcp');
-      await client.call('test_method', { param1: 'value1' });
+      const client = new MCPClient('http://localhost:8000', 'tok');
+      await client.callTool('my-server', 'my-tool', { foo: 'bar' });
 
-      const callArgs = fetchMock.mock.calls[0];
-      expect(callArgs[0]).toBe('http://localhost:8000/mcp');
-      expect(callArgs[1]).toBeDefined();
-
-      const requestBody = JSON.parse(callArgs[1].body);
-      expect(requestBody.jsonrpc).toBe('2.0');
-      expect(requestBody.method).toBe('test_method');
-      expect(requestBody.params).toEqual({ param1: 'value1' });
+      const [url, opts] = fetchMock.mock.calls[0];
+      expect(url).toBe('http://localhost:8000/v1/servers/my-server/tools/my-tool');
+      expect(JSON.parse(opts.body)).toEqual({ arguments: { foo: 'bar' } });
     });
 
-    it('throws error when response is not ok', async () => {
-      global.fetch = vi.fn().mockResolvedValue({
-        ok: false,
-        status: 404,
-        statusText: 'Not Found',
-      });
+    it('sends bearer auth header', async () => {
+      const fetchMock = vi.fn().mockResolvedValue(successResponse(null));
+      global.fetch = fetchMock;
 
-      const client = new MCPClient();
+      const client = new MCPClient('http://localhost:8000', 'secret-token');
+      await client.callTool('s', 't');
 
-      await expect(client.call('missing_method')).rejects.toThrow(
-        /MCP call failed \(missing_method\).*HTTP 404/
-      );
+      const [, opts] = fetchMock.mock.calls[0];
+      expect(opts.headers['Authorization']).toBe('Bearer secret-token');
     });
 
-    it('throws error when MCP response contains error', async () => {
-      const mockResponse = {
-        jsonrpc: '2.0' as const,
-        id: 1,
-        error: {
-          code: -32600,
-          message: 'Invalid Request',
-        },
-      };
+    it('omits auth header when no token configured', async () => {
+      const fetchMock = vi.fn().mockResolvedValue(successResponse(null));
+      global.fetch = fetchMock;
 
-      global.fetch = vi.fn().mockResolvedValue({
-        ok: true,
-        json: async () => mockResponse,
-      });
+      const client = new MCPClient('http://localhost:8000', '');
+      await client.callTool('s', 't');
 
-      const client = new MCPClient();
-
-      await expect(client.call('bad_method')).rejects.toThrow(
-        /MCP call failed \(bad_method\).*MCP Error: Invalid Request/
-      );
+      const [, opts] = fetchMock.mock.calls[0];
+      expect(opts.headers['Authorization']).toBeUndefined();
     });
 
-    it('throws error when fetch fails', async () => {
-      global.fetch = vi.fn().mockRejectedValue(new Error('Network error'));
-
-      const client = new MCPClient();
-
-      await expect(client.call('unreachable_method')).rejects.toThrow(
-        /MCP call failed \(unreachable_method\)/
-      );
-    });
-
-    it('throws error with helpful message for timeout', async () => {
-      global.fetch = vi.fn().mockRejectedValue(new Error('fetch failed'));
-
-      const client = new MCPClient();
-
-      await expect(client.call('slow_method')).rejects.toThrow(
-        'MCP call failed (slow_method)'
-      );
-    });
-
-    it('handles response with no body', async () => {
+    it('falls back to content array when structured_content is null', async () => {
       global.fetch = vi.fn().mockResolvedValue({
         ok: true,
         json: async () => ({
-          jsonrpc: '2.0',
-          id: 1,
+          server: 's', tool: 't', is_error: false,
+          content: [{ text: 'hello' }],
+          structured_content: null,
         }),
       });
 
       const client = new MCPClient();
-      const result = await client.call('method_with_no_result');
-
-      expect(result).toBeUndefined();
+      const result = await client.callTool('s', 't');
+      expect(result).toEqual([{ text: 'hello' }]);
     });
 
-    it('constructs unique IDs for each call', async () => {
-      const mockResponse = {
-        jsonrpc: '2.0' as const,
-        result: null,
-      };
-
-      const fetchMock = vi.fn().mockResolvedValue({
+    it('throws when is_error is true', async () => {
+      global.fetch = vi.fn().mockResolvedValue({
         ok: true,
-        json: async () => mockResponse,
+        json: async () => ({
+          server: 's', tool: 't', is_error: true,
+          content: [{ text: 'something went wrong' }],
+        }),
       });
-      global.fetch = fetchMock;
 
       const client = new MCPClient();
-      await client.call('method1');
-      await client.call('method2');
-
-      const call1Body = JSON.parse(fetchMock.mock.calls[0][1].body);
-      const call2Body = JSON.parse(fetchMock.mock.calls[1][1].body);
-
-      expect(call1Body.id).toContain('method1');
-      expect(call2Body.id).toContain('method2');
-      expect(call1Body.id).not.toBe(call2Body.id);
+      await expect(client.callTool('s', 't')).rejects.toThrow(/Tool error.*something went wrong/);
     });
 
-    it('uses custom base URL', async () => {
-      const fetchMock = vi.fn().mockResolvedValue({
-        ok: true,
-        json: async () => ({ jsonrpc: '2.0', id: 1, result: null }),
+    it('throws on HTTP error', async () => {
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: false, status: 401, statusText: 'Unauthorized',
       });
-      global.fetch = fetchMock;
-
-      const customUrl = 'http://custom-endpoint:9000/mcp';
-      const client = new MCPClient(customUrl);
-      await client.call('test');
-
-      expect(fetchMock.mock.calls[0][0]).toBe(customUrl);
-    });
-  });
-
-  describe('Error scenarios', () => {
-    it('preserves original error message in stack', async () => {
-      global.fetch = vi.fn().mockRejectedValue(
-        new Error('Connection refused')
-      );
 
       const client = new MCPClient();
-
-      try {
-        await client.call('test');
-        expect.fail('Should have thrown');
-      } catch (error) {
-        const message = (error as Error).message;
-        expect(message).toContain('Connection refused');
-      }
+      await expect(client.callTool('s', 't')).rejects.toThrow(/HTTP 401/);
     });
 
-    it('handles non-Error thrown objects', async () => {
+    it('throws on network failure', async () => {
+      global.fetch = vi.fn().mockRejectedValue(new Error('Connection refused'));
+
+      const client = new MCPClient();
+      await expect(client.callTool('s', 't')).rejects.toThrow(/Connection refused/);
+    });
+
+    it('wraps non-Error throws', async () => {
       global.fetch = vi.fn().mockRejectedValue('string error');
 
       const client = new MCPClient();
-
-      await expect(client.call('test')).rejects.toThrow(
-        /MCP call failed \(test\): Unknown error/
-      );
+      await expect(client.callTool('s', 't')).rejects.toThrow(/Unknown error/);
     });
 
-    it('handles HTTP 500 errors with proper messaging', async () => {
+    it('handles HTTP 500 errors', async () => {
       global.fetch = vi.fn().mockResolvedValue({
-        ok: false,
-        status: 500,
-        statusText: 'Internal Server Error',
+        ok: false, status: 500, statusText: 'Internal Server Error',
       });
 
       const client = new MCPClient();
+      await expect(client.callTool('s', 't')).rejects.toThrow(/HTTP 500/);
+    });
+  });
 
-      await expect(client.call('failing_method')).rejects.toThrow(
-        /HTTP 500/
-      );
+  describe('convenience methods', () => {
+    it('getDockerInventory calls homelab-data/list_containers', async () => {
+      const fetchMock = vi.fn().mockResolvedValue(successResponse([]));
+      global.fetch = fetchMock;
+
+      const client = new MCPClient('http://localhost:8000', 'tok');
+      await client.getDockerInventory();
+
+      const [url] = fetchMock.mock.calls[0];
+      expect(url).toContain('/v1/servers/homelab-data/tools/list_containers');
+    });
+
+    it('listContainers calls homelab-data/list_containers', async () => {
+      const fetchMock = vi.fn().mockResolvedValue(successResponse([]));
+      global.fetch = fetchMock;
+
+      const client = new MCPClient('http://localhost:8000', 'tok');
+      await client.listContainers();
+
+      const [url] = fetchMock.mock.calls[0];
+      expect(url).toContain('/v1/servers/homelab-data/tools/list_containers');
+    });
+
+    it('getTopologyData calls homelab-data/list_bots', async () => {
+      const fetchMock = vi.fn().mockResolvedValue(successResponse([]));
+      global.fetch = fetchMock;
+
+      const client = new MCPClient('http://localhost:8000', 'tok');
+      await client.getTopologyData();
+
+      const [url] = fetchMock.mock.calls[0];
+      expect(url).toContain('/v1/servers/homelab-data/tools/list_bots');
     });
   });
 });

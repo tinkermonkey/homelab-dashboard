@@ -1,46 +1,43 @@
 import { config } from '../config.js';
 import { fetchWithTimeout } from '../utils/fetch-with-timeout.js';
 
-interface MCPRequest {
-  jsonrpc: '2.0';
-  id: string | number;
-  method: string;
-  params?: Record<string, unknown>;
-}
-
-interface MCPResponse {
-  jsonrpc: '2.0';
-  id: string | number;
-  result?: unknown;
-  error?: {
-    code: number;
-    message: string;
-    data?: unknown;
-  };
+// phone-home REST API: POST /v1/servers/{server}/tools/{tool}
+// Docs: ../../../phone-home/docs/openapi.json
+interface InvokeResponse {
+  server: string;
+  tool: string;
+  is_error: boolean;
+  content: Array<Record<string, unknown>>;
+  structured_content?: Record<string, unknown> | null;
 }
 
 export class MCPClient {
   private baseUrl: string;
+  private token: string;
 
-  constructor(baseUrl: string = config.phoneHomeMcpUrl) {
-    this.baseUrl = baseUrl;
+  constructor(
+    baseUrl: string = config.phoneHomeUrl,
+    token: string = config.phoneHomeChatToken
+  ) {
+    this.baseUrl = baseUrl.replace(/\/$/, '');
+    this.token = token;
   }
 
-  async call(method: string, params?: Record<string, unknown>): Promise<unknown> {
-    const request: MCPRequest = {
-      jsonrpc: '2.0',
-      id: `${method}-${Date.now()}`,
-      method,
-      params,
+  private getHeaders(): Record<string, string> {
+    return {
+      'Content-Type': 'application/json',
+      ...(this.token ? { Authorization: `Bearer ${this.token}` } : {}),
     };
+  }
+
+  async callTool(server: string, tool: string, args: Record<string, unknown> = {}): Promise<unknown> {
+    const url = `${this.baseUrl}/v1/servers/${encodeURIComponent(server)}/tools/${encodeURIComponent(tool)}`;
 
     try {
-      const response = await fetchWithTimeout(this.baseUrl, {
+      const response = await fetchWithTimeout(url, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(request),
+        headers: this.getHeaders(),
+        body: JSON.stringify({ arguments: args }),
         timeout: 15000,
       });
 
@@ -48,70 +45,31 @@ export class MCPClient {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
 
-      const data = (await response.json()) as MCPResponse;
+      const data = (await response.json()) as InvokeResponse;
 
-      if (data.error) {
-        throw new Error(`MCP Error: ${data.error.message}`);
+      if (data.is_error) {
+        const msg = data.content.map(c => c.text ?? JSON.stringify(c)).join(' ');
+        throw new Error(`Tool error: ${msg}`);
       }
 
-      return data.result;
+      // Prefer structured_content when available, fall back to raw content array
+      return data.structured_content ?? data.content;
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
-      throw new Error(`MCP call failed (${method}): ${message}`);
+      throw new Error(`MCP tool call failed (${server}/${tool}): ${message}`);
     }
   }
 
-  // Fetch Docker inventory data
   async getDockerInventory(): Promise<unknown> {
-    return this.callTool('DOCKER_DATA');
+    return this.callTool('homelab-data', 'list_containers');
   }
 
-  // Fetch bot topology data
   async getTopologyData(): Promise<unknown> {
-    return this.callTool('TOPOLOGY_DATA');
+    return this.callTool('homelab-data', 'list_bots');
   }
 
-  // Fetch list of running containers across the cluster
   async listContainers(): Promise<unknown> {
-    return this.callTool('list_containers');
-  }
-
-  private async callTool(toolName: string, params?: Record<string, unknown>): Promise<unknown> {
-    const request: MCPRequest = {
-      jsonrpc: '2.0',
-      id: `${toolName}-${Date.now()}`,
-      method: 'tools/call',
-      params: {
-        name: toolName,
-        arguments: params || {},
-      },
-    };
-
-    try {
-      const response = await fetchWithTimeout(this.baseUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(request),
-        timeout: 15000,
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-
-      const data = (await response.json()) as MCPResponse;
-
-      if (data.error) {
-        throw new Error(`MCP Error: ${data.error.message}`);
-      }
-
-      return data.result;
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error';
-      throw new Error(`MCP tool call failed (${toolName}): ${message}`);
-    }
+    return this.callTool('homelab-data', 'list_containers');
   }
 }
 

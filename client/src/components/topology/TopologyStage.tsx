@@ -29,9 +29,10 @@ interface TopologyStageProps {
   bots: TopologyBot[];
   selectedBotId: string;
   onSelectBot: (botId: string) => void;
+  children?: React.ReactNode;
 }
 
-export const TopologyStage: React.FC<TopologyStageProps> = ({ bots, selectedBotId, onSelectBot }) => {
+export const TopologyStage: React.FC<TopologyStageProps> = ({ bots, selectedBotId, onSelectBot, children }) => {
   const botsByHost = useMemo(() => {
     const byHost: Record<string, TopologyBot[]> = {
       nyx: [],
@@ -93,6 +94,7 @@ export const TopologyStage: React.FC<TopologyStageProps> = ({ bots, selectedBotI
         {/* Legend */}
         <TopologyLegend />
       </div>
+      {children}
     </div>
   );
 };

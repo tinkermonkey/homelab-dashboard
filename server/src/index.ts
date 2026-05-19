@@ -161,6 +161,7 @@ export async function registerRoutes(app: FastifyInstance) {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          ...(config.phoneHomeChatToken ? { Authorization: `Bearer ${config.phoneHomeChatToken}` } : {}),
         },
         body: bodyString,
         timeout: 30000,

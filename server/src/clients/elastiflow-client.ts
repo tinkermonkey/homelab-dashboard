@@ -15,9 +15,21 @@ interface PrometheusResponse {
 
 export class ElastiFlowClient {
   private baseUrl: string;
+  private authHeader: string;
 
-  constructor(baseUrl: string = config.elastiflowUrl) {
+  constructor(
+    baseUrl: string = config.elastiflowUrl,
+    user: string = config.elastiflowUser,
+    password: string = config.elastiflowPassword
+  ) {
     this.baseUrl = baseUrl.replace(/\/$/, '');
+    this.authHeader = user
+      ? `Basic ${Buffer.from(`${user}:${password}`).toString('base64')}`
+      : '';
+  }
+
+  private getHeaders(): Record<string, string> {
+    return this.authHeader ? { Authorization: this.authHeader } : {};
   }
 
   async query(query: string): Promise<PrometheusResponse> {
@@ -27,6 +39,7 @@ export class ElastiFlowClient {
     try {
       const response = await fetchWithTimeout(url.toString(), {
         method: 'GET',
+        headers: this.getHeaders(),
         timeout: 15000,
       });
 
@@ -56,6 +69,7 @@ export class ElastiFlowClient {
     try {
       const response = await fetchWithTimeout(url.toString(), {
         method: 'GET',
+        headers: this.getHeaders(),
         timeout: 15000,
       });
 

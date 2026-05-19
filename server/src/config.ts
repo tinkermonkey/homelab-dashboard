@@ -8,18 +8,19 @@ export const config = {
   signozUrl: process.env.SIGNOZ_URL || 'http://localhost:4317',
   signozApiToken: process.env.SIGNOZ_API_TOKEN || '',
 
-  // ntopng
+  // ntopng — token auth via ?token= query param
   ntopngUrl: process.env.NTOPNG_URL || 'http://localhost:3000',
-  ntopngUser: process.env.NTOPNG_USER || 'admin',
-  ntopngPassword: process.env.NTOPNG_PASSWORD || 'admin',
+  ntopngToken: process.env.NTOPNG_TOKEN || '',
 
-  // ElastiFlow
-  elastiflowUrl: process.env.ELASTIFLOW_URL || 'http://localhost:9090',
+  // ElastiFlow (Elasticsearch) — Basic auth
+  elastiflowUrl: process.env.ELASTIFLOW_URL || 'http://localhost:9200',
+  elastiflowUser: process.env.ELASTIFLOW_USER || '',
+  elastiflowPassword: process.env.ELASTIFLOW_PASSWORD || '',
 
-  // phone-home
+  // phone-home — bearer token auth for both MCP REST API and chat
   phoneHomeUrl: process.env.PHONE_HOME_URL || 'http://localhost:8000',
-  phoneHomeMcpUrl: process.env.PHONE_HOME_MCP_URL || 'http://agent:3210/mcp/',
   phoneHomeChatUrl: process.env.PHONE_HOME_CHAT_URL || 'http://localhost:8000/chat',
+  phoneHomeChatToken: process.env.PHONE_HOME_CHAT_TOKEN || '',
 
   // Logging
   logLevel: process.env.LOG_LEVEL || 'info',

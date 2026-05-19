@@ -90,8 +90,9 @@ export const TopologyView: React.FC = () => {
 
       {/* Topology Stage with Inspector */}
       <div className="topology-container">
-        <TopologyStage bots={topologyData.bots} selectedBotId={selectedBotId} onSelectBot={setSelectedBotId} />
-        <BotInspector bot={selectedBot} />
+        <TopologyStage bots={topologyData.bots} selectedBotId={selectedBotId} onSelectBot={setSelectedBotId}>
+          <BotInspector bot={selectedBot} />
+        </TopologyStage>
       </div>
     </div>
   );

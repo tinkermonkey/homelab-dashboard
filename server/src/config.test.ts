@@ -50,40 +50,40 @@ describe('config', () => {
     expect(config.signozApiToken).toBe('test-token');
   });
 
-  it('reads ntopng credentials from environment', async () => {
-    process.env.NTOPNG_USER = 'custom-user';
-    process.env.NTOPNG_PASSWORD = 'custom-pass';
+  it('reads ntopng token from environment', async () => {
+    process.env.NTOPNG_TOKEN = 'my-ntopng-token';
     vi.resetModules();
     const { config } = await import('./config.js');
-    expect(config.ntopngUser).toBe('custom-user');
-    expect(config.ntopngPassword).toBe('custom-pass');
+    expect(config.ntopngToken).toBe('my-ntopng-token');
   });
 
-  it('defaults ntopng credentials to admin/admin', async () => {
-    delete process.env.NTOPNG_USER;
-    delete process.env.NTOPNG_PASSWORD;
+  it('defaults ntopng token to empty string', async () => {
+    delete process.env.NTOPNG_TOKEN;
     vi.resetModules();
     const { config } = await import('./config.js');
-    expect(config.ntopngUser).toBe('admin');
-    expect(config.ntopngPassword).toBe('admin');
+    expect(config.ntopngToken).toBe('');
   });
 
-  it('reads ElastiFlow URL from environment', async () => {
-    process.env.ELASTIFLOW_URL = 'http://elastiflow:9090';
+  it('reads ElastiFlow credentials from environment', async () => {
+    process.env.ELASTIFLOW_URL = 'http://elastiflow:9200';
+    process.env.ELASTIFLOW_USER = 'elastic';
+    process.env.ELASTIFLOW_PASSWORD = 'secret';
     vi.resetModules();
     const { config } = await import('./config.js');
-    expect(config.elastiflowUrl).toBe('http://elastiflow:9090');
+    expect(config.elastiflowUrl).toBe('http://elastiflow:9200');
+    expect(config.elastiflowUser).toBe('elastic');
+    expect(config.elastiflowPassword).toBe('secret');
   });
 
-  it('reads phone-home URLs from environment', async () => {
+  it('reads phone-home URLs and token from environment', async () => {
     process.env.PHONE_HOME_URL = 'http://phone-home:8000';
-    process.env.PHONE_HOME_MCP_URL = 'http://phone-home:3210/mcp/';
     process.env.PHONE_HOME_CHAT_URL = 'http://phone-home:8000/chat';
+    process.env.PHONE_HOME_CHAT_TOKEN = 'my-bearer-token';
     vi.resetModules();
     const { config } = await import('./config.js');
     expect(config.phoneHomeUrl).toBe('http://phone-home:8000');
-    expect(config.phoneHomeMcpUrl).toBe('http://phone-home:3210/mcp/');
     expect(config.phoneHomeChatUrl).toBe('http://phone-home:8000/chat');
+    expect(config.phoneHomeChatToken).toBe('my-bearer-token');
   });
 
   it('reads LOG_LEVEL from environment', async () => {
@@ -102,12 +102,13 @@ describe('config', () => {
       'signozUrl',
       'signozApiToken',
       'ntopngUrl',
-      'ntopngUser',
-      'ntopngPassword',
+      'ntopngToken',
       'elastiflowUrl',
+      'elastiflowUser',
+      'elastiflowPassword',
       'phoneHomeUrl',
-      'phoneHomeMcpUrl',
       'phoneHomeChatUrl',
+      'phoneHomeChatToken',
       'logLevel',
     ];
 
