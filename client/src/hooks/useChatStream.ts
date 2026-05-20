@@ -76,16 +76,21 @@ export const useChatStream = ({ baseThread, activeBot }: UseChatStreamOptions): 
         });
 
         if (!response.ok) {
-          let errorDetail = response.statusText || 'Unknown error';
+          let errorDetail = '';
+          let errorBody = '';
           try {
-            const errorBody = await response.text();
+            errorBody = await response.text();
             const parsed = JSON.parse(errorBody);
-            errorDetail = parsed.error || parsed.message || errorDetail;
+            errorDetail = parsed.error || parsed.message || '';
           } catch {
-            // If we can't parse the body, use statusText (may be empty on HTTP/2)
-            if (!errorDetail) {
-              errorDetail = `HTTP ${response.status}`;
+            // Body wasn't parseable JSON — check if it's plain text
+            if (errorBody && errorBody.length < 200 && !errorBody.includes('<')) {
+              errorDetail = errorBody;
             }
+          }
+          // Fall back to status code if no error message was found
+          if (!errorDetail) {
+            errorDetail = response.statusText || `HTTP ${response.status}`;
           }
           const errorMsg: ThreadMessage = {
             kind: 'msg',
