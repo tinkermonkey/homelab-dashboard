@@ -1,4 +1,3 @@
-// Load environment variables from .env file
 import { config as dotenvConfig } from 'dotenv';
 dotenvConfig();
 
