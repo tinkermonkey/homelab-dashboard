@@ -74,10 +74,23 @@
 
 .topology-container {
   flex: 1;
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr 320px;
   overflow: hidden;
   border-radius: 8px;
   border: 1px solid rgb(var(--canvas-border));
+}
+
+.graph-canvas-topology {
+  background: rgb(var(--canvas-card));
+  border: none;
+  border-radius: 0;
+}
+
+.graph-inspector-topology {
+  background: rgb(var(--canvas-bg-2));
+  border-left: 1px solid rgb(var(--canvas-border));
+  border-radius: 0;
 }
 
 /* ============================================================
