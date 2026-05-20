@@ -45,6 +45,37 @@ export const TopologyView: React.FC = () => {
     );
   }, [topologyData]);
 
+  // Convert TopologyBot[] to GraphNodeData[]
+  const nodes = useMemo((): GraphNodeData[] => {
+    if (!topologyData) return [];
+    return topologyData.bots.map(bot => ({
+      id: bot.id,
+      label: bot.label,
+      kind: bot.role,
+      domainColor: HOST_TINT[bot.host],
+      x: TP_BOT_LAYOUT[bot.id]?.x,
+      y: TP_BOT_LAYOUT[bot.id]?.y,
+    }));
+  }, [topologyData]);
+
+  // Create edges for delegation relationships
+  const edges = useMemo((): GraphEdgeData[] => {
+    if (!topologyData) return [];
+    const result: GraphEdgeData[] = [];
+    const labBot = topologyData.bots.find(b => b.id === 'lab-bot');
+    if (labBot?.delegates) {
+      labBot.delegates.forEach(delegateId => {
+        result.push({
+          id: `${labBot.id}->${delegateId}`,
+          sourceId: labBot.id,
+          targetId: delegateId,
+          label: 'delegates',
+        });
+      });
+    }
+    return result;
+  }, [topologyData]);
+
   if (isLoading) {
     return (
       <div className="topology-view">
@@ -68,33 +99,6 @@ export const TopologyView: React.FC = () => {
   const selectedBot = topologyData.bots.find(b => b.id === selectedBotId) || topologyData.bots[0];
   const degraded = topologyData.degraded;
   const dataSource = topologyData.source;
-
-  // Convert TopologyBot[] to GraphNodeData[]
-  const nodes = useMemo((): GraphNodeData[] => topologyData.bots.map(bot => ({
-    id: bot.id,
-    label: bot.label,
-    kind: bot.role,
-    domainColor: HOST_TINT[bot.host],
-    x: TP_BOT_LAYOUT[bot.id]?.x,
-    y: TP_BOT_LAYOUT[bot.id]?.y,
-  })), [topologyData]);
-
-  // Create edges for delegation relationships
-  const edges = useMemo((): GraphEdgeData[] => {
-    const result: GraphEdgeData[] = [];
-    const labBot = topologyData.bots.find(b => b.id === 'lab-bot');
-    if (labBot?.delegates) {
-      labBot.delegates.forEach(delegateId => {
-        result.push({
-          id: `${labBot.id}->${delegateId}`,
-          sourceId: labBot.id,
-          targetId: delegateId,
-          label: 'delegates',
-        });
-      });
-    }
-    return result;
-  }, [topologyData]);
 
 
   // Prepare GraphInspector data
