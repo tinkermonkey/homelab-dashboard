@@ -3,6 +3,7 @@ import { PageHeader } from "@tinkermonkey/heimdall-ui";
 import { useDocker } from "../../hooks/useAPI";
 import { Icon } from "../shared/Icon";
 import { DegradationBanner } from "../shared/DegradationBanner";
+import { TabBarWithIcons, type Tab as TabWithIcon } from "./TabBarWithIcons";
 import { ContainersTab } from "./ContainersTab";
 import { NetworksTab } from "./NetworksTab";
 import { VolumesTab } from "./VolumesTab";
@@ -19,14 +20,6 @@ export const ContainersView: React.FC = () => {
 
   const totalContainers = useMemo(
     () => data?.hosts.reduce((a, h) => a + h.containers.length, 0) ?? 0,
-    [data?.hosts],
-  );
-  const runningContainers = useMemo(
-    () =>
-      data?.hosts.reduce(
-        (a, h) => a + h.containers.filter((c) => c.state === "running").length,
-        0,
-      ) ?? 0,
     [data?.hosts],
   );
   const totalNetworks = useMemo(
@@ -70,6 +63,33 @@ export const ContainersView: React.FC = () => {
       })),
     ];
   }, [data, getHostCount]);
+
+  const tabs: TabWithIcon[] = useMemo(
+    () => [
+      {
+        id: "containers",
+        label: "Containers",
+        count: totalContainers,
+        icon: "layers",
+        iconSize: 13,
+      },
+      {
+        id: "networks",
+        label: "Networks",
+        count: totalNetworks,
+        icon: "link",
+        iconSize: 13,
+      },
+      {
+        id: "volumes",
+        label: "Volumes",
+        count: totalVolumes,
+        icon: "database",
+        iconSize: 13,
+      },
+    ],
+    [totalContainers, totalNetworks, totalVolumes],
+  );
 
   if (isLoading) {
     return <div className="containers-view">Loading...</div>;
@@ -118,36 +138,11 @@ export const ContainersView: React.FC = () => {
       <DegradationBanner degraded={degraded} dataSource={dataSource} />
 
       {/* Tab Bar */}
-      <div className="tab-bar">
-        <div className="tab-bar__tabs">
-          <button
-            className={`tab-bar__tab ${activeTab === "containers" ? "tab-bar__tab--active" : ""}`}
-            onClick={() => setActiveTab("containers")}
-          >
-            <Icon name="layers" size={13} />
-            <span className="tab-bar__tab-label">Containers</span>
-            <span className="tab-bar__tab-count">
-              {runningContainers}/{totalContainers}
-            </span>
-          </button>
-          <button
-            className={`tab-bar__tab ${activeTab === "networks" ? "tab-bar__tab--active" : ""}`}
-            onClick={() => setActiveTab("networks")}
-          >
-            <Icon name="link" size={13} />
-            <span className="tab-bar__tab-label">Networks</span>
-            <span className="tab-bar__tab-count">{totalNetworks}</span>
-          </button>
-          <button
-            className={`tab-bar__tab ${activeTab === "volumes" ? "tab-bar__tab--active" : ""}`}
-            onClick={() => setActiveTab("volumes")}
-          >
-            <Icon name="database" size={13} />
-            <span className="tab-bar__tab-label">Volumes</span>
-            <span className="tab-bar__tab-count">{totalVolumes}</span>
-          </button>
-        </div>
-      </div>
+      <TabBarWithIcons
+        tabs={tabs}
+        activeTabId={activeTab}
+        onSelectTab={(tabId) => setActiveTab(tabId as "containers" | "networks" | "volumes")}
+      />
 
       {/* Host Filter Bar (Search for containers, Host selection for all tabs) */}
       <HostFilterBar
