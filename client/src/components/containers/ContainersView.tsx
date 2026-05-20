@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import type { DOCKER_DATA } from '@homelab/shared';
 import { PageHeader, FilterBar } from '@tinkermonkey/heimdall-ui';
 import { useDocker } from '../../hooks/useAPI';
 import { Icon } from '../shared/Icon';
