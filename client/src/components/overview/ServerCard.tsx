@@ -1,6 +1,6 @@
 import React from 'react';
 import type { Server } from '@homelab/shared';
-import { Sparkline } from '@tinkermonkey/heimdall-ui';
+import { MetricRow } from '@tinkermonkey/heimdall-ui';
 import type { StatusColor } from '@tinkermonkey/heimdall-ui';
 import './ServerCard.css';
 
@@ -9,16 +9,6 @@ interface ServerCardProps {
 }
 
 type HostTint = { rgb: string; a12: string; a31: string; statusColor: StatusColor };
-
-interface MetricRowProps {
-  label: string;
-  value: number;
-  display: string;
-  hist: number[];
-  metric: string;
-  tintColor: HostTint;
-  isHighMetric: (value: number, metric: string) => boolean;
-}
 
 const HOST_TINTS: Record<string, HostTint> = {
   nyx: {
@@ -47,47 +37,15 @@ const HOST_TINTS: Record<string, HostTint> = {
   },
 };
 
-const STATUS_COLORS: Record<string, string> = {
-  ok: 'rgb(var(--status-ok))',
-  warn: 'rgb(var(--status-warn))',
-  err: 'rgb(var(--status-error))',
+const getStatusColor = (status: string) => {
+  const statusMap: Record<string, string> = {
+    ok: 'rgb(var(--status-ok))',
+    warn: 'rgb(var(--status-warn))',
+    err: 'rgb(var(--status-error))',
+  };
+  return statusMap[status] || statusMap.ok;
 };
-
-const getStatusColor = (status: string) => STATUS_COLORS[status] || STATUS_COLORS.ok;
 const getTintColor = (hostId: string) => HOST_TINTS[hostId] || HOST_TINTS.nyx;
-
-const MetricRow: React.FC<MetricRowProps> = ({
-  label,
-  value,
-  display,
-  hist,
-  metric,
-  tintColor,
-  isHighMetric,
-}) => {
-  const isHigh = isHighMetric(value, metric);
-  const barColor = isHigh ? 'rgb(var(--status-warn))' : tintColor.rgb;
-
-  return (
-    <div className="server-card__metric-row">
-      <div className="server-card__metric-label">{label}</div>
-      <div className="server-card__metric-bar-container">
-        <div
-          className="server-card__metric-bar"
-          style={{
-            width: `${value}%`,
-            backgroundColor: barColor,
-            opacity: isHigh ? 1 : 0.7,
-          }}
-        />
-      </div>
-      <div className="server-card__metric-value">{display}</div>
-      <div className="server-card__sparkline">
-        <Sparkline data={hist} width={40} height={18} color={tintColor.statusColor} />
-      </div>
-    </div>
-  );
-};
 
 export const ServerCard: React.FC<ServerCardProps> = ({ server }) => {
   const tintColor = getTintColor(server.id);
@@ -130,49 +88,42 @@ export const ServerCard: React.FC<ServerCardProps> = ({ server }) => {
       <div className="server-card__metrics">
         <MetricRow
           label="CPU"
-          value={server.cpu.v}
-          display={`${server.cpu.v}%`}
-          hist={server.cpu.hist}
-          metric="cpu"
-          tintColor={tintColor}
-          isHighMetric={isHighMetric}
+          value={`${server.cpu.v}%`}
+          percent={server.cpu.v}
+          sparklineData={server.cpu.hist}
+          color={isHighMetric(server.cpu.v, 'cpu') ? 'amber' : tintColor.statusColor}
         />
         <MetricRow
           label="MEM"
-          value={server.mem.v}
-          display={`${server.mem.used} / ${server.mem.total} ${server.mem.unit}`}
-          hist={server.mem.hist}
-          metric="mem"
-          tintColor={tintColor}
-          isHighMetric={isHighMetric}
+          value={`${server.mem.used} / ${server.mem.total}`}
+          unit={server.mem.unit}
+          percent={server.mem.v}
+          sparklineData={server.mem.hist}
+          color={isHighMetric(server.mem.v, 'mem') ? 'amber' : tintColor.statusColor}
         />
         <MetricRow
           label="DISK"
-          value={server.disk.v}
-          display={`${server.disk.used} / ${server.disk.total} ${server.disk.unit}`}
-          hist={server.disk.hist}
-          metric="disk"
-          tintColor={tintColor}
-          isHighMetric={isHighMetric}
+          value={`${server.disk.used} / ${server.disk.total}`}
+          unit={server.disk.unit}
+          percent={server.disk.v}
+          sparklineData={server.disk.hist}
+          color={isHighMetric(server.disk.v, 'disk') ? 'amber' : tintColor.statusColor}
         />
         <MetricRow
           label="NET"
-          value={server.net.v}
-          display={`↓${server.net.down} ↑${server.net.up} ${server.net.unit}`}
-          hist={server.net.hist}
-          metric="net"
-          tintColor={tintColor}
-          isHighMetric={isHighMetric}
+          value={`↓${server.net.down} ↑${server.net.up}`}
+          unit={server.net.unit}
+          percent={server.net.v}
+          sparklineData={server.net.hist}
+          color={isHighMetric(server.net.v, 'net') ? 'amber' : tintColor.statusColor}
         />
         {server.gpu && (
           <MetricRow
             label="GPU"
-            value={server.gpu.v}
-            display={`${server.gpu.vram} · ${server.gpu.power}`}
-            hist={server.gpu.hist}
-            metric="gpu"
-            tintColor={tintColor}
-            isHighMetric={isHighMetric}
+            value={`${server.gpu.vram} · ${server.gpu.power}`}
+            percent={server.gpu.v}
+            sparklineData={server.gpu.hist}
+            color={isHighMetric(server.gpu.v, 'gpu') ? 'amber' : tintColor.statusColor}
           />
         )}
       </div>

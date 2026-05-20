@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import type { LAB_DATA } from '@homelab/shared';
-import { AlertStrip } from '@tinkermonkey/heimdall-ui';
+import { AlertStrip, PageHeader, StatGrid, StatTile } from '@tinkermonkey/heimdall-ui';
 import { Icon } from '../shared/Icon';
 import { useAlerts } from '../../hooks/useAPI';
 import { ServerCard } from './ServerCard';
@@ -28,33 +28,24 @@ export const OverviewView: React.FC<OverviewViewProps> = ({ data, showAlerts = t
   return (
     <div className="overview-view">
       {/* Page Header */}
-      <div className="page-header">
-        <div className="page-header__main">
-          <div className="page-header__breadcrumb">
-            <span className="breadcrumb-chip">
-              <span className="breadcrumb-dot" />
-              cluster · {data.cluster.name}
-            </span>
-            <span className="breadcrumb-meta">
-              {data.cluster.location} · last sync {data.cluster.lastSync}
-            </span>
+      <PageHeader
+        eyebrow={`${data.cluster.location} · last sync ${data.cluster.lastSync}`}
+        idChip={data.cluster.name}
+        title="Overview"
+        subtitle="Resource state across hosts, gateway health, and deployed services. All systems polled every 15 s."
+        actions={
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button className="btn btn--sm btn--ghost" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <Icon name="reload" size={13} />
+              Refresh
+            </button>
+            <button className="btn btn--sm btn--primary" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <Icon name="user" size={13} />
+              Ask lab-bot
+            </button>
           </div>
-          <h1 className="page-header__title">Overview</h1>
-          <p className="page-header__subtitle">
-            Resource state across hosts, gateway health, and deployed services. All systems polled every 15 s.
-          </p>
-        </div>
-        <div className="page-header__actions">
-          <button className="btn btn--sm btn--ghost" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <Icon name="refresh" size={13} />
-            Refresh
-          </button>
-          <button className="btn btn--sm btn--primary" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <Icon name="bot" size={13} />
-            Ask lab-bot
-          </button>
-        </div>
-      </div>
+        }
+      />
 
       {/* Degradation Banner */}
       <DegradationBanner degraded={data.degraded} />
@@ -72,35 +63,40 @@ export const OverviewView: React.FC<OverviewViewProps> = ({ data, showAlerts = t
       )}
 
       {/* Cluster Stats */}
-      <div className="cluster-stats">
-        <div className="stat-tile stat-tile--cyan">
-          <div className="stat-tile__label">Power Draw</div>
-          <div className="stat-tile__value">{data.cluster.powerDraw}W</div>
-          <div className="stat-tile__meta">
-            avg <span className="stat-tile__label-secondary">{data.cluster.powerAvg}W</span>
-          </div>
-        </div>
-        <div className="stat-tile stat-tile--amber">
-          <div className="stat-tile__label">Active Alerts</div>
-          <div className="stat-tile__value">{data.cluster.activeAlerts}</div>
-        </div>
-        <div className="stat-tile stat-tile--violet">
-          <div className="stat-tile__label">Egress Today</div>
-          <div className="stat-tile__value">{data.cluster.egressTodayGB.toFixed(1)}GB</div>
-          <div className="stat-tile__meta">
-            <span className={`stat-tile__delta ${data.cluster.egressDelta < 0 ? 'stat-tile__delta--down' : 'stat-tile__delta--up'}`}>
-              {data.cluster.egressDelta > 0 ? '+' : ''}{data.cluster.egressDelta}%
-            </span>
-          </div>
-        </div>
-        <div className="stat-tile stat-tile--emerald">
-          <div className="stat-tile__label">Cluster Uptime</div>
-          <div className="stat-tile__value">{data.cluster.uptimeDays}d</div>
-          <div className="stat-tile__meta">
-            <span className="stat-tile__label-secondary">{data.cluster.uptimeHours}h</span>
-          </div>
-        </div>
-      </div>
+      <StatGrid columns={4}>
+        <StatTile
+          color="cyan"
+          label="Power Draw"
+          value={`${data.cluster.powerDraw}W`}
+          delta={{
+            value: data.cluster.powerAvg,
+            label: `avg ${data.cluster.powerAvg}W`,
+          }}
+        />
+        <StatTile
+          color="amber"
+          label="Active Alerts"
+          value={data.cluster.activeAlerts}
+        />
+        <StatTile
+          color="violet"
+          label="Egress Today"
+          value={`${data.cluster.egressTodayGB.toFixed(1)}GB`}
+          delta={{
+            value: Math.abs(data.cluster.egressDelta),
+            direction: data.cluster.egressDelta < 0 ? 'down' : 'up',
+          }}
+        />
+        <StatTile
+          color="emerald"
+          label="Cluster Uptime"
+          value={`${data.cluster.uptimeDays}d`}
+          delta={{
+            value: data.cluster.uptimeHours,
+            label: `${data.cluster.uptimeHours}h`,
+          }}
+        />
+      </StatGrid>
 
       {/* Server Cards */}
       <div className="servers-section">

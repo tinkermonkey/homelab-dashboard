@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import type { DOCKER_DATA } from '@homelab/shared';
+import { PageHeader, FilterBar } from '@tinkermonkey/heimdall-ui';
 import { useDocker } from '../../hooks/useAPI';
 import { Icon } from '../shared/Icon';
 import { DegradationBanner } from '../shared/DegradationBanner';
@@ -36,32 +37,24 @@ export const ContainersView: React.FC = () => {
   return (
     <div className="containers-view">
       {/* Page Header */}
-      <div className="page-header">
-        <div className="page-header__main">
-          <div className="page-header__breadcrumb">
-            <span className="breadcrumb-chip breadcrumb-chip--violet">
-              <span className="breadcrumb-dot" />
-              docker · {data.hosts.length} hosts
-            </span>
-            <span className="breadcrumb-meta">scraped via docker socket · every 30s</span>
+      <PageHeader
+        eyebrow="scraped via docker socket · every 30s"
+        idChip={`${data.hosts.length} hosts`}
+        title="Containers"
+        subtitle="Container runtime inventory across all hosts. Shows live containers, declared networks, and persistent volumes — ports and bind mounts inlined."
+        actions={
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button className="btn btn--sm btn--ghost" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <Icon name="reload" size={13} />
+              Refresh
+            </button>
+            <button className="btn btn--sm btn--primary" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <Icon name="plus" size={13} />
+              Compose up…
+            </button>
           </div>
-          <h1 className="page-header__title">Containers</h1>
-          <p className="page-header__subtitle">
-            Container runtime inventory across all hosts. Shows live containers, declared networks, and persistent
-            volumes — ports and bind mounts inlined.
-          </p>
-        </div>
-        <div className="page-header__actions">
-          <button className="btn btn--sm btn--ghost btn--icon-label">
-            <Icon name="refresh" size={13} />
-            Refresh
-          </button>
-          <button className="btn btn--sm btn--primary btn--icon-label">
-            <Icon name="plus" size={13} />
-            Compose up…
-          </button>
-        </div>
-      </div>
+        }
+      />
 
       {/* Degradation Banner */}
       <DegradationBanner degraded={degraded} />
@@ -98,46 +91,37 @@ export const ContainersView: React.FC = () => {
         </div>
       </div>
 
-      {/* Toolbar */}
-      <div className="containers-toolbar">
-        {activeTab === 'containers' && (
-          <div className="search-input-wrapper">
-            <span className="search-icon">
-              <Icon name="search" size={14} />
-            </span>
-            <input
-              className="input text-input"
-              placeholder="Filter by name, image, tag…"
-              value={query}
-              onChange={e => setQuery(e.target.value)}
-            />
-          </div>
-        )}
+      {/* FilterBar */}
+      <FilterBar
+        searchPlaceholder="Filter by name, image, tag…"
+        onSearchChange={setQuery}
+        filters={[]}
+      />
 
-        <div className="host-filter-chips">
-          {['all', ...data.hosts.map(h => h.id)].map(h => (
-            <button
-              key={h}
-              onClick={() => setHostFilter(h)}
-              className={`host-filter-chip ${hostFilter === h ? 'host-filter-chip--active' : ''}`}
-            >
-              {h === 'all' ? 'all hosts' : h}
-              <span className="host-filter-chip__count">
-                {h === 'all'
-                  ? activeTab === 'containers' ? totalContainers : activeTab === 'networks' ? totalNetworks : totalVolumes
-                  : (() => {
-                      const host = data.hosts.find(x => x.id === h);
-                      if (!host) return 0;
-                      return activeTab === 'containers'
-                        ? host.containers.length
-                        : activeTab === 'networks'
-                          ? host.networks.length
-                          : host.volumes.length;
-                    })()}
-              </span>
-            </button>
-          ))}
-        </div>
+      {/* Host Filter */}
+      <div className="host-filter-chips">
+        {['all', ...data.hosts.map(h => h.id)].map(h => (
+          <button
+            key={h}
+            onClick={() => setHostFilter(h)}
+            className={`host-filter-chip ${hostFilter === h ? 'host-filter-chip--active' : ''}`}
+          >
+            {h === 'all' ? 'all hosts' : h}
+            <span className="host-filter-chip__count">
+              {h === 'all'
+                ? activeTab === 'containers' ? totalContainers : activeTab === 'networks' ? totalNetworks : totalVolumes
+                : (() => {
+                    const host = data.hosts.find(x => x.id === h);
+                    if (!host) return 0;
+                    return activeTab === 'containers'
+                      ? host.containers.length
+                      : activeTab === 'networks'
+                        ? host.networks.length
+                        : host.volumes.length;
+                  })()}
+            </span>
+          </button>
+        ))}
       </div>
 
       {/* Tab Content */}
