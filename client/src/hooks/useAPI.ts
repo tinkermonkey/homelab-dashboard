@@ -144,7 +144,8 @@ export function useAlerts() {
           typeof alert.severity === 'string' &&
           typeof alert.state === 'string' &&
           typeof alert.labels === 'object' &&
-          alert.labels !== null
+          alert.labels !== null &&
+          !Array.isArray(alert.labels)
       );
 
       if (validAlerts.length !== response.data.alerts.length) {
