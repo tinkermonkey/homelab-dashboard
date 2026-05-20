@@ -1,0 +1,55 @@
+.host-filter-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.host-filter-bar__search {
+  /* FilterBar styles inherited from FilterBar component */
+}
+
+.host-filter-bar__chips {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.host-filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  padding: 3px 9px;
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  background-color: rgb(var(--canvas-bg-2));
+  color: rgb(var(--canvas-fg-2));
+  cursor: pointer;
+  transition: all 80ms ease-out;
+}
+
+.host-filter-chip:hover {
+  background-color: rgb(var(--canvas-surface));
+  color: rgb(var(--canvas-fg-1));
+}
+
+.host-filter-chip--active {
+  color: rgb(var(--accent-primary));
+  border-color: color-mix(in oklab, rgb(var(--accent-primary)) 35%, transparent);
+  background-color: color-mix(in oklab, rgb(var(--accent-primary)) 10%, transparent);
+}
+
+.host-filter-chip__label {
+  /* Label styling */
+}
+
+.host-filter-chip__count {
+  color: rgb(var(--canvas-fg-4));
+  margin-left: 2px;
+}
+
+.host-filter-chip--active .host-filter-chip__count {
+  color: rgb(var(--accent-primary));
+}

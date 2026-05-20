@@ -1,11 +1,13 @@
-import React, { useState } from 'react';
-import { PageHeader, FilterBar } from '@tinkermonkey/heimdall-ui';
+import React, { useState, useMemo } from 'react';
+import { PageHeader } from '@tinkermonkey/heimdall-ui';
+import type { FilterChip } from '@tinkermonkey/heimdall-ui';
 import { useDocker } from '../../hooks/useAPI';
 import { Icon } from '../shared/Icon';
 import { DegradationBanner } from '../shared/DegradationBanner';
 import { ContainersTab } from './ContainersTab';
 import { NetworksTab } from './NetworksTab';
 import { VolumesTab } from './VolumesTab';
+import { HostFilterBar } from './HostFilterBar';
 import './ContainersView.css';
 
 export const ContainersView: React.FC = () => {
@@ -33,6 +35,26 @@ export const ContainersView: React.FC = () => {
   const filteredHosts = hostFilter === 'all' ? data.hosts : data.hosts.filter(h => h.id === hostFilter);
   const degraded = data.degraded;
   const dataSource = data.source;
+
+  const getHostCount = (hostId: string) => {
+    if (hostId === 'all') {
+      return activeTab === 'containers' ? totalContainers : activeTab === 'networks' ? totalNetworks : totalVolumes;
+    }
+    const host = data.hosts.find(h => h.id === hostId);
+    if (!host) return 0;
+    return activeTab === 'containers'
+      ? host.containers.length
+      : activeTab === 'networks'
+        ? host.networks.length
+        : host.volumes.length;
+  };
+
+  const hostFilterChips = useMemo<FilterChip[]>(() => {
+    return [
+      { id: 'all', label: `all hosts (${getHostCount('all')})` },
+      ...data.hosts.map(h => ({ id: h.id, label: `${h.id} (${getHostCount(h.id)})` }))
+    ];
+  }, [data.hosts, activeTab, totalContainers, totalNetworks, totalVolumes]);
 
   return (
     <div className="containers-view">
@@ -91,40 +113,23 @@ export const ContainersView: React.FC = () => {
         </div>
       </div>
 
-      {/* FilterBar */}
+      {/* Host Filter Bar (Search for containers, Host selection for all tabs) */}
       {activeTab === 'containers' && (
-        <FilterBar
+        <HostFilterBar
+          hostFilters={hostFilterChips}
+          selectedHost={hostFilter}
+          onHostSelect={setHostFilter}
           searchPlaceholder="Filter by name, image, tag…"
           onSearchChange={setQuery}
-          filters={[]}
         />
       )}
-
-      {/* Host Filter */}
-      <div className="host-filter-chips">
-        {['all', ...data.hosts.map(h => h.id)].map(h => (
-          <button
-            key={h}
-            onClick={() => setHostFilter(h)}
-            className={`host-filter-chip ${hostFilter === h ? 'host-filter-chip--active' : ''}`}
-          >
-            {h === 'all' ? 'all hosts' : h}
-            <span className="host-filter-chip__count">
-              {h === 'all'
-                ? activeTab === 'containers' ? totalContainers : activeTab === 'networks' ? totalNetworks : totalVolumes
-                : (() => {
-                    const host = data.hosts.find(x => x.id === h);
-                    if (!host) return 0;
-                    return activeTab === 'containers'
-                      ? host.containers.length
-                      : activeTab === 'networks'
-                        ? host.networks.length
-                        : host.volumes.length;
-                  })()}
-            </span>
-          </button>
-        ))}
-      </div>
+      {activeTab !== 'containers' && (
+        <HostFilterBar
+          hostFilters={hostFilterChips}
+          selectedHost={hostFilter}
+          onHostSelect={setHostFilter}
+        />
+      )}
 
       {/* Tab Content */}
       <div className="containers-content">
