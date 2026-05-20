@@ -33,7 +33,12 @@ export async function fetchJSON<T>(url: string): Promise<APIResponse<T>> {
     throw new Error(errorMessage);
   }
 
-  const data = await response.json();
+  let data;
+  try {
+    data = await response.json();
+  } catch {
+    throw new Error(`API returned status ${response.status} but response body was not valid JSON`);
+  }
 
   return {
     data,

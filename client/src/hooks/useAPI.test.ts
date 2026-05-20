@@ -306,6 +306,34 @@ describe('useAPI - fetchJSON', () => {
 
       expect(result.data).toBe(42);
     });
+
+    it('throws error when 200 response has invalid JSON body', async () => {
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => {
+          throw new SyntaxError('Unexpected token < in JSON at position 0');
+        },
+      });
+
+      await expect(fetchJSON<unknown>('/api/test')).rejects.toThrow(
+        'API returned status 200 but response body was not valid JSON'
+      );
+    });
+
+    it('throws error when 206 response has invalid JSON body', async () => {
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: false,
+        status: 206,
+        json: async () => {
+          throw new SyntaxError('Unexpected end of JSON input');
+        },
+      });
+
+      await expect(fetchJSON<unknown>('/api/partial')).rejects.toThrow(
+        'API returned status 206 but response body was not valid JSON'
+      );
+    });
   });
 
 });
