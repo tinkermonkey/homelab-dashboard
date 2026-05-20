@@ -29,6 +29,7 @@ export const CUSTOM_ICONS: Record<string, string> = {
   grid: '<rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/>',
   bell: '<path d="M18 8a6 6 0 0 0-6-6 6 6 0 0 0-6 6v7a8 8 0 0 1-5 7.6V21h16v-2.4A8 8 0 0 1 18 15V8z"/><path d="M12 20a1 1 0 1 0 0-2 1 1 0 0 0 0 2z"/>',
   search: '<circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>',
+  ext: '<path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><path d="M15 3h6v6"/><path d="M10 14 21 3"/>',
 };
 
 export function getIconSvgPath(iconName: string): string | undefined {
