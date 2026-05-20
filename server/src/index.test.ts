@@ -503,29 +503,35 @@ describe('Server Routes', () => {
     });
 
     it('omits Authorization header when token is not configured', async () => {
-      // This test assumes token is empty - verify in mock config
-      const mockResponse = {
-        ok: true,
-        status: 200,
-        body: {
-          getReader: () => ({
-            read: vi.fn().mockResolvedValueOnce({ done: true }),
-          }),
-        },
-      };
-      vi.mocked(fetchWithTimeout).mockResolvedValue(mockResponse as any);
+      // Override config to have empty token for this specific test
+      const configModule = await import('./config.js');
+      const originalToken = (configModule.config as any).phoneHomeChatToken;
+      (configModule.config as any).phoneHomeChatToken = '';
 
-      await fastify.inject({
-        method: 'POST',
-        url: '/api/chat/test-bot',
-        payload: { message: 'test' },
-      });
+      try {
+        const mockResponse = {
+          ok: true,
+          status: 200,
+          body: {
+            getReader: () => ({
+              read: vi.fn().mockResolvedValueOnce({ done: true }),
+            }),
+          },
+        };
+        vi.mocked(fetchWithTimeout).mockResolvedValue(mockResponse as any);
 
-      expect(fetchWithTimeout).toHaveBeenCalled();
-      const call = vi.mocked(fetchWithTimeout).mock.calls[0];
-      // test-bearer-token is configured in our mock, so Auth header should be present
-      // This test verifies the logic would work with empty token
-      expect(call[1]?.headers).toBeDefined();
+        await fastify.inject({
+          method: 'POST',
+          url: '/api/chat/test-bot',
+          payload: { message: 'test' },
+        });
+
+        expect(fetchWithTimeout).toHaveBeenCalled();
+        const call = vi.mocked(fetchWithTimeout).mock.calls[0];
+        expect(call[1]?.headers?.Authorization).toBeUndefined();
+      } finally {
+        (configModule.config as any).phoneHomeChatToken = originalToken;
+      }
     });
 
     it('handles response with no body gracefully', async () => {
@@ -553,36 +559,10 @@ describe('Server Routes', () => {
         payload: { message: 'hello' },
       });
 
-      // Empty bot ID is not matched by the route pattern, so it's 404
-      // But if FastifyURL parsing creates an empty string, it would be caught as 400
-      // The actual behavior depends on the route pattern
-      expect([400, 404]).toContain(response.statusCode);
+      // Empty bot ID is matched by route but fails validation, returns 400
+      expect(response.statusCode).toBe(400);
     });
 
-    it('validates bot ID format strictly', async () => {
-      // Test that bot IDs must match the strict pattern
-      // Special characters are URL encoded by the test framework, making this test complex
-      // The bot ID validation is tested via other tests and direct validation tests
-      const validId = 'valid-bot_123';
-      const mockResponse = {
-        ok: true,
-        status: 200,
-        body: {
-          getReader: () => ({
-            read: vi.fn().mockResolvedValueOnce({ done: true }),
-          }),
-        },
-      };
-      vi.mocked(fetchWithTimeout).mockResolvedValue(mockResponse as any);
-
-      const response = await fastify.inject({
-        method: 'POST',
-        url: `/api/chat/${validId}`,
-        payload: { message: 'test' },
-      });
-
-      expect(response.statusCode).not.toBe(400);
-    });
 
     it('accepts bot IDs with only valid characters', async () => {
       const validIds = ['bot', 'bot_123', 'bot-test', 'bot123test', 'BOT_TEST_123'];

@@ -39,7 +39,7 @@ vi.mock('@tinkermonkey/heimdall-ui', () => ({
       <div data-testid="message-name">{senderName}</div>
       {badge && <span data-testid="message-badge">{badge}</span>}
       <div data-testid="message-body">{body}</div>
-      {toolBlock && <div data-testid="message-tool-block">{toolBlock.name}</div>}
+      {toolBlock && <div data-testid="message-tool-block" data-status={toolBlock.status}>{toolBlock.name}</div>}
       {thinkingBlock && <div data-testid="message-thinking-block">{thinkingBlock.content}</div>}
     </div>
   ),
@@ -91,6 +91,8 @@ describe('ChatRail component', () => {
       role: 'assistant',
       status: 'idle',
       avatar: 'C',
+      desc: 'General purpose AI assistant',
+      model: 'claude-opus',
     },
     {
       id: 'system',
@@ -98,6 +100,8 @@ describe('ChatRail component', () => {
       role: 'system',
       status: 'busy',
       avatar: 'S',
+      desc: 'System administration assistant',
+      model: 'system-bot',
     },
   ];
 
@@ -418,6 +422,8 @@ describe('ChatRail component', () => {
           />
         );
 
+        const toolBlock = screen.getByTestId('message-tool-block');
+        expect(toolBlock.getAttribute('data-status')).toBe(expected);
         unmount();
       }
     });

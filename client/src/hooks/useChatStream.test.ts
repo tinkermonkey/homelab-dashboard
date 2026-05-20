@@ -183,6 +183,9 @@ describe('useChatStream hook', () => {
       });
 
       expect(fetchMock).toHaveBeenCalled();
+      const errorMsg = result.current.thread.find(m => m.kind === 'msg' && m.who === 'bot-1') as ThreadMessage;
+      expect(errorMsg).toBeDefined();
+      expect(errorMsg.body[0].p).toContain('Connection error:');
     });
 
     it('includes user message even when response fails', async () => {
