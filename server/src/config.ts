@@ -1,3 +1,7 @@
+// Load environment variables from .env file
+import { config as dotenvConfig } from 'dotenv';
+dotenvConfig();
+
 // Configuration from environment variables
 export const config = {
   // Server
