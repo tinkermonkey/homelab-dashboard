@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import type { LAB_DATA } from '@homelab/shared';
-import { AlertStrip, type Alert as HeimdallAlert } from '@tinkermonkey/heimdall-ui';
+import { AlertStrip } from '@tinkermonkey/heimdall-ui';
 import { Icon } from '../shared/Icon';
 import { useAlerts } from '../../hooks/useAPI';
 import { ServerCard } from './ServerCard';
@@ -17,6 +17,13 @@ interface OverviewViewProps {
 export const OverviewView: React.FC<OverviewViewProps> = ({ data, showAlerts = true }) => {
   const { data: alertsData } = useAlerts();
   const alerts = alertsData?.alerts ?? [];
+  const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set());
+
+  const handleDismissAlert = (alertId: string) => {
+    setDismissedIds(prev => new Set([...prev, alertId]));
+  };
+
+  const visibleAlerts = alerts.filter(alert => !dismissedIds.has(`${alert.name}-${alert.severity}`));
 
   return (
     <div className="overview-view">
@@ -55,11 +62,12 @@ export const OverviewView: React.FC<OverviewViewProps> = ({ data, showAlerts = t
       {/* Alerts Strip */}
       {showAlerts && (
         <AlertStrip
-          alerts={alerts.map(alert => ({
+          alerts={visibleAlerts.map(alert => ({
             id: `${alert.name}-${alert.severity}`,
             severity: (alert.severity === 'critical' ? 'error' : alert.severity === 'warning' ? 'warn' : 'info') as 'error' | 'warn' | 'info' | 'success',
-            message: alert.name,
-          }) as HeimdallAlert)}
+            message: alert.state ? `${alert.name} — ${alert.state}` : alert.name,
+          }))}
+          onDismiss={handleDismissAlert}
         />
       )}
 
