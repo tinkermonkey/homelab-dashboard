@@ -99,6 +99,7 @@ export const useChatStream = ({ baseThread, activeBot }: UseChatStreamOptions): 
         }
 
         const decoder = new TextDecoder();
+        let parseErrorShown = false;
 
         while (true) {
           const { done, value } = await reader.read();
@@ -164,16 +165,20 @@ export const useChatStream = ({ baseThread, activeBot }: UseChatStreamOptions): 
                   });
                 }
               } catch (parseError) {
-                const parseMsg: ThreadMessage = {
-                  kind: 'msg',
-                  who: activeBot,
-                  when,
-                  body: [{ p: 'Error: Malformed response from service' }],
-                };
-                setExtraMsgs(prev => ({
-                  ...prev,
-                  [activeBot]: [...(prev[activeBot] || []), parseMsg],
-                }));
+                // Only show parse error once per stream to avoid flooding the UI
+                if (!parseErrorShown) {
+                  parseErrorShown = true;
+                  const parseMsg: ThreadMessage = {
+                    kind: 'msg',
+                    who: activeBot,
+                    when,
+                    body: [{ p: 'Error: Malformed response from service' }],
+                  };
+                  setExtraMsgs(prev => ({
+                    ...prev,
+                    [activeBot]: [...(prev[activeBot] || []), parseMsg],
+                  }));
+                }
               }
             }
           }

@@ -200,7 +200,7 @@ export async function registerRoutes(app: FastifyInstance) {
       app.log.error(`Chat proxy error for botId ${botId}: ${message}`);
 
       // If headers already sent (SSE stream started), write error as SSE event
-      if (reply.sent) {
+      if (reply.raw.headersSent) {
         reply.raw.write(`data: ${JSON.stringify({ error: 'Chat service error' })}\n\n`);
         reply.raw.end();
       } else {
