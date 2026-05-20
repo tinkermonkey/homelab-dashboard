@@ -32,7 +32,7 @@ export const useChatStream = ({ baseThread, activeBot }: UseChatStreamOptions): 
 
   const send = useCallback(
     async (text?: string) => {
-      const t = (text != null ? text : draft).trim();
+      const t = text?.trim() || '';
       if (!t) return;
 
       const now = new Date();
@@ -180,7 +180,7 @@ export const useChatStream = ({ baseThread, activeBot }: UseChatStreamOptions): 
         streamAbortRef.current = null;
       }
     },
-    [activeBot, draft],
+    [activeBot],
   );
 
   return {

@@ -100,6 +100,7 @@ export interface ThreadMessage {
   name?: string;
   when: string;
   body: { p: string }[];
+  thinking?: { content: string };
   tool?: {
     name: string;
     status: string;

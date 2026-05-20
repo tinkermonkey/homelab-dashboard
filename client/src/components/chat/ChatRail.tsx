@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useRef } from 'react';
 import type { Bot, ThreadItem } from '@homelab/shared';
 import DOMPurify from 'dompurify';
 import {
@@ -8,6 +8,7 @@ import {
   ChatDivider,
   ChatSuggestions,
   type ToolBlockData,
+  type ThinkingBlockData,
   type BotTab,
 } from '@tinkermonkey/heimdall-ui';
 import { useChatStream } from '../../hooks/useChatStream';
@@ -17,6 +18,12 @@ interface ChatRailProps {
   threadByBot: Record<string, ThreadItem[]>;
   activeBot: string;
   onActiveBotChange: (botId: string) => void;
+}
+
+function normalizeToolStatus(status: string): 'running' | 'success' | 'error' {
+  if (status === 'running') return 'running';
+  if (status.includes('completed') || status.includes('ok')) return 'success';
+  return 'error';
 }
 
 export const ChatRail: React.FC<ChatRailProps> = ({
@@ -33,12 +40,6 @@ export const ChatRail: React.FC<ChatRailProps> = ({
 
   const threadRef = useRef<HTMLDivElement>(null);
   const activeBotObj = bots.find(b => b.id === activeBot);
-
-  useEffect(() => {
-    if (threadRef.current) {
-      threadRef.current.scrollTop = threadRef.current.scrollHeight;
-    }
-  }, [activeBot, thread]);
 
   const botTabs: BotTab[] = bots.map(b => ({
     id: b.id,
@@ -104,11 +105,19 @@ export const ChatRail: React.FC<ChatRailProps> = ({
           if (m.tool) {
             toolBlockData = {
               name: m.tool.name,
-              status: (m.tool.status as 'running' | 'success' | 'error') || 'success',
+              status: normalizeToolStatus(m.tool.status),
               output: m.tool.lines.map(line => ({
                 key: line.k,
                 value: line.v,
               })),
+            };
+          }
+
+          // Build thinking block data if present
+          let thinkingBlockData: ThinkingBlockData | undefined;
+          if (m.thinking) {
+            thinkingBlockData = {
+              content: m.thinking.content,
             };
           }
 
@@ -152,6 +161,7 @@ export const ChatRail: React.FC<ChatRailProps> = ({
               badge={badge}
               body={bodyContent}
               toolBlock={toolBlockData}
+              thinkingBlock={thinkingBlockData}
               style={{
                 display: 'grid',
                 gridTemplateColumns: '22px 1fr',
