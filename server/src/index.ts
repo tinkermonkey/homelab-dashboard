@@ -41,7 +41,7 @@ export async function registerRoutes(app: FastifyInstance) {
     try {
       const data = await getCachedData('cluster', 10, async () => {
         const baseData = getLabData();
-        const { data: transformedData, degraded } = await transformMetrics(baseData);
+        const { data: transformedData, degraded } = await transformMetrics(baseData, app.log);
 
         return {
           ...transformedData,
@@ -65,7 +65,7 @@ export async function registerRoutes(app: FastifyInstance) {
   app.get('/api/docker', async (request, reply) => {
     try {
       const data = await getCachedData('docker', 20, async () => {
-        const { data: dockerData, degraded, source } = await transformDockerData();
+        const { data: dockerData, degraded, source } = await transformDockerData(app.log);
         return {
           ...dockerData,
           degraded,
@@ -89,7 +89,7 @@ export async function registerRoutes(app: FastifyInstance) {
   app.get('/api/topology', async (request, reply) => {
     try {
       const data = await getCachedData('topology', 60, async () => {
-        const { data: topoData, degraded, source } = await transformTopologyData();
+        const { data: topoData, degraded, source } = await transformTopologyData(app.log);
         return {
           ...topoData,
           degraded,

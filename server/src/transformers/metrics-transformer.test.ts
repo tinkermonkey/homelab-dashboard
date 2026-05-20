@@ -11,6 +11,7 @@ import { elastiflowClient } from '../clients/elastiflow-client.js';
 import { metricbeatClient } from '../clients/metricbeat-client.js';
 import { mcpClient } from '../clients/mcp-client.js';
 import type { LAB_DATA } from '@homelab/shared';
+import type { FastifyBaseLogger } from 'fastify';
 
 describe('Metrics Transformer', () => {
   describe('prometheusRatioToPercent', () => {
@@ -168,6 +169,16 @@ describe('Metrics Transformer', () => {
 });
 
 describe('transformMetrics', () => {
+  const mockLogger: FastifyBaseLogger = {
+    error: vi.fn(),
+    warn: vi.fn(),
+    info: vi.fn(),
+    debug: vi.fn(),
+    fatal: vi.fn(),
+    trace: vi.fn(),
+    silent: vi.fn(),
+  } as any;
+
   const makeServer = (id: string, ip: string) => ({
     id,
     role: 'compute' as const,
@@ -241,13 +252,13 @@ describe('transformMetrics', () => {
 
   it('returns no degraded services when all succeed', async () => {
     setupAllMocks();
-    const result = await transformMetrics(mockLabData);
+    const result = await transformMetrics(mockLabData, mockLogger);
     expect(result.degraded).toEqual([]);
   });
 
   it('updates server cpu/mem/disk/load from metricbeat', async () => {
     setupAllMocks();
-    const result = await transformMetrics(mockLabData);
+    const result = await transformMetrics(mockLabData, mockLogger);
     const nyx = result.data.servers.find((s) => s.id === 'nyx');
     expect(nyx?.cpu.hist).toEqual([50]);
     expect(nyx?.mem.hist).toEqual([60]);
@@ -258,20 +269,20 @@ describe('transformMetrics', () => {
   it('degrades metricbeat when metrics fetch fails', async () => {
     setupAllMocks();
     vi.mocked(metricbeatClient.getCpuHistory).mockRejectedValue(new Error('Connection failed'));
-    const result = await transformMetrics(mockLabData);
+    const result = await transformMetrics(mockLabData, mockLogger);
     expect(result.degraded).toContain('metricbeat');
   });
 
   it('degrades ntopng when gateway stats fail', async () => {
     setupAllMocks();
     vi.mocked(ntopngClient.getWanInterfaceStats).mockRejectedValue(new Error('Network error'));
-    const result = await transformMetrics(mockLabData);
+    const result = await transformMetrics(mockLabData, mockLogger);
     expect(result.degraded).toContain('ntopng');
   });
 
   it('updates gateway downMbps/upMbps from ntopng', async () => {
     setupAllMocks();
-    const result = await transformMetrics(mockLabData);
+    const result = await transformMetrics(mockLabData, mockLogger);
     expect(result.data.gateway.downMbps).toBe(500);
     expect(result.data.gateway.upMbps).toBe(100);
     expect(result.data.gateway.downHist).toEqual([50]);
@@ -281,21 +292,21 @@ describe('transformMetrics', () => {
   it('degrades elastiflow when throughput fetch fails', async () => {
     setupAllMocks();
     vi.mocked(elastiflowClient.getHostThroughput).mockRejectedValue(new Error('Service unavailable'));
-    const result = await transformMetrics(mockLabData);
+    const result = await transformMetrics(mockLabData, mockLogger);
     expect(result.degraded).toContain('elastiflow');
   });
 
   it('degrades phone-home when apps fetch fails', async () => {
     setupAllMocks();
     vi.mocked(mcpClient.listContainers).mockRejectedValue(new Error('Connection refused'));
-    const result = await transformMetrics(mockLabData);
+    const result = await transformMetrics(mockLabData, mockLogger);
     expect(result.degraded).toContain('phone-home');
   });
 
   it('preserves original data structure when transformations fail', async () => {
     setupAllMocks();
     vi.mocked(metricbeatClient.getCpuHistory).mockRejectedValue(new Error('Error'));
-    const result = await transformMetrics(mockLabData);
+    const result = await transformMetrics(mockLabData, mockLogger);
     expect(result.data.cluster.name).toBe('asgard');
     expect(result.data.servers).toHaveLength(4);
   });
@@ -303,7 +314,7 @@ describe('transformMetrics', () => {
   it('skips server metric update when histogram is empty', async () => {
     setupAllMocks();
     vi.mocked(metricbeatClient.getCpuHistory).mockResolvedValue([]);
-    const result = await transformMetrics(mockLabData);
+    const result = await transformMetrics(mockLabData, mockLogger);
     const nyx = result.data.servers.find((s) => s.id === 'nyx');
     // Empty array should NOT replace existing hist
     expect(nyx?.cpu.hist).not.toEqual([]);
@@ -313,14 +324,14 @@ describe('transformMetrics', () => {
     setupAllMocks();
     const mockApps = [{ id: 'app1', host: 'nyx', cat: 'database', version: '5.0', state: 'running', meta: 'pg' }];
     vi.mocked(mcpClient.listContainers).mockResolvedValue(mockApps);
-    const result = await transformMetrics(mockLabData);
+    const result = await transformMetrics(mockLabData, mockLogger);
     expect(result.data.apps).toEqual(mockApps);
   });
 
   it('degrades phone-home on invalid apps shape', async () => {
     setupAllMocks();
     vi.mocked(mcpClient.listContainers).mockResolvedValue({ not: 'array' } as any);
-    const result = await transformMetrics(mockLabData);
+    const result = await transformMetrics(mockLabData, mockLogger);
     expect(result.degraded).toContain('phone-home');
     expect(result.data.apps).toEqual([]);
   });

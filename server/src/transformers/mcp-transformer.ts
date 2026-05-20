@@ -1,4 +1,5 @@
 import type { DOCKER_DATA, TOPOLOGY_DATA } from '@homelab/shared';
+import type { FastifyBaseLogger } from 'fastify';
 import { mcpClient } from '../clients/mcp-client.js';
 import { getDockerData, getTopologyData } from '../mock-data.js';
 
@@ -31,7 +32,7 @@ function isValidTopologyData(data: unknown): data is TOPOLOGY_DATA {
          });
 }
 
-export async function transformDockerData(): Promise<{
+export async function transformDockerData(logger: FastifyBaseLogger): Promise<{
   data: DOCKER_DATA;
   degraded: string[];
   source: 'real' | 'mock';
@@ -45,13 +46,13 @@ export async function transformDockerData(): Promise<{
     }
     return { data: result, degraded, source: 'real' };
   } catch (error) {
-    console.error('Error fetching Docker data from MCP:', error);
+    logger.error('Error fetching Docker data from MCP:', error);
     degraded.push('phone-home');
     return { data: getDockerData(), degraded, source: 'mock' };
   }
 }
 
-export async function transformTopologyData(): Promise<{
+export async function transformTopologyData(logger: FastifyBaseLogger): Promise<{
   data: TOPOLOGY_DATA;
   degraded: string[];
   source: 'real' | 'mock';
@@ -65,7 +66,7 @@ export async function transformTopologyData(): Promise<{
     }
     return { data: result, degraded, source: 'real' };
   } catch (error) {
-    console.error('Error fetching topology data from MCP:', error);
+    logger.error('Error fetching topology data from MCP:', error);
     degraded.push('phone-home');
     return { data: getTopologyData(), degraded, source: 'mock' };
   }

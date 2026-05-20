@@ -1,4 +1,5 @@
 import type { LAB_DATA, App } from '@homelab/shared';
+import type { FastifyBaseLogger } from 'fastify';
 import { signozClient } from '../clients/signoz-client.js';
 import { ntopngClient } from '../clients/ntopng-client.js';
 import { elastiflowClient } from '../clients/elastiflow-client.js';
@@ -30,7 +31,8 @@ function isValidAppData(data: unknown): data is App[] {
 }
 
 export async function transformMetrics(
-  labData: LAB_DATA
+  labData: LAB_DATA,
+  logger: FastifyBaseLogger
 ): Promise<{ data: LAB_DATA; degraded: string[] }> {
   const degraded: string[] = [];
   const result = { ...labData };
@@ -48,7 +50,7 @@ export async function transformMetrics(
         ]);
         return { serverId, cpu, mem, disk, load };
       } catch (error) {
-        console.error(`Failed to fetch metrics for ${serverId} (${metricsHostname}):`, error);
+        logger.error(`Failed to fetch metrics for ${serverId} (${metricsHostname}):`, error);
         throw error;
       }
     });
@@ -73,7 +75,7 @@ export async function transformMetrics(
 
     if (hasFailure) degraded.push('metricbeat');
   } catch (error) {
-    console.error('Error fetching server metrics:', error);
+    logger.error('Error fetching server metrics:', error);
     degraded.push('metricbeat');
   }
 
@@ -88,7 +90,7 @@ export async function transformMetrics(
       upHist: stats.upHist,
     };
   } catch (error) {
-    console.error('Error fetching ntopng gateway stats:', error);
+    logger.error('Error fetching ntopng gateway stats:', error);
     degraded.push('ntopng');
   }
 
@@ -111,7 +113,7 @@ export async function transformMetrics(
 
     if (hasFailure) degraded.push('elastiflow');
   } catch (error) {
-    console.error('Error fetching ElastiFlow data:', error);
+    logger.error('Error fetching ElastiFlow data:', error);
     degraded.push('elastiflow');
   }
 
@@ -124,7 +126,7 @@ export async function transformMetrics(
       throw new Error('Invalid Docker data structure from MCP');
     }
   } catch (error) {
-    console.error('Error fetching apps from phone-home MCP:', error);
+    logger.error('Error fetching apps from phone-home MCP:', error);
     degraded.push('phone-home');
   }
 
