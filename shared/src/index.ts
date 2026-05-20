@@ -233,3 +233,9 @@ export interface STATUS_DATA {
   degraded?: string[];
   source?: 'real' | 'mock';
 }
+
+// Alerts data
+export interface ALERTS_DATA {
+  alerts: Alert[];
+  source?: 'alertmanager' | 'mock';
+}
