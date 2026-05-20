@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import type { LAB_DATA } from '@homelab/shared';
+import type { LAB_DATA, AlertSeverity } from '@homelab/shared';
 import { AlertStrip, PageHeader, StatGrid, StatTile } from '@tinkermonkey/heimdall-ui';
 import { Icon } from '../shared/Icon';
 import { useAlerts } from '../../hooks/useAPI';
@@ -12,6 +12,15 @@ import './OverviewView.css';
 interface OverviewViewProps {
   data: LAB_DATA & { degraded?: string[] };
   showAlerts?: boolean;
+}
+
+function mapSeverity(severity: AlertSeverity): 'error' | 'warn' | 'info' | 'success' {
+  const severityMap: Record<AlertSeverity, 'error' | 'warn' | 'info'> = {
+    critical: 'error',
+    warning: 'warn',
+    info: 'info',
+  };
+  return severityMap[severity];
 }
 
 export const OverviewView: React.FC<OverviewViewProps> = ({ data, showAlerts = true }) => {
@@ -69,7 +78,7 @@ export const OverviewView: React.FC<OverviewViewProps> = ({ data, showAlerts = t
           <AlertStrip
             alerts={visibleAlerts.map(alert => ({
               id: `${alert.name}-${alert.severity}`,
-              severity: (alert.severity === 'critical' ? 'error' : alert.severity === 'warning' ? 'warn' : 'info') as 'error' | 'warn' | 'info' | 'success',
+              severity: mapSeverity(alert.severity),
               message: alert.state ? `${alert.name} — ${alert.state}` : alert.name,
             }))}
             onDismiss={handleDismissAlert}

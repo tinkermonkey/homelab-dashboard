@@ -72,10 +72,13 @@ export interface App {
   meta: string;
 }
 
+export type AlertSeverity = 'critical' | 'warning' | 'info';
+export type AlertState = 'active' | 'resolved';
+
 export interface Alert {
   name: string;
-  severity: string;
-  state: string;
+  severity: AlertSeverity;
+  state: AlertState;
   labels: Record<string, string>;
 }
 
