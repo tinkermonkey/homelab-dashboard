@@ -6,7 +6,7 @@ import './TabBarWithIcons.css';
 export interface Tab {
   id: string;
   label: string;
-  count?: number;
+  count?: React.ReactNode;
   icon?: string;
   iconSize?: number;
 }
@@ -24,19 +24,19 @@ export const TabBarWithIcons = React.forwardRef<HTMLDivElement, TabBarWithIconsP
 
     return (
       <div ref={ref} className={classNames} {...props}>
-        <div className="tab-bar__tabs">
+        <div className="tab-bar-icons__tabs">
           {tabs.map(tab => (
             <button
               key={tab.id}
-              className={`tab-bar__tab ${activeTabId === tab.id ? 'tab-bar__tab--active' : ''}`}
+              className={`tab-bar-icons__tab ${activeTabId === tab.id ? 'tab-bar-icons__tab--active' : ''}`}
               onClick={() => onSelectTab(tab.id)}
             >
               {tab.icon && (
-                <span className="tab-bar__tab-icon">
+                <span className="tab-bar-icons__icon">
                   <Icon name={tab.icon} size={tab.iconSize ?? 24} />
                 </span>
               )}
-              <span className="tab-bar__tab-label">{tab.label}</span>
+              <span className="tab-bar-icons__label">{tab.label}</span>
               {tab.count !== undefined && (
                 <Chip form="id-tag">{tab.count}</Chip>
               )}

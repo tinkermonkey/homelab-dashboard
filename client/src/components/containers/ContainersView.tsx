@@ -18,6 +18,10 @@ export const ContainersView: React.FC = () => {
   const [hostFilter, setHostFilter] = useState("all");
   const [query, setQuery] = useState("");
 
+  const runningContainers = useMemo(
+    () => data?.hosts.reduce((a, h) => a + h.containers.filter(c => c.state === 'running').length, 0) ?? 0,
+    [data?.hosts],
+  );
   const totalContainers = useMemo(
     () => data?.hosts.reduce((a, h) => a + h.containers.length, 0) ?? 0,
     [data?.hosts],
@@ -69,7 +73,7 @@ export const ContainersView: React.FC = () => {
       {
         id: "containers",
         label: "Containers",
-        count: totalContainers,
+        count: <>{runningContainers}/{totalContainers}</>,
         icon: "layers",
         iconSize: 13,
       },
@@ -88,7 +92,7 @@ export const ContainersView: React.FC = () => {
         iconSize: 13,
       },
     ],
-    [totalContainers, totalNetworks, totalVolumes],
+    [runningContainers, totalContainers, totalNetworks, totalVolumes],
   );
 
   if (isLoading) {

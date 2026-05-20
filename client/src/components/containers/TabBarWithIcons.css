@@ -1,16 +1,18 @@
+/* Icon-specific styles extending the base TabBar pattern from Heimdall */
+
 .tab-bar {
   display: flex;
   flex-direction: column;
-  background: rgb(var(--canvas-bg));
+  background: rgb(var(--canvas-card));
   border-bottom: 1px solid rgb(var(--canvas-border));
 }
 
-.tab-bar__tabs {
+.tab-bar-icons__tabs {
   display: flex;
   gap: 0;
 }
 
-.tab-bar__tab {
+.tab-bar-icons__tab {
   flex: 1;
   display: flex;
   align-items: center;
@@ -29,27 +31,27 @@
   position: relative;
 }
 
-.tab-bar__tab:hover {
+.tab-bar-icons__tab:hover {
   color: rgb(var(--canvas-fg-1));
   background: rgb(var(--canvas-bg-2));
 }
 
-.tab-bar__tab--active {
+.tab-bar-icons__tab--active {
   color: rgb(var(--canvas-fg-1));
   border-bottom-color: rgb(var(--accent-primary));
 }
 
-.tab-bar__tab-icon {
+.tab-bar-icons__icon {
   width: 13px;
   height: 13px;
   flex-shrink: 0;
 }
 
-.tab-bar__tab-label {
+.tab-bar-icons__label {
   white-space: nowrap;
 }
 
-.tab-bar__tab--active .chip--id-tag {
+.tab-bar-icons__tab--active .chip--id-tag {
   color: rgb(var(--accent-primary));
   background-color: rgb(var(--accent-primary) / 0.1);
   border-color: rgb(var(--accent-primary) / 0.25);
