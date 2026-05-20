@@ -164,7 +164,7 @@ export const useChatStream = ({ baseThread, activeBot }: UseChatStreamOptions): 
                     }
                   });
                 }
-              } catch (parseError) {
+              } catch {
                 // Only show parse error once per stream to avoid flooding the UI
                 if (!parseErrorShown) {
                   parseErrorShown = true;
