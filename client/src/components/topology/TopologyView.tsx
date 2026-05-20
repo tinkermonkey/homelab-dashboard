@@ -1,17 +1,16 @@
 import React, { useCallback } from 'react';
-import { GraphCanvas, GraphInspector, TopologyNode, type GraphNodeData, type GraphEdgeData } from '@tinkermonkey/heimdall-ui';
-import { PageHeader } from '@tinkermonkey/heimdall-ui';
+import { GraphCanvas, GraphInspector, TopologyNode, PageHeader, type GraphNodeData, type GraphEdgeData } from '@tinkermonkey/heimdall-ui';
 import { usePersistedState } from '../../utils/localStorage';
 import { useTopology } from '../../hooks/useAPI';
 import { Icon } from '../shared/Icon';
 import { DegradationBanner } from '../shared/DegradationBanner';
 import './TopologyView.css';
 
-const TP_BOT_LAYOUT: Record<string, { x: number; y: number; host: string }> = {
-  'lab-bot': { x: 150, y: 200, host: 'nyx' },
-  'ops-bot': { x: 150, y: 500, host: 'nyx' },
-  'sync-bot': { x: 450, y: 200, host: 'helios' },
-  'watch-bot': { x: 750, y: 200, host: 'aether' },
+const TP_BOT_LAYOUT: Record<string, { x: number; y: number }> = {
+  'lab-bot': { x: 150, y: 200 },
+  'ops-bot': { x: 150, y: 500 },
+  'sync-bot': { x: 450, y: 200 },
+  'watch-bot': { x: 750, y: 200 },
 };
 
 const HOST_TINT: Record<string, string> = {
@@ -24,6 +23,27 @@ const HOST_TINT: Record<string, string> = {
 export const TopologyView: React.FC = () => {
   const [selectedBotId, setSelectedBotId] = usePersistedState<string>('selectedTopologyBot', 'lab-bot');
   const { data: topologyData, isLoading, error } = useTopology();
+
+  // Render TopologyNode for each node
+  const renderNode = useCallback((node: GraphNodeData) => {
+    if (!topologyData) return null;
+    const bot = topologyData.bots.find(b => b.id === node.id);
+    if (!bot) return null;
+
+    const statusMap: Record<string, 'ok' | 'warning' | 'error' | 'idle'> = {
+      ok: 'ok',
+      busy: 'warning',
+      idle: 'idle',
+    };
+
+    return (
+      <TopologyNode
+        title={bot.label}
+        role={bot.role}
+        status={statusMap[bot.status] || 'idle'}
+      />
+    );
+  }, [topologyData]);
 
   if (isLoading) {
     return (
@@ -72,27 +92,6 @@ export const TopologyView: React.FC = () => {
     });
   }
 
-  // Render TopologyNode for each node
-  const renderNode = useCallback((node: GraphNodeData) => {
-    const bot = topologyData.bots.find(b => b.id === node.id);
-    if (!bot) return null;
-
-    const statusMap: Record<string, 'ok' | 'warning' | 'error' | 'idle'> = {
-      ok: 'ok',
-      busy: 'warning',
-      idle: 'idle',
-    };
-
-    return (
-      <TopologyNode
-        title={bot.label}
-        role={bot.role}
-        status={statusMap[bot.status] || 'idle'}
-        onClick={() => setSelectedBotId(bot.id)}
-        style={{ cursor: 'pointer' }}
-      />
-    );
-  }, [topologyData.bots, setSelectedBotId]);
 
   // Prepare GraphInspector data
   const inspectorNode = selectedBot ? {
