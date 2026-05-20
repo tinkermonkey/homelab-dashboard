@@ -5,9 +5,6 @@
   margin-bottom: 16px;
 }
 
-.host-filter-bar__search {
-  /* FilterBar styles inherited from FilterBar component */
-}
 
 .host-filter-bar__chips {
   display: flex;
@@ -41,9 +38,6 @@
   background-color: color-mix(in oklab, rgb(var(--accent-primary)) 10%, transparent);
 }
 
-.host-filter-chip__label {
-  /* Label styling */
-}
 
 .host-filter-chip__count {
   color: rgb(var(--canvas-fg-4));

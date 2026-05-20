@@ -3,8 +3,12 @@ import { FilterBar } from '@tinkermonkey/heimdall-ui';
 import type { FilterChip } from '@tinkermonkey/heimdall-ui';
 import './HostFilterBar.css';
 
+interface HostFilterChip extends FilterChip {
+  count: number;
+}
+
 interface HostFilterBarProps {
-  hostFilters: FilterChip[];
+  hostFilters: HostFilterChip[];
   selectedHost: string;
   onHostSelect: (hostId: string) => void;
   searchPlaceholder?: string;
@@ -20,11 +24,12 @@ export const HostFilterBar: React.FC<HostFilterBarProps> = ({
 }) => {
   return (
     <div className="host-filter-bar">
-      <FilterBar
-        searchPlaceholder={searchPlaceholder}
-        onSearchChange={onSearchChange}
-        className="host-filter-bar__search"
-      />
+      {onSearchChange && (
+        <FilterBar
+          searchPlaceholder={searchPlaceholder}
+          onSearchChange={onSearchChange}
+        />
+      )}
       <div className="host-filter-bar__chips">
         {hostFilters.map(chip => (
           <button
@@ -33,11 +38,11 @@ export const HostFilterBar: React.FC<HostFilterBarProps> = ({
             className={`host-filter-chip ${selectedHost === chip.id ? 'host-filter-chip--active' : ''}`}
             data-testid={`host-filter-${chip.id}`}
           >
-            <span className="host-filter-chip__label">
+            <span>
               {chip.id === 'all' ? 'all hosts' : chip.id}
             </span>
             <span className="host-filter-chip__count">
-              {chip.label.match(/\((\d+)\)/)?.[1] || '0'}
+              {chip.count}
             </span>
           </button>
         ))}

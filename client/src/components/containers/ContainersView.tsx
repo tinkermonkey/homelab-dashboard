@@ -1,6 +1,5 @@
 import React, { useState, useMemo } from 'react';
 import { PageHeader } from '@tinkermonkey/heimdall-ui';
-import type { FilterChip } from '@tinkermonkey/heimdall-ui';
 import { useDocker } from '../../hooks/useAPI';
 import { Icon } from '../shared/Icon';
 import { DegradationBanner } from '../shared/DegradationBanner';
@@ -49,10 +48,10 @@ export const ContainersView: React.FC = () => {
         : host.volumes.length;
   };
 
-  const hostFilterChips = useMemo<FilterChip[]>(() => {
+  const hostFilterChips = useMemo(() => {
     return [
-      { id: 'all', label: `all hosts (${getHostCount('all')})` },
-      ...data.hosts.map(h => ({ id: h.id, label: `${h.id} (${getHostCount(h.id)})` }))
+      { id: 'all', label: 'all hosts', count: getHostCount('all') },
+      ...data.hosts.map(h => ({ id: h.id, label: h.id, count: getHostCount(h.id) }))
     ];
   }, [data.hosts, activeTab, totalContainers, totalNetworks, totalVolumes]);
 
@@ -114,22 +113,15 @@ export const ContainersView: React.FC = () => {
       </div>
 
       {/* Host Filter Bar (Search for containers, Host selection for all tabs) */}
-      {activeTab === 'containers' && (
-        <HostFilterBar
-          hostFilters={hostFilterChips}
-          selectedHost={hostFilter}
-          onHostSelect={setHostFilter}
-          searchPlaceholder="Filter by name, image, tag…"
-          onSearchChange={setQuery}
-        />
-      )}
-      {activeTab !== 'containers' && (
-        <HostFilterBar
-          hostFilters={hostFilterChips}
-          selectedHost={hostFilter}
-          onHostSelect={setHostFilter}
-        />
-      )}
+      <HostFilterBar
+        hostFilters={hostFilterChips}
+        selectedHost={hostFilter}
+        onHostSelect={setHostFilter}
+        {...(activeTab === 'containers' && {
+          searchPlaceholder: 'Filter by name, image, tag…',
+          onSearchChange: setQuery,
+        })}
+      />
 
       {/* Tab Content */}
       <div className="containers-content">
