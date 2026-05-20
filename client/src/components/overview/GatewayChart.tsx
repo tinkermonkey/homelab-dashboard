@@ -1,16 +1,7 @@
 import React, { useMemo, useId } from 'react';
 import './GatewayChart.css';
 
-/**
- * Phase 6 Decision (Issue #26): Custom GatewayChart retained.
- *
- * Heimdall UI v0.2.0 does not yet provide a LineChart or data visualization component.
- * Data visualization components are listed as a future phase in Heimdall's roadmap.
- * Required features: dual data series, gradient area fill, axis labels, tooltips, responsive sizing.
- *
- * This custom implementation will be evaluated for replacement once Heimdall's
- * data visualization components are available.
- */
+// Custom chart retained: Heimdall UI v0.2.0 lacks data visualization components (dual series, gradient fill, tooltips).
 
 interface GatewayChartProps {
   downHist: number[];
