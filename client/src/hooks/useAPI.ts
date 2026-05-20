@@ -34,7 +34,7 @@ export function useStatus() {
       return {
         ...response.data,
         degraded: response.degraded,
-      } as STATUS_DATA & { degraded?: string[] };
+      };
     },
     refetchInterval: 2200,
     staleTime: 1000,
@@ -51,7 +51,7 @@ export function useCluster() {
       return {
         ...response.data,
         degraded: response.degraded,
-      } as LAB_DATA & { degraded?: string[] };
+      };
     },
     refetchInterval: 15000,
     staleTime: 5000,
@@ -69,7 +69,7 @@ export function useDocker() {
         ...response.data,
         degraded: response.degraded,
         source: response.source as 'real' | 'mock' | undefined,
-      } as DOCKER_DATA & { degraded?: string[]; source?: 'real' | 'mock' };
+      };
     },
     refetchInterval: 30000,
     staleTime: 10000,
@@ -87,7 +87,7 @@ export function useTopology(enabled = true) {
         ...response.data,
         degraded: response.degraded,
         source: response.source as 'real' | 'mock' | undefined,
-      } as TOPOLOGY_DATA & { degraded?: string[]; source?: 'real' | 'mock' };
+      };
     },
     enabled,
     staleTime: 60000,

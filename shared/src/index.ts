@@ -130,6 +130,8 @@ export interface LAB_DATA {
   apps: App[];
   bots: Bot[];
   threadByBot: Record<string, ThreadItem[]>;
+  degraded?: string[];
+  source?: string;
 }
 
 // Docker data
@@ -186,6 +188,8 @@ export interface DockerHost {
 
 export interface DOCKER_DATA {
   hosts: DockerHost[];
+  degraded?: string[];
+  source?: string;
 }
 
 // Topology data
@@ -214,6 +218,8 @@ export interface TopologyBot {
 export interface TOPOLOGY_DATA {
   hosts: string[];
   bots: TopologyBot[];
+  degraded?: string[];
+  source?: string;
 }
 
 // Status data
@@ -224,4 +230,6 @@ export interface STATUS_DATA {
   upMbps: number;
   alertCount: number;
   alertPrimary: string;
+  degraded?: string[];
+  source?: string;
 }
