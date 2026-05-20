@@ -45,7 +45,7 @@ export const ContainersView: React.FC = () => {
         actions={
           <div style={{ display: 'flex', gap: '8px' }}>
             <button className="btn btn--sm btn--ghost" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <Icon name="reload" size={13} />
+              <Icon name="refresh" size={13} />
               Refresh
             </button>
             <button className="btn btn--sm btn--primary" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -92,11 +92,13 @@ export const ContainersView: React.FC = () => {
       </div>
 
       {/* FilterBar */}
-      <FilterBar
-        searchPlaceholder="Filter by name, image, tag…"
-        onSearchChange={setQuery}
-        filters={[]}
-      />
+      {activeTab === 'containers' && (
+        <FilterBar
+          searchPlaceholder="Filter by name, image, tag…"
+          onSearchChange={setQuery}
+          filters={[]}
+        />
+      )}
 
       {/* Host Filter */}
       <div className="host-filter-chips">

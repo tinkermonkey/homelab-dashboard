@@ -37,14 +37,13 @@ const HOST_TINTS: Record<string, HostTint> = {
   },
 };
 
-const getStatusColor = (status: string) => {
-  const statusMap: Record<string, string> = {
-    ok: 'rgb(var(--status-ok))',
-    warn: 'rgb(var(--status-warn))',
-    err: 'rgb(var(--status-error))',
-  };
-  return statusMap[status] || statusMap.ok;
+const STATUS_COLORS: Record<string, string> = {
+  ok: 'rgb(var(--status-ok))',
+  warn: 'rgb(var(--status-warn))',
+  err: 'rgb(var(--status-error))',
 };
+
+const getStatusColor = (status: string) => STATUS_COLORS[status] || STATUS_COLORS.ok;
 const getTintColor = (hostId: string) => HOST_TINTS[hostId] || HOST_TINTS.nyx;
 
 export const ServerCard: React.FC<ServerCardProps> = ({ server }) => {

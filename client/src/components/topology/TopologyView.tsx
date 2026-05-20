@@ -49,7 +49,7 @@ export const TopologyView: React.FC = () => {
         actions={
           <div style={{ display: 'flex', gap: '8px' }}>
             <button className="btn btn--sm btn--ghost" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <Icon name="reload" size={13} />
+              <Icon name="refresh" size={13} />
               Refresh
             </button>
             <button className="btn btn--sm btn--ghost" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
