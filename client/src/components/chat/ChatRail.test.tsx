@@ -1,15 +1,52 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, within, waitFor } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ChatRail } from './ChatRail.js';
-import type { Bot, ThreadItem, ThreadMessage, ThreadDivider, ThreadSuggestion } from '@homelab/shared';
+import type { Bot, ThreadMessage, ThreadDivider } from '@homelab/shared';
+import type { ReactNode } from 'react';
+
+interface ChatContainerProps {
+  children: ReactNode;
+  bots: Bot[];
+  activeBotId: string;
+  onBotChange: (botId: string) => void;
+  composer: ReactNode;
+}
+
+interface ChatMessageProps {
+  role: string;
+  senderName: string;
+  timestamp: string;
+  avatar: ReactNode;
+  badge?: ReactNode;
+  body: ReactNode;
+  toolBlock?: { status: string; name: string };
+  thinkingBlock?: { content: string };
+}
+
+interface ChatDividerProps {
+  label: string;
+}
+
+interface ChatComposerProps {
+  value: string;
+  onChange: (value: string) => void;
+  onSubmit: (value: string) => void;
+  placeholder: string;
+  scopeLabel: string;
+}
+
+interface ChatSuggestionsProps {
+  suggestions: Array<string>;
+  onSelect: (suggestion: string) => void;
+}
 
 // Mock the Heimdall UI library
 vi.mock('@tinkermonkey/heimdall-ui', () => ({
-  ChatContainer: ({ children, bots, activeBotId, onBotChange, composer }: any) => (
+  ChatContainer: ({ children, bots, activeBotId, onBotChange, composer }: ChatContainerProps) => (
     <div data-testid="chat-container">
       <div data-testid="chat-tabs">
-        {bots.map((bot: any) => (
+        {bots.map((bot) => (
           <button
             key={bot.id}
             data-testid={`bot-tab-${bot.id}`}
@@ -33,7 +70,7 @@ vi.mock('@tinkermonkey/heimdall-ui', () => ({
     body,
     toolBlock,
     thinkingBlock,
-  }: any) => (
+  }: ChatMessageProps) => (
     <div data-testid={`chat-message-${role}`} data-sender={senderName} data-timestamp={timestamp}>
       <div data-testid="message-avatar">{avatar}</div>
       <div data-testid="message-name">{senderName}</div>
@@ -43,8 +80,8 @@ vi.mock('@tinkermonkey/heimdall-ui', () => ({
       {thinkingBlock && <div data-testid="message-thinking-block">{thinkingBlock.content}</div>}
     </div>
   ),
-  ChatDivider: ({ label }: any) => <div data-testid="chat-divider">{label}</div>,
-  ChatComposer: ({ value, onChange, onSubmit, placeholder, scopeLabel }: any) => (
+  ChatDivider: ({ label }: ChatDividerProps) => <div data-testid="chat-divider">{label}</div>,
+  ChatComposer: ({ value, onChange, onSubmit, placeholder, scopeLabel }: ChatComposerProps) => (
     <div data-testid="composer-wrapper">
       <input
         data-testid="composer-input"
@@ -61,9 +98,9 @@ vi.mock('@tinkermonkey/heimdall-ui', () => ({
       </button>
     </div>
   ),
-  ChatSuggestions: ({ suggestions, onSelect }: any) => (
+  ChatSuggestions: ({ suggestions, onSelect }: ChatSuggestionsProps) => (
     <div data-testid="suggestions">
-      {suggestions.map((s: string, i: number) => (
+      {suggestions.map((s, i) => (
         <button
           key={i}
           data-testid={`suggestion-${i}`}
@@ -664,6 +701,8 @@ describe('ChatRail component', () => {
           role: 'assistant',
           status: 'idle',
           avatar: 'CA',
+          desc: 'Claude AI assistant',
+          model: 'claude-opus',
         },
       ];
 

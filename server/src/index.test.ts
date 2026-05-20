@@ -528,7 +528,8 @@ describe('Server Routes', () => {
 
         expect(fetchWithTimeout).toHaveBeenCalled();
         const call = vi.mocked(fetchWithTimeout).mock.calls[0];
-        expect(call[1]?.headers?.Authorization).toBeUndefined();
+        const headers = call[1]?.headers as Record<string, string> | undefined;
+        expect(headers?.Authorization).toBeUndefined();
       } finally {
         (configModule.config as any).phoneHomeChatToken = originalToken;
       }
@@ -579,7 +580,7 @@ describe('Server Routes', () => {
 
       for (const botId of validIds) {
         vi.clearAllMocks();
-        vi.mocked(fetchWithTimeout).mockResolvedValue(mockResponse);
+        vi.mocked(fetchWithTimeout).mockResolvedValue(mockResponse as any);
 
         const response = await fastify.inject({
           method: 'POST',

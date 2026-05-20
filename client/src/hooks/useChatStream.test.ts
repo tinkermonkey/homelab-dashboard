@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { renderHook, act, waitFor } from '@testing-library/react';
+import { renderHook, act } from '@testing-library/react';
 import { useChatStream } from './useChatStream.js';
 import type { ThreadItem, ThreadMessage } from '@homelab/shared';
 
@@ -292,8 +292,8 @@ describe('useChatStream hook', () => {
         useChatStream({ baseThread: [], activeBot: 'bot-1' })
       );
 
-      let capturedOptions: any;
-      global.fetch = vi.fn().mockImplementation((url, opts) => {
+      let capturedOptions: RequestInit | undefined;
+      global.fetch = vi.fn().mockImplementation((_url, opts) => {
         capturedOptions = opts;
         return Promise.resolve({
           ok: true,
@@ -306,8 +306,8 @@ describe('useChatStream hook', () => {
         await result.current.send('test');
       });
 
-      expect(capturedOptions.signal).toBeDefined();
-      expect(capturedOptions.signal instanceof AbortSignal).toBe(true);
+      expect(capturedOptions?.signal).toBeDefined();
+      expect(capturedOptions?.signal instanceof AbortSignal).toBe(true);
     });
 
     it('includes message in request body as JSON', async () => {
@@ -316,7 +316,7 @@ describe('useChatStream hook', () => {
       );
 
       let capturedBody: string = '';
-      global.fetch = vi.fn().mockImplementation((url, opts) => {
+      global.fetch = vi.fn().mockImplementation((_url, opts) => {
         capturedBody = opts.body;
         return Promise.resolve({
           ok: true,
