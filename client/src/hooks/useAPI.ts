@@ -6,7 +6,7 @@ const API_BASE = import.meta.env.VITE_API_BASE || '/api';
 interface APIResponse<T> {
   data: T;
   degraded?: string[];
-  source?: 'real' | 'mock' | 'alertmanager';
+  source?: 'real' | 'mock';
 }
 
 export async function fetchJSON<T>(url: string): Promise<APIResponse<T>> {
