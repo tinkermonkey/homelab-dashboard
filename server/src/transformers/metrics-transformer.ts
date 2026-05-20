@@ -50,7 +50,7 @@ export async function transformMetrics(
         ]);
         return { serverId, cpu, mem, disk, load };
       } catch (error) {
-        logger.error(`Failed to fetch metrics for ${serverId} (${metricsHostname}):`, error);
+        logger.error({ err: error }, `Failed to fetch metrics for ${serverId} (${metricsHostname})`);
         throw error;
       }
     });
@@ -75,7 +75,7 @@ export async function transformMetrics(
 
     if (hasFailure) degraded.push('metricbeat');
   } catch (error) {
-    logger.error('Error fetching server metrics:', error);
+    logger.error({ err: error }, 'Error fetching server metrics');
     degraded.push('metricbeat');
   }
 
@@ -90,7 +90,7 @@ export async function transformMetrics(
       upHist: stats.upHist,
     };
   } catch (error) {
-    logger.error('Error fetching ntopng gateway stats:', error);
+    logger.error({ err: error }, 'Error fetching ntopng gateway stats');
     degraded.push('ntopng');
   }
 
@@ -113,7 +113,7 @@ export async function transformMetrics(
 
     if (hasFailure) degraded.push('elastiflow');
   } catch (error) {
-    logger.error('Error fetching ElastiFlow data:', error);
+    logger.error({ err: error }, 'Error fetching ElastiFlow data');
     degraded.push('elastiflow');
   }
 
@@ -126,7 +126,7 @@ export async function transformMetrics(
       throw new Error('Invalid Docker data structure from MCP');
     }
   } catch (error) {
-    logger.error('Error fetching apps from phone-home MCP:', error);
+    logger.error({ err: error }, 'Error fetching apps from phone-home MCP');
     degraded.push('phone-home');
   }
 

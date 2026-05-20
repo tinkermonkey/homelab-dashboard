@@ -53,9 +53,10 @@ describe('MCP Transformer', () => {
 
     it('falls back to mock data when MCP call fails', async () => {
       const mockFallbackData = { hosts: [] };
+      const error = new Error('Network error');
 
       vi.spyOn(mcpClientModule, 'mcpClient', 'get').mockReturnValue({
-        getDockerInventory: vi.fn().mockRejectedValue(new Error('Network error')),
+        getDockerInventory: vi.fn().mockRejectedValue(error),
       } as any);
 
       vi.spyOn(mockDataModule, 'getDockerData').mockReturnValue(mockFallbackData as any);
@@ -65,6 +66,10 @@ describe('MCP Transformer', () => {
       expect(result.data).toEqual(mockFallbackData);
       expect(result.degraded).toContain('phone-home');
       expect(result.source).toBe('mock');
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        expect.objectContaining({ err: error }),
+        expect.stringContaining('Error fetching Docker data from MCP')
+      );
     });
 
     it('falls back to mock data when data structure is invalid', async () => {
@@ -81,6 +86,10 @@ describe('MCP Transformer', () => {
       expect(result.data).toEqual(mockFallbackData);
       expect(result.degraded).toContain('phone-home');
       expect(result.source).toBe('mock');
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        expect.objectContaining({ err: expect.any(Error) }),
+        expect.stringContaining('Error fetching Docker data from MCP')
+      );
     });
 
     it('validates host structure', async () => {
@@ -160,9 +169,10 @@ describe('MCP Transformer', () => {
 
     it('falls back to mock data when MCP call fails', async () => {
       const mockFallbackData = { hosts: [], bots: [] };
+      const error = new Error('Connection refused');
 
       vi.spyOn(mcpClientModule, 'mcpClient', 'get').mockReturnValue({
-        getTopologyData: vi.fn().mockRejectedValue(new Error('Connection refused')),
+        getTopologyData: vi.fn().mockRejectedValue(error),
       } as any);
 
       vi.spyOn(mockDataModule, 'getTopologyData').mockReturnValue(mockFallbackData as any);
@@ -172,6 +182,10 @@ describe('MCP Transformer', () => {
       expect(result.data).toEqual(mockFallbackData);
       expect(result.degraded).toContain('phone-home');
       expect(result.source).toBe('mock');
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        expect.objectContaining({ err: error }),
+        expect.stringContaining('Error fetching topology data from MCP')
+      );
     });
 
     it('falls back to mock data when data structure is invalid', async () => {
@@ -188,6 +202,10 @@ describe('MCP Transformer', () => {
       expect(result.data).toEqual(mockFallbackData);
       expect(result.degraded).toContain('phone-home');
       expect(result.source).toBe('mock');
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        expect.objectContaining({ err: expect.any(Error) }),
+        expect.stringContaining('Error fetching topology data from MCP')
+      );
     });
 
     it('validates hosts is string array', async () => {

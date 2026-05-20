@@ -46,7 +46,7 @@ export async function transformDockerData(logger: FastifyBaseLogger): Promise<{
     }
     return { data: result, degraded, source: 'real' };
   } catch (error) {
-    logger.error('Error fetching Docker data from MCP:', error);
+    logger.error({ err: error }, 'Error fetching Docker data from MCP');
     degraded.push('phone-home');
     return { data: getDockerData(), degraded, source: 'mock' };
   }
@@ -66,7 +66,7 @@ export async function transformTopologyData(logger: FastifyBaseLogger): Promise<
     }
     return { data: result, degraded, source: 'real' };
   } catch (error) {
-    logger.error('Error fetching topology data from MCP:', error);
+    logger.error({ err: error }, 'Error fetching topology data from MCP');
     degraded.push('phone-home');
     return { data: getTopologyData(), degraded, source: 'mock' };
   }

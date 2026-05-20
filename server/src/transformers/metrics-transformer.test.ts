@@ -268,16 +268,27 @@ describe('transformMetrics', () => {
 
   it('degrades metricbeat when metrics fetch fails', async () => {
     setupAllMocks();
-    vi.mocked(metricbeatClient.getCpuHistory).mockRejectedValue(new Error('Connection failed'));
+    const error = new Error('Connection failed');
+    vi.mocked(metricbeatClient.getCpuHistory).mockRejectedValue(error);
     const result = await transformMetrics(mockLabData, mockLogger);
     expect(result.degraded).toContain('metricbeat');
+    // Verify logger was called with error object (logs happen in inner catch block)
+    expect(mockLogger.error).toHaveBeenCalledWith(
+      expect.objectContaining({ err: expect.any(Error) }),
+      expect.any(String)
+    );
   });
 
   it('degrades ntopng when gateway stats fail', async () => {
     setupAllMocks();
-    vi.mocked(ntopngClient.getWanInterfaceStats).mockRejectedValue(new Error('Network error'));
+    const error = new Error('Network error');
+    vi.mocked(ntopngClient.getWanInterfaceStats).mockRejectedValue(error);
     const result = await transformMetrics(mockLabData, mockLogger);
     expect(result.degraded).toContain('ntopng');
+    expect(mockLogger.error).toHaveBeenCalledWith(
+      expect.objectContaining({ err: error }),
+      expect.stringContaining('Error fetching ntopng gateway stats')
+    );
   });
 
   it('updates gateway downMbps/upMbps from ntopng', async () => {
@@ -298,9 +309,14 @@ describe('transformMetrics', () => {
 
   it('degrades phone-home when apps fetch fails', async () => {
     setupAllMocks();
-    vi.mocked(mcpClient.listContainers).mockRejectedValue(new Error('Connection refused'));
+    const error = new Error('Connection refused');
+    vi.mocked(mcpClient.listContainers).mockRejectedValue(error);
     const result = await transformMetrics(mockLabData, mockLogger);
     expect(result.degraded).toContain('phone-home');
+    expect(mockLogger.error).toHaveBeenCalledWith(
+      expect.objectContaining({ err: error }),
+      expect.stringContaining('Error fetching apps from phone-home MCP')
+    );
   });
 
   it('preserves original data structure when transformations fail', async () => {
@@ -334,5 +350,9 @@ describe('transformMetrics', () => {
     const result = await transformMetrics(mockLabData, mockLogger);
     expect(result.degraded).toContain('phone-home');
     expect(result.data.apps).toEqual([]);
+    expect(mockLogger.error).toHaveBeenCalledWith(
+      expect.objectContaining({ err: expect.any(Error) }),
+      expect.stringContaining('Error fetching apps from phone-home MCP')
+    );
   });
 });
