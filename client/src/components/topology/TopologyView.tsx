@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { GraphCanvas, GraphInspector, TopologyNode, PageHeader, type GraphNodeData, type GraphEdgeData } from '@tinkermonkey/heimdall-ui';
 import { usePersistedState } from '../../utils/localStorage';
 import { useTopology } from '../../hooks/useAPI';
@@ -70,28 +70,31 @@ export const TopologyView: React.FC = () => {
   const dataSource = topologyData.source;
 
   // Convert TopologyBot[] to GraphNodeData[]
-  const nodes: GraphNodeData[] = topologyData.bots.map(bot => ({
+  const nodes = useMemo((): GraphNodeData[] => topologyData.bots.map(bot => ({
     id: bot.id,
     label: bot.label,
     kind: bot.role,
     domainColor: HOST_TINT[bot.host],
     x: TP_BOT_LAYOUT[bot.id]?.x,
     y: TP_BOT_LAYOUT[bot.id]?.y,
-  }));
+  })), [topologyData]);
 
   // Create edges for delegation relationships
-  const edges: GraphEdgeData[] = [];
-  const labBot = topologyData.bots.find(b => b.id === 'lab-bot');
-  if (labBot?.delegates) {
-    labBot.delegates.forEach(delegateId => {
-      edges.push({
-        id: `${labBot.id}->${delegateId}`,
-        sourceId: labBot.id,
-        targetId: delegateId,
-        label: 'delegates',
+  const edges = useMemo((): GraphEdgeData[] => {
+    const result: GraphEdgeData[] = [];
+    const labBot = topologyData.bots.find(b => b.id === 'lab-bot');
+    if (labBot?.delegates) {
+      labBot.delegates.forEach(delegateId => {
+        result.push({
+          id: `${labBot.id}->${delegateId}`,
+          sourceId: labBot.id,
+          targetId: delegateId,
+          label: 'delegates',
+        });
       });
-    });
-  }
+    }
+    return result;
+  }, [topologyData]);
 
 
   // Prepare GraphInspector data
