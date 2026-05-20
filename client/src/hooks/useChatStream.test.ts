@@ -3,6 +3,30 @@ import { renderHook, act } from '@testing-library/react';
 import { useChatStream } from './useChatStream.js';
 import type { ThreadItem, ThreadMessage } from '@homelab/shared';
 
+function createMockReadableStream(chunks: string[], cancelFn?: ReturnType<typeof vi.fn>) {
+  let chunkIndex = 0;
+  const cancel = cancelFn || vi.fn().mockResolvedValue(undefined);
+
+  return {
+    getReader: vi.fn(() => ({
+      read: vi.fn(async () => {
+        if (chunkIndex >= chunks.length) {
+          return { done: true, value: undefined };
+        }
+        const chunk = chunks[chunkIndex];
+        chunkIndex++;
+        const encoder = new TextEncoder();
+        return {
+          done: false,
+          value: encoder.encode(chunk),
+        };
+      }),
+      cancel,
+    })),
+    _cancel: cancel,
+  };
+}
+
 describe('useChatStream hook', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -70,7 +94,7 @@ describe('useChatStream hook', () => {
       await act(async () => {
         await result.current.send('');
         await result.current.send('   ');
-        await result.current.send(undefined);
+        await result.current.send();
       });
 
       expect(fetchMock).not.toHaveBeenCalled();
@@ -475,28 +499,6 @@ describe('useChatStream hook', () => {
   });
 
   describe('SSE stream parsing - reader loop', () => {
-    function createMockReadableStream(chunks: string[]) {
-      let chunkIndex = 0;
-
-      return {
-        getReader: vi.fn(() => ({
-          read: vi.fn(async () => {
-            if (chunkIndex >= chunks.length) {
-              return { done: true, value: undefined };
-            }
-            const chunk = chunks[chunkIndex];
-            chunkIndex++;
-            const encoder = new TextEncoder();
-            return {
-              done: false,
-              value: encoder.encode(chunk),
-            };
-          }),
-          cancel: vi.fn().mockResolvedValue(undefined),
-        })),
-      };
-    }
-
     it('parses single complete SSE message', async () => {
       const { result } = renderHook(() =>
         useChatStream({ baseThread: [], activeBot: 'bot-1' })
@@ -709,28 +711,6 @@ describe('useChatStream hook', () => {
   });
 
   describe('SSE error handling - in-stream errors', () => {
-    function createMockReadableStream(chunks: string[]) {
-      let chunkIndex = 0;
-
-      return {
-        getReader: vi.fn(() => ({
-          read: vi.fn(async () => {
-            if (chunkIndex >= chunks.length) {
-              return { done: true, value: undefined };
-            }
-            const chunk = chunks[chunkIndex];
-            chunkIndex++;
-            const encoder = new TextEncoder();
-            return {
-              done: false,
-              value: encoder.encode(chunk),
-            };
-          }),
-          cancel: vi.fn().mockResolvedValue(undefined),
-        })),
-      };
-    }
-
     it('handles error objects in SSE data', async () => {
       const { result } = renderHook(() =>
         useChatStream({ baseThread: [], activeBot: 'bot-1' })
@@ -862,28 +842,6 @@ describe('useChatStream hook', () => {
   });
 
   describe('AbortError handling', () => {
-    function createMockReadableStream(chunks: string[]) {
-      let chunkIndex = 0;
-
-      return {
-        getReader: vi.fn(() => ({
-          read: vi.fn(async () => {
-            if (chunkIndex >= chunks.length) {
-              return { done: true, value: undefined };
-            }
-            const chunk = chunks[chunkIndex];
-            chunkIndex++;
-            const encoder = new TextEncoder();
-            return {
-              done: false,
-              value: encoder.encode(chunk),
-            };
-          }),
-          cancel: vi.fn().mockResolvedValue(undefined),
-        })),
-      };
-    }
-
     it('does not show error message when stream is aborted', async () => {
       const { result } = renderHook(() =>
         useChatStream({ baseThread: [], activeBot: 'bot-1' })
@@ -925,30 +883,6 @@ describe('useChatStream hook', () => {
   });
 
   describe('stream lifecycle - reader and abort cleanup', () => {
-    function createMockReadableStream(chunks: string[]) {
-      let chunkIndex = 0;
-      const cancel = vi.fn().mockResolvedValue(undefined);
-
-      return {
-        getReader: vi.fn(() => ({
-          read: vi.fn(async () => {
-            if (chunkIndex >= chunks.length) {
-              return { done: true, value: undefined };
-            }
-            const chunk = chunks[chunkIndex];
-            chunkIndex++;
-            const encoder = new TextEncoder();
-            return {
-              done: false,
-              value: encoder.encode(chunk),
-            };
-          }),
-          cancel,
-        })),
-        _cancel: cancel,
-      };
-    }
-
     it('clears reader reference after stream completes', async () => {
       const { result } = renderHook(() =>
         useChatStream({ baseThread: [], activeBot: 'bot-1' })
@@ -968,8 +902,7 @@ describe('useChatStream hook', () => {
         await result.current.send('test');
       });
 
-      const thread = result.current.thread;
-      expect(thread.length).toBeGreaterThan(0);
+      expect(mockBody._cancel).toHaveBeenCalled();
     });
 
     it('clears abort controller after stream completes', async () => {
@@ -991,43 +924,47 @@ describe('useChatStream hook', () => {
         await result.current.send('test');
       });
 
-      const thread = result.current.thread;
-      expect(thread.length).toBeGreaterThan(0);
+      expect(mockBody._cancel).toHaveBeenCalled();
     });
   });
 
   describe('text decoder stream=true behavior', () => {
-    function createMockReadableStream(chunks: string[]) {
-      let chunkIndex = 0;
-
-      return {
-        getReader: vi.fn(() => ({
-          read: vi.fn(async () => {
-            if (chunkIndex >= chunks.length) {
-              return { done: true, value: undefined };
-            }
-            const chunk = chunks[chunkIndex];
-            chunkIndex++;
-            const encoder = new TextEncoder();
-            return {
-              done: false,
-              value: encoder.encode(chunk),
-            };
-          }),
-          cancel: vi.fn().mockResolvedValue(undefined),
-        })),
-      };
-    }
-
     it('handles multi-byte UTF-8 characters split across chunks', async () => {
       const { result } = renderHook(() =>
         useChatStream({ baseThread: [], activeBot: 'bot-1' })
       );
 
-      const mockBody = createMockReadableStream([
-        'data: {"choices":[{"delta":{"content":"Hello ',
-        '🌍"}}]}\n\n',
-      ]);
+      const encoder = new TextEncoder();
+
+      // Construct raw bytes with emoji split across chunks
+      const firstPart = 'data: {"choices":[{"delta":{"content":"Hello ';
+      const firstPartBytes = encoder.encode(firstPart);
+      const emojiBytes = encoder.encode('🌍'); // 4 bytes: F0 9F 8C 8D
+      const lastPart = '"}}]}\n\n';
+      const lastPartBytes = encoder.encode(lastPart);
+
+      // Split emoji in half: first chunk gets first 2 bytes of emoji
+      const chunk1 = new Uint8Array([...firstPartBytes, ...emojiBytes.slice(0, 2)]);
+      // Second chunk gets remaining 2 bytes of emoji plus the rest
+      const chunk2 = new Uint8Array([...emojiBytes.slice(2), ...lastPartBytes]);
+
+      // Custom mock that returns pre-split byte arrays (not re-encoded)
+      let chunkIndex = 0;
+      const chunks = [chunk1, chunk2];
+      const mockBody = {
+        getReader: vi.fn(() => ({
+          read: vi.fn(async () => {
+            if (chunkIndex >= chunks.length) {
+              return { done: true, value: undefined };
+            }
+            return {
+              done: false,
+              value: chunks[chunkIndex++],
+            };
+          }),
+          cancel: vi.fn().mockResolvedValue(undefined),
+        })),
+      };
 
       global.fetch = vi.fn().mockResolvedValue({
         ok: true,
@@ -1041,7 +978,7 @@ describe('useChatStream hook', () => {
 
       const botMsgs = result.current.thread.filter(m => m.kind === 'msg' && m.who === 'bot-1');
       const lastMsg = botMsgs[botMsgs.length - 1] as ThreadMessage;
-      expect(lastMsg.body[0].p).toContain('Hello');
+      expect(lastMsg.body[0].p).toContain('Hello 🌍');
     });
   });
 });
