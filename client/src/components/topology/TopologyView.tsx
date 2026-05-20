@@ -2,6 +2,7 @@ import React from 'react';
 import { usePersistedState } from '../../utils/localStorage';
 import { useTopology } from '../../hooks/useAPI';
 import { Icon } from '../shared/Icon';
+import { DegradationBanner } from '../shared/DegradationBanner';
 import { TopologyStage } from './TopologyStage';
 import { BotInspector } from './BotInspector';
 import './TopologyView.css';
@@ -68,25 +69,7 @@ export const TopologyView: React.FC = () => {
       </div>
 
       {/* Degradation Banner */}
-      {degraded && degraded.length > 0 && (
-        <div
-          style={{
-            backgroundColor: 'rgba(245, 158, 11, 0.1)',
-            border: '1px solid rgba(245, 158, 11, 0.3)',
-            borderRadius: '4px',
-            padding: '12px 16px',
-            marginBottom: '24px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '12px',
-          }}
-        >
-          <Icon name="alert-triangle" size={16} style={{ color: '#F59E0B' }} />
-          <div style={{ fontSize: '13px' }}>
-            <strong>Partial Data:</strong> {degraded.join(', ')} are temporarily unavailable. Showing cached data.
-          </div>
-        </div>
-      )}
+      <DegradationBanner degraded={degraded} />
 
       {/* Topology Stage with Inspector */}
       <div className="topology-container">

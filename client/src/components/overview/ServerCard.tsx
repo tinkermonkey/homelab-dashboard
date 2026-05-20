@@ -1,13 +1,14 @@
 import React from 'react';
 import type { Server } from '@homelab/shared';
-import { Sparkline } from './Sparkline';
+import { Sparkline } from '@tinkermonkey/heimdall-ui';
+import type { StatusColor } from '@tinkermonkey/heimdall-ui';
 import './ServerCard.css';
 
 interface ServerCardProps {
   server: Server;
 }
 
-type HostTint = { rgb: string; a12: string; a31: string };
+type HostTint = { rgb: string; a12: string; a31: string; statusColor: StatusColor };
 
 interface MetricRowProps {
   label: string;
@@ -24,21 +25,25 @@ const HOST_TINTS: Record<string, HostTint> = {
     rgb: 'rgb(var(--host-nyx-tint))',
     a12: 'var(--host-nyx-tint-a12)',
     a31: 'var(--host-nyx-tint-a31)',
+    statusColor: 'cyan',
   },
   helios: {
     rgb: 'rgb(var(--host-helios-tint))',
     a12: 'var(--host-helios-tint-a12)',
     a31: 'var(--host-helios-tint-a31)',
+    statusColor: 'emerald',
   },
   aether: {
     rgb: 'rgb(var(--host-aether-tint))',
     a12: 'var(--host-aether-tint-a12)',
     a31: 'var(--host-aether-tint-a31)',
+    statusColor: 'violet',
   },
   vega: {
     rgb: 'rgb(var(--host-vega-tint))',
     a12: 'var(--host-vega-tint-a12)',
     a31: 'var(--host-vega-tint-a31)',
+    statusColor: 'amber',
   },
 };
 
@@ -78,7 +83,7 @@ const MetricRow: React.FC<MetricRowProps> = ({
       </div>
       <div className="server-card__metric-value">{display}</div>
       <div className="server-card__sparkline">
-        <Sparkline data={hist} width={40} height={18} color={tintColor.rgb} areaColor={tintColor.rgb} />
+        <Sparkline data={hist} width={40} height={18} color={tintColor.statusColor} />
       </div>
     </div>
   );

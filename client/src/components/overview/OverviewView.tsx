@@ -1,9 +1,10 @@
 import React from 'react';
 import type { LAB_DATA } from '@homelab/shared';
+import { AlertStrip, type Alert as HeimdallAlert } from '@tinkermonkey/heimdall-ui';
 import { Icon } from '../shared/Icon';
 import { useAlerts } from '../../hooks/useAPI';
 import { ServerCard } from './ServerCard';
-import { AlertsStrip } from './AlertsStrip';
+import { DegradationBanner } from '../shared/DegradationBanner';
 import { GatewayPanel } from './GatewayPanel';
 import { AppsSection } from './AppsSection';
 import './OverviewView.css';
@@ -49,29 +50,17 @@ export const OverviewView: React.FC<OverviewViewProps> = ({ data, showAlerts = t
       </div>
 
       {/* Degradation Banner */}
-      {data.degraded && data.degraded.length > 0 && (
-        <div
-          style={{
-            backgroundColor: 'rgba(245, 158, 11, 0.1)',
-            border: '1px solid rgba(245, 158, 11, 0.3)',
-            borderRadius: '4px',
-            padding: '12px 16px',
-            marginBottom: '24px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '12px',
-          }}
-        >
-          <Icon name="alert-triangle" size={16} style={{ color: '#F59E0B' }} />
-          <div style={{ fontSize: '13px' }}>
-            <strong>Partial Data:</strong> {data.degraded.join(', ')} are temporarily unavailable. Showing cached data.
-          </div>
-        </div>
-      )}
+      <DegradationBanner degraded={data.degraded} />
 
       {/* Alerts Strip */}
-      {showAlerts && alerts.length > 0 && (
-        <AlertsStrip alerts={alerts} />
+      {showAlerts && (
+        <AlertStrip
+          alerts={alerts.map(alert => ({
+            id: `${alert.name}-${alert.severity}`,
+            severity: (alert.severity === 'critical' ? 'error' : alert.severity === 'warning' ? 'warn' : 'info') as 'error' | 'warn' | 'info' | 'success',
+            message: alert.name,
+          }) as HeimdallAlert)}
+        />
       )}
 
       {/* Cluster Stats */}
