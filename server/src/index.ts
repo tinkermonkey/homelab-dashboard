@@ -201,25 +201,29 @@ export async function registerRoutes(app: FastifyInstance) {
       reply.header('Connection', 'keep-alive');
 
       const decoder = new TextDecoder();
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
 
-        const chunk = decoder.decode(value, { stream: true });
-        reply.raw.write(chunk);
+          const chunk = decoder.decode(value, { stream: true });
+          reply.raw.write(chunk);
+        }
+
+        reply.raw.end();
+      } finally {
+        await reader.cancel().catch(() => {});
       }
-
-      reply.raw.end();
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
       app.log.error(`Chat proxy error for botId ${botId}: ${message}`);
 
       // If headers already sent (SSE stream started), write error as SSE event
       if (reply.raw.headersSent) {
-        reply.raw.write(`data: ${JSON.stringify({ error: message })}\n\n`);
+        reply.raw.write(`data: ${JSON.stringify({ error: 'Chat service error' })}\n\n`);
         reply.raw.end();
       } else {
-        reply.status(500).send({ error: message });
+        reply.status(500).send({ error: 'Chat service error' });
       }
     }
   });

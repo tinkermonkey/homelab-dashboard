@@ -384,7 +384,7 @@ describe('Server Routes', () => {
       });
 
       expect(response.statusCode).toBe(500);
-      expect(JSON.parse(response.body)).toEqual({ error: 'Network error' });
+      expect(JSON.parse(response.body)).toEqual({ error: 'Chat service error' });
     });
 
     it('sends Bearer token in Authorization header when token is configured', async () => {
