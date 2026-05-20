@@ -170,7 +170,21 @@ export async function registerRoutes(app: FastifyInstance) {
       });
 
       if (!response.ok) {
-        reply.status(response.status).send({ error: 'Chat service unavailable' });
+        let errorDetail = 'Chat service unavailable';
+        try {
+          const responseText = await response.text();
+          if (responseText) {
+            try {
+              const errorJson = JSON.parse(responseText);
+              errorDetail = errorJson.error || errorJson.message || responseText.slice(0, 100);
+            } catch {
+              errorDetail = responseText.slice(0, 100);
+            }
+          }
+        } catch (readError) {
+          app.log.debug(`Failed to read upstream error body: ${readError instanceof Error ? readError.message : 'Unknown error'}`);
+        }
+        reply.status(response.status).send({ error: errorDetail });
         return;
       }
 
@@ -186,11 +200,12 @@ export async function registerRoutes(app: FastifyInstance) {
       reply.header('Cache-Control', 'no-cache');
       reply.header('Connection', 'keep-alive');
 
+      const decoder = new TextDecoder();
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
 
-        const chunk = new TextDecoder().decode(value);
+        const chunk = decoder.decode(value, { stream: true });
         reply.raw.write(chunk);
       }
 
@@ -201,10 +216,10 @@ export async function registerRoutes(app: FastifyInstance) {
 
       // If headers already sent (SSE stream started), write error as SSE event
       if (reply.raw.headersSent) {
-        reply.raw.write(`data: ${JSON.stringify({ error: 'Chat service error' })}\n\n`);
+        reply.raw.write(`data: ${JSON.stringify({ error: message })}\n\n`);
         reply.raw.end();
       } else {
-        reply.status(500).send({ error: 'Chat service error' });
+        reply.status(500).send({ error: message });
       }
     }
   });

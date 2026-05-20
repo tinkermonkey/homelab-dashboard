@@ -371,7 +371,7 @@ describe('Server Routes', () => {
       });
 
       expect(response.statusCode).toBe(503);
-      expect(JSON.parse(response.body)).toEqual({ error: 'Chat service unavailable' });
+      expect(JSON.parse(response.body)).toEqual({ error: 'Service Unavailable' });
     });
 
     it('returns 500 when chat service throws error', async () => {
@@ -384,7 +384,7 @@ describe('Server Routes', () => {
       });
 
       expect(response.statusCode).toBe(500);
-      expect(JSON.parse(response.body)).toEqual({ error: 'Chat service error' });
+      expect(JSON.parse(response.body)).toEqual({ error: 'Network error' });
     });
 
     it('sends Bearer token in Authorization header when token is configured', async () => {
@@ -603,7 +603,7 @@ describe('Server Routes', () => {
       });
 
       expect(response.statusCode).toBe(400);
-      expect(JSON.parse(response.body)).toEqual({ error: 'Chat service unavailable' });
+      expect(JSON.parse(response.body)).toEqual({ error: 'Bad Request' });
     });
 
     it('returns 5xx status from upstream when service returns 5xx', async () => {
@@ -617,7 +617,7 @@ describe('Server Routes', () => {
       });
 
       expect(response.statusCode).toBe(500);
-      expect(JSON.parse(response.body)).toEqual({ error: 'Chat service unavailable' });
+      expect(JSON.parse(response.body)).toEqual({ error: 'Internal Server Error' });
     });
   });
 
