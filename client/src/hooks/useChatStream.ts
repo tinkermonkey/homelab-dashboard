@@ -84,7 +84,19 @@ export const useChatStream = ({ baseThread, activeBot }: UseChatStreamOptions): 
 
         let accumulated = '';
         const reader = response.body?.getReader();
-        if (!reader) return;
+        if (!reader) {
+          const errorMsg: ThreadMessage = {
+            kind: 'msg',
+            who: activeBot,
+            when,
+            body: [{ p: 'Error: No response body from service' }],
+          };
+          setExtraMsgs(prev => ({
+            ...prev,
+            [activeBot]: [...(prev[activeBot] || []), errorMsg],
+          }));
+          return;
+        }
 
         const decoder = new TextDecoder();
 
@@ -152,7 +164,16 @@ export const useChatStream = ({ baseThread, activeBot }: UseChatStreamOptions): 
                   });
                 }
               } catch (parseError) {
-                console.error('Failed to parse SSE message:', parseError, 'Raw JSON:', jsonStr);
+                const parseMsg: ThreadMessage = {
+                  kind: 'msg',
+                  who: activeBot,
+                  when,
+                  body: [{ p: 'Error: Malformed response from service' }],
+                };
+                setExtraMsgs(prev => ({
+                  ...prev,
+                  [activeBot]: [...(prev[activeBot] || []), parseMsg],
+                }));
               }
             }
           }

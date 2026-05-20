@@ -198,7 +198,14 @@ export async function registerRoutes(app: FastifyInstance) {
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
       app.log.error(`Chat proxy error for botId ${botId}: ${message}`);
-      reply.status(500).send({ error: 'Chat service error' });
+
+      // If headers already sent (SSE stream started), write error as SSE event
+      if (reply.sent) {
+        reply.raw.write(`data: ${JSON.stringify({ error: 'Chat service error' })}\n\n`);
+        reply.raw.end();
+      } else {
+        reply.status(500).send({ error: 'Chat service error' });
+      }
     }
   });
 

@@ -22,7 +22,7 @@ interface ChatRailProps {
 
 function normalizeToolStatus(status: string): 'running' | 'success' | 'error' {
   if (status === 'running') return 'running';
-  if (status.includes('completed') || status.includes('ok')) return 'success';
+  if (status === 'completed' || status === 'ok') return 'success';
   return 'error';
 }
 
