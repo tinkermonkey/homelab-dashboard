@@ -24,6 +24,24 @@ vi.mock('./transformers/mcp-transformer.js');
 vi.mock('./clients/signoz-client.js');
 vi.mock('./utils/fetch-with-timeout.js');
 
+vi.mock('./config.js', () => ({
+  config: {
+    port: 3001,
+    host: 'localhost',
+    signozUrl: 'http://signoz:4317',
+    signozApiToken: '',
+    ntopngUrl: 'http://ntopng:3000',
+    ntopngToken: '',
+    elastiflowUrl: 'http://elastiflow:9200',
+    elastiflowUser: 'elastic',
+    elastiflowPassword: 'secret',
+    phoneHomeUrl: 'http://phone-home:8000',
+    phoneHomeChatUrl: 'http://phone-home:8000/chat',
+    phoneHomeChatToken: 'test-bearer-token',
+    logLevel: 'info',
+  },
+}));
+
 const mockLabData: LAB_DATA = {
   cluster: {
     name: 'asgard',
@@ -363,6 +381,26 @@ describe('Server Routes', () => {
 
       expect(response.statusCode).toBe(500);
       expect(JSON.parse(response.body)).toEqual({ error: 'Chat service error' });
+    });
+
+    it('sends Bearer token in Authorization header when token is configured', async () => {
+      const mockResponse = new Response('data', { status: 200 });
+      vi.mocked(fetchWithTimeout).mockResolvedValue(mockResponse);
+
+      const response = await fastify.inject({
+        method: 'POST',
+        url: '/api/chat/test-bot',
+        payload: { message: 'hello' },
+      });
+
+      // Should call fetchWithTimeout with Authorization header containing Bearer token
+      expect(fetchWithTimeout).toHaveBeenCalled();
+      const call = vi.mocked(fetchWithTimeout).mock.calls[vi.mocked(fetchWithTimeout).mock.calls.length - 1];
+      expect(call[1]?.headers).toEqual(
+        expect.objectContaining({
+          Authorization: 'Bearer test-bearer-token',
+        })
+      );
     });
   });
 

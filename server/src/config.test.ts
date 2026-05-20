@@ -58,7 +58,7 @@ describe('config', () => {
   });
 
   it('defaults ntopng token to empty string', async () => {
-    delete process.env.NTOPNG_TOKEN;
+    process.env.NTOPNG_TOKEN = '';
     vi.resetModules();
     const { config } = await import('./config.js');
     expect(config.ntopngToken).toBe('');
@@ -84,6 +84,13 @@ describe('config', () => {
     expect(config.phoneHomeUrl).toBe('http://phone-home:8000');
     expect(config.phoneHomeChatUrl).toBe('http://phone-home:8000/chat');
     expect(config.phoneHomeChatToken).toBe('my-bearer-token');
+  });
+
+  it('defaults phone-home chat token to empty string', async () => {
+    process.env.PHONE_HOME_CHAT_TOKEN = '';
+    vi.resetModules();
+    const { config } = await import('./config.js');
+    expect(config.phoneHomeChatToken).toBe('');
   });
 
   it('reads LOG_LEVEL from environment', async () => {
