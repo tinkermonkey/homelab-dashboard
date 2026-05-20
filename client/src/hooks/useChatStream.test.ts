@@ -731,7 +731,7 @@ describe('useChatStream hook', () => {
       });
 
       const errorMsg = result.current.thread.find(
-        m => m.kind === 'msg' && m.who === 'bot-1' && m.body[0].p.includes('Error')
+        m => m.kind === 'msg' && m.who === 'bot-1' && (m as ThreadMessage).body[0].p.includes('Error')
       ) as ThreadMessage;
       expect(errorMsg).toBeDefined();
       expect(errorMsg.body[0].p).toContain('API rate limit exceeded');
@@ -759,7 +759,7 @@ describe('useChatStream hook', () => {
       });
 
       const parseErrorMsgs = result.current.thread.filter(
-        m => m.kind === 'msg' && m.who === 'bot-1' && m.body[0].p.includes('Malformed')
+        m => m.kind === 'msg' && m.who === 'bot-1' && (m as ThreadMessage).body[0].p.includes('Malformed')
       );
       expect(parseErrorMsgs.length).toBe(1);
     });
@@ -785,7 +785,7 @@ describe('useChatStream hook', () => {
       });
 
       const msgs = result.current.thread.filter(m => m.kind === 'msg' && m.who === 'bot-1');
-      const hasRecoveredMsg = msgs.some(m => m.body[0].p.includes('recovered'));
+      const hasRecoveredMsg = msgs.some(m => (m as ThreadMessage).body[0].p.includes('recovered'));
       expect(hasRecoveredMsg).toBe(true);
     });
 
@@ -857,7 +857,7 @@ describe('useChatStream hook', () => {
       });
 
       const errorMsgs = result.current.thread.filter(
-        m => m.kind === 'msg' && m.who === 'bot-1' && m.body[0].p.includes('Connection error')
+        m => m.kind === 'msg' && m.who === 'bot-1' && (m as ThreadMessage).body[0].p.includes('Connection error')
       );
       expect(errorMsgs.length).toBe(0);
     });
@@ -875,7 +875,7 @@ describe('useChatStream hook', () => {
       });
 
       const errorMsg = result.current.thread.find(
-        m => m.kind === 'msg' && m.who === 'bot-1' && m.body[0].p.includes('Connection error')
+        m => m.kind === 'msg' && m.who === 'bot-1' && (m as ThreadMessage).body[0].p.includes('Connection error')
       ) as ThreadMessage;
       expect(errorMsg).toBeDefined();
       expect(errorMsg.body[0].p).toContain('Network timeout');
