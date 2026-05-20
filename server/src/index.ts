@@ -213,14 +213,6 @@ export async function registerRoutes(app: FastifyInstance) {
 
 const fastify = Fastify({ logger: true });
 
-// Validate credentials on startup
-if (!config.ntopngToken) {
-  fastify.log.warn('NTOPNG_TOKEN environment variable is not set. ntopng requests may fail.');
-}
-if (!config.phoneHomeChatToken) {
-  fastify.log.warn('PHONE_HOME_CHAT_TOKEN environment variable is not set. Chat requests may not authenticate.');
-}
-
 // Enable CORS for local development
 await fastify.register(cors, {
   origin: ['http://localhost:5173', 'http://localhost:3000'],
@@ -249,8 +241,18 @@ if (isProduction) {
   });
 }
 
+function validateCredentials(logger: FastifyInstance['log']) {
+  if (!config.ntopngToken) {
+    logger.warn('NTOPNG_TOKEN environment variable is not set. ntopng requests may fail.');
+  }
+  if (!config.phoneHomeChatToken) {
+    logger.warn('PHONE_HOME_CHAT_TOKEN environment variable is not set. Chat requests may not authenticate.');
+  }
+}
+
 const start = async () => {
   try {
+    validateCredentials(fastify.log);
     await fastify.listen({ port: config.port, host: config.host });
     console.log(`Server running at http://${config.host}:${config.port}`);
   } catch (err) {
