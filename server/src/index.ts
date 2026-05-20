@@ -65,10 +65,11 @@ export async function registerRoutes(app: FastifyInstance) {
   app.get('/api/docker', async (request, reply) => {
     try {
       const data = await getCachedData('docker', 20, async () => {
-        const { data: dockerData, degraded } = await transformDockerData();
+        const { data: dockerData, degraded, source } = await transformDockerData();
         return {
           ...dockerData,
           degraded,
+          source,
         };
       }, (msg) => app.log.error(msg));
 
@@ -88,10 +89,11 @@ export async function registerRoutes(app: FastifyInstance) {
   app.get('/api/topology', async (request, reply) => {
     try {
       const data = await getCachedData('topology', 60, async () => {
-        const { data: topoData, degraded } = await transformTopologyData();
+        const { data: topoData, degraded, source } = await transformTopologyData();
         return {
           ...topoData,
           degraded,
+          source,
         };
       }, (msg) => app.log.error(msg));
 

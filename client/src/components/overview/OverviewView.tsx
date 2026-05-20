@@ -17,6 +17,7 @@ interface OverviewViewProps {
 export const OverviewView: React.FC<OverviewViewProps> = ({ data, showAlerts = true }) => {
   const { data: alertsData } = useAlerts();
   const alerts = alertsData?.alerts ?? [];
+  const alertsSource = alertsData?.source;
   const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set());
 
   const handleDismissAlert = (alertId: string) => {
@@ -48,18 +49,32 @@ export const OverviewView: React.FC<OverviewViewProps> = ({ data, showAlerts = t
       />
 
       {/* Degradation Banner */}
-      <DegradationBanner degraded={data.degraded} />
+      <DegradationBanner degraded={data.degraded} dataSource={data.source} />
 
       {/* Alerts Strip */}
       {showAlerts && (
-        <AlertStrip
-          alerts={visibleAlerts.map(alert => ({
-            id: `${alert.name}-${alert.severity}`,
-            severity: (alert.severity === 'critical' ? 'error' : alert.severity === 'warning' ? 'warn' : 'info') as 'error' | 'warn' | 'info' | 'success',
-            message: alert.state ? `${alert.name} — ${alert.state}` : alert.name,
-          }))}
-          onDismiss={handleDismissAlert}
-        />
+        <>
+          {alertsSource === 'mock' && (
+            <AlertStrip
+              alerts={[
+                {
+                  id: 'mock-alerts',
+                  severity: 'warn',
+                  message: 'Alert service unavailable. Displaying sample alerts.',
+                },
+              ]}
+              style={{ marginBottom: '12px' }}
+            />
+          )}
+          <AlertStrip
+            alerts={visibleAlerts.map(alert => ({
+              id: `${alert.name}-${alert.severity}`,
+              severity: (alert.severity === 'critical' ? 'error' : alert.severity === 'warning' ? 'warn' : 'info') as 'error' | 'warn' | 'info' | 'success',
+              message: alert.state ? `${alert.name} — ${alert.state}` : alert.name,
+            }))}
+            onDismiss={handleDismissAlert}
+          />
+        </>
       )}
 
       {/* Cluster Stats */}

@@ -67,6 +67,7 @@ export const TopologyView: React.FC = () => {
 
   const selectedBot = topologyData.bots.find(b => b.id === selectedBotId) || topologyData.bots[0];
   const degraded = (topologyData as typeof topologyData & { degraded?: string[] }).degraded;
+  const dataSource = (topologyData as typeof topologyData & { source?: 'real' | 'mock' }).source;
 
   // Convert TopologyBot[] to GraphNodeData[]
   const nodes: GraphNodeData[] = topologyData.bots.map(bot => ({
@@ -161,7 +162,7 @@ export const TopologyView: React.FC = () => {
         }
       />
 
-      <DegradationBanner degraded={degraded} />
+      <DegradationBanner degraded={degraded} dataSource={dataSource} />
 
       <div className="topology-container">
         <GraphCanvas

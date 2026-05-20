@@ -37,6 +37,7 @@ describe('MCP Transformer', () => {
 
       expect(result.data).toEqual(mockDockerData);
       expect(result.degraded).toEqual([]);
+      expect(result.source).toBe('real');
     });
 
     it('falls back to mock data when MCP call fails', async () => {
@@ -52,6 +53,7 @@ describe('MCP Transformer', () => {
 
       expect(result.data).toEqual(mockFallbackData);
       expect(result.degraded).toContain('phone-home');
+      expect(result.source).toBe('mock');
     });
 
     it('falls back to mock data when data structure is invalid', async () => {
@@ -67,6 +69,7 @@ describe('MCP Transformer', () => {
 
       expect(result.data).toEqual(mockFallbackData);
       expect(result.degraded).toContain('phone-home');
+      expect(result.source).toBe('mock');
     });
 
     it('validates host structure', async () => {
@@ -91,6 +94,7 @@ describe('MCP Transformer', () => {
       const result = await transformDockerData();
 
       expect(result.degraded).toContain('phone-home');
+      expect(result.source).toBe('mock');
     });
 
     it('validates that hosts is an array', async () => {
@@ -109,6 +113,7 @@ describe('MCP Transformer', () => {
       const result = await transformDockerData();
 
       expect(result.degraded).toContain('phone-home');
+      expect(result.source).toBe('mock');
     });
   });
 
@@ -139,6 +144,7 @@ describe('MCP Transformer', () => {
 
       expect(result.data).toEqual(mockTopologyData);
       expect(result.degraded).toEqual([]);
+      expect(result.source).toBe('real');
     });
 
     it('falls back to mock data when MCP call fails', async () => {
@@ -154,6 +160,7 @@ describe('MCP Transformer', () => {
 
       expect(result.data).toEqual(mockFallbackData);
       expect(result.degraded).toContain('phone-home');
+      expect(result.source).toBe('mock');
     });
 
     it('falls back to mock data when data structure is invalid', async () => {
@@ -169,6 +176,7 @@ describe('MCP Transformer', () => {
 
       expect(result.data).toEqual(mockFallbackData);
       expect(result.degraded).toContain('phone-home');
+      expect(result.source).toBe('mock');
     });
 
     it('validates hosts is string array', async () => {

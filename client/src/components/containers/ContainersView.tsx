@@ -33,6 +33,7 @@ export const ContainersView: React.FC = () => {
 
   const filteredHosts = hostFilter === 'all' ? data.hosts : data.hosts.filter(h => h.id === hostFilter);
   const degraded = (data as DOCKER_DATA & { degraded?: string[] }).degraded;
+  const dataSource = (data as DOCKER_DATA & { source?: 'real' | 'mock' }).source;
 
   return (
     <div className="containers-view">
@@ -57,7 +58,7 @@ export const ContainersView: React.FC = () => {
       />
 
       {/* Degradation Banner */}
-      <DegradationBanner degraded={degraded} />
+      <DegradationBanner degraded={degraded} dataSource={dataSource} />
 
       {/* Tab Bar */}
       <div className="tab-bar">

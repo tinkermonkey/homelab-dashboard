@@ -34,6 +34,7 @@ function isValidTopologyData(data: unknown): data is TOPOLOGY_DATA {
 export async function transformDockerData(): Promise<{
   data: DOCKER_DATA;
   degraded: string[];
+  source: 'real' | 'mock';
 }> {
   const degraded: string[] = [];
 
@@ -42,17 +43,18 @@ export async function transformDockerData(): Promise<{
     if (!isValidDockerData(result)) {
       throw new Error('Invalid Docker data structure from MCP');
     }
-    return { data: result, degraded };
+    return { data: result, degraded, source: 'real' };
   } catch (error) {
     console.error('Error fetching Docker data from MCP:', error);
     degraded.push('phone-home');
-    return { data: getDockerData(), degraded };
+    return { data: getDockerData(), degraded, source: 'mock' };
   }
 }
 
 export async function transformTopologyData(): Promise<{
   data: TOPOLOGY_DATA;
   degraded: string[];
+  source: 'real' | 'mock';
 }> {
   const degraded: string[] = [];
 
@@ -61,10 +63,10 @@ export async function transformTopologyData(): Promise<{
     if (!isValidTopologyData(result)) {
       throw new Error('Invalid topology data structure from MCP');
     }
-    return { data: result, degraded };
+    return { data: result, degraded, source: 'real' };
   } catch (error) {
     console.error('Error fetching topology data from MCP:', error);
     degraded.push('phone-home');
-    return { data: getTopologyData(), degraded };
+    return { data: getTopologyData(), degraded, source: 'mock' };
   }
 }

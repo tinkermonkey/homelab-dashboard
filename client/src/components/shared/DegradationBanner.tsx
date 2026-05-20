@@ -3,18 +3,20 @@ import { AlertStrip, type Alert as HeimdallAlert } from '@tinkermonkey/heimdall-
 
 interface DegradationBannerProps {
   degraded?: string[];
+  dataSource?: 'real' | 'mock';
 }
 
-export const DegradationBanner: React.FC<DegradationBannerProps> = ({ degraded }) => {
+export const DegradationBanner: React.FC<DegradationBannerProps> = ({ degraded, dataSource }) => {
   if (!degraded || degraded.length === 0) {
     return null;
   }
 
+  const dataStatus = dataSource === 'mock' ? 'fabricated sample data' : 'cached data';
   const alerts: HeimdallAlert[] = [
     {
       id: 'degradation',
       severity: 'warn',
-      message: `Partial Data: ${degraded.join(', ')} are temporarily unavailable. Showing cached data.`,
+      message: `Partial Data: ${degraded.join(', ')} are temporarily unavailable. Showing ${dataStatus}.`,
     },
   ];
 

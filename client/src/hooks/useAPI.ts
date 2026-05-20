@@ -62,11 +62,16 @@ export function useDocker() {
   return useQuery({
     queryKey: ['docker'],
     queryFn: async () => {
-      const response = await fetchJSON<DOCKER_DATA>(`${API_BASE}/docker`);
+      const response = await fetch(`${API_BASE}/docker`);
+      if (!response.ok && response.status !== 206) {
+        throw new Error(`API error: ${response.status}`);
+      }
+      const data = await response.json();
       return {
-        ...response.data,
-        degraded: response.degraded,
-      } as DOCKER_DATA & { degraded?: string[] };
+        ...data,
+        degraded: response.status === 206 ? data.degraded : undefined,
+        source: data.source as 'real' | 'mock',
+      } as DOCKER_DATA & { degraded?: string[]; source?: 'real' | 'mock' };
     },
     refetchInterval: 30000,
     staleTime: 10000,
@@ -79,11 +84,16 @@ export function useTopology(enabled = true) {
   return useQuery({
     queryKey: ['topology'],
     queryFn: async () => {
-      const response = await fetchJSON<TOPOLOGY_DATA>(`${API_BASE}/topology`);
+      const response = await fetch(`${API_BASE}/topology`);
+      if (!response.ok && response.status !== 206) {
+        throw new Error(`API error: ${response.status}`);
+      }
+      const data = await response.json();
       return {
-        ...response.data,
-        degraded: response.degraded,
-      } as TOPOLOGY_DATA & { degraded?: string[] };
+        ...data,
+        degraded: response.status === 206 ? data.degraded : undefined,
+        source: data.source as 'real' | 'mock',
+      } as TOPOLOGY_DATA & { degraded?: string[]; source?: 'real' | 'mock' };
     },
     enabled,
     staleTime: 60000,

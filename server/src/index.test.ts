@@ -207,7 +207,7 @@ describe('Server Routes', () => {
 
   describe('GET /api/docker', () => {
     it('returns docker data with status 200 when no degradation', async () => {
-      const dockerData = { ...mockDockerData, degraded: [] };
+      const dockerData = { ...mockDockerData, degraded: [], source: 'real' };
       vi.mocked(getCachedData).mockResolvedValue(dockerData);
 
       const response = await fastify.inject({
@@ -217,10 +217,11 @@ describe('Server Routes', () => {
 
       expect(response.statusCode).toBe(200);
       expect(JSON.parse(response.body).degraded).toEqual([]);
+      expect(JSON.parse(response.body).source).toBe('real');
     });
 
     it('returns docker data with status 206 when degraded', async () => {
-      const dockerData = { ...mockDockerData, degraded: ['phone-home'] };
+      const dockerData = { ...mockDockerData, degraded: ['phone-home'], source: 'mock' };
       vi.mocked(getCachedData).mockResolvedValue(dockerData);
 
       const response = await fastify.inject({
@@ -230,12 +231,13 @@ describe('Server Routes', () => {
 
       expect(response.statusCode).toBe(206);
       expect(JSON.parse(response.body).degraded).toEqual(['phone-home']);
+      expect(JSON.parse(response.body).source).toBe('mock');
     });
   });
 
   describe('GET /api/topology', () => {
     it('returns topology data with status 200 when no degradation', async () => {
-      const topoData = { ...mockTopologyData, degraded: [] };
+      const topoData = { ...mockTopologyData, degraded: [], source: 'real' };
       vi.mocked(getCachedData).mockResolvedValue(topoData);
 
       const response = await fastify.inject({
@@ -245,10 +247,11 @@ describe('Server Routes', () => {
 
       expect(response.statusCode).toBe(200);
       expect(JSON.parse(response.body).degraded).toEqual([]);
+      expect(JSON.parse(response.body).source).toBe('real');
     });
 
     it('returns topology data with status 206 when degraded', async () => {
-      const topoData = { ...mockTopologyData, degraded: ['phone-home'] };
+      const topoData = { ...mockTopologyData, degraded: ['phone-home'], source: 'mock' };
       vi.mocked(getCachedData).mockResolvedValue(topoData);
 
       const response = await fastify.inject({
@@ -257,6 +260,7 @@ describe('Server Routes', () => {
       });
 
       expect(response.statusCode).toBe(206);
+      expect(JSON.parse(response.body).source).toBe('mock');
     });
   });
 
@@ -440,7 +444,7 @@ describe('Server Routes', () => {
     });
 
     it('passes correct cache TTL for docker endpoint', async () => {
-      vi.mocked(getCachedData).mockResolvedValue({ ...mockDockerData, degraded: [] });
+      vi.mocked(getCachedData).mockResolvedValue({ ...mockDockerData, degraded: [], source: 'real' });
 
       await fastify.inject({
         method: 'GET',
