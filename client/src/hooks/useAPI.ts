@@ -13,18 +13,18 @@ export async function fetchJSON<T>(url: string): Promise<APIResponse<T>> {
   const response = await fetch(url);
 
   if (!response.ok && response.status !== 206) {
-    let errorMessage = `API error: ${response.status}`;
+    let errorMessage = `API error ${response.status}`;
     try {
       const contentType = response.headers.get('content-type');
       if (contentType?.includes('application/json')) {
         const errorBody = await response.json();
         if (errorBody?.error) {
-          errorMessage = errorBody.error;
+          errorMessage = `API error ${response.status}: ${errorBody.error}`;
         }
       } else {
         const text = await response.text();
         if (text) {
-          errorMessage = text.slice(0, 100);
+          errorMessage = `API error ${response.status}: ${text.slice(0, 100)}`;
         }
       }
     } catch {
@@ -138,7 +138,8 @@ export function useAlerts() {
           typeof alert.name === 'string' &&
           typeof alert.severity === 'string' &&
           typeof alert.state === 'string' &&
-          typeof alert.labels === 'object'
+          typeof alert.labels === 'object' &&
+          alert.labels !== null
       );
 
       if (validAlerts.length !== response.data.alerts.length) {

@@ -77,27 +77,89 @@ describe('useAPI - fetchJSON', () => {
       global.fetch = vi.fn().mockResolvedValue({
         ok: false,
         status: 404,
+        headers: new Map([['content-type', 'text/plain']]),
+        text: async () => '',
       });
 
-      await expect(fetchJSON<unknown>('/api/notfound')).rejects.toThrow('API error: 404');
+      await expect(fetchJSON<unknown>('/api/notfound')).rejects.toThrow('API error 404');
     });
 
     it('throws error for 500 response', async () => {
       global.fetch = vi.fn().mockResolvedValue({
         ok: false,
         status: 500,
+        headers: new Map([['content-type', 'text/plain']]),
+        text: async () => '',
       });
 
-      await expect(fetchJSON<unknown>('/api/error')).rejects.toThrow('API error: 500');
+      await expect(fetchJSON<unknown>('/api/error')).rejects.toThrow('API error 500');
     });
 
     it('throws error for 401 response', async () => {
       global.fetch = vi.fn().mockResolvedValue({
         ok: false,
         status: 401,
+        headers: new Map([['content-type', 'text/plain']]),
+        text: async () => '',
       });
 
-      await expect(fetchJSON<unknown>('/api/protected')).rejects.toThrow('API error: 401');
+      await expect(fetchJSON<unknown>('/api/protected')).rejects.toThrow('API error 401');
+    });
+
+    it('extracts JSON error message and preserves status code', async () => {
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: false,
+        status: 400,
+        headers: new Map([['content-type', 'application/json']]),
+        json: async () => ({ error: 'Invalid request body' }),
+      });
+
+      await expect(fetchJSON<unknown>('/api/test')).rejects.toThrow(
+        'API error 400: Invalid request body'
+      );
+    });
+
+    it('extracts plain-text error message and preserves status code', async () => {
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: false,
+        status: 502,
+        headers: new Map([['content-type', 'text/plain']]),
+        text: async () => 'Bad Gateway - upstream service unavailable',
+      });
+
+      await expect(fetchJSON<unknown>('/api/test')).rejects.toThrow(
+        'API error 502: Bad Gateway - upstream service unavailable'
+      );
+    });
+
+    it('truncates long plain-text error messages to 100 characters', async () => {
+      const longError = 'A'.repeat(150);
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: false,
+        status: 500,
+        headers: new Map([['content-type', 'text/plain']]),
+        text: async () => longError,
+      });
+
+      await expect(fetchJSON<unknown>('/api/test')).rejects.toThrow(
+        `API error 500: ${longError.slice(0, 100)}`
+      );
+    });
+
+    it('falls back to default message when error body parsing fails', async () => {
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: false,
+        status: 500,
+        headers: new Map([['content-type', 'application/json']]),
+        json: async () => {
+          throw new Error('Invalid JSON');
+        },
+        text: async () => {
+          throw new Error('Cannot read text');
+        },
+      });
+
+      await expect(fetchJSON<unknown>('/api/test')).rejects.toThrow('API error 500');
     });
 
     it('does not throw for 206 status (partial content)', async () => {
@@ -125,9 +187,11 @@ describe('useAPI - fetchJSON', () => {
         global.fetch = vi.fn().mockResolvedValue({
           ok: false,
           status,
+          headers: new Map([['content-type', 'text/plain']]),
+          text: async () => '',
         });
 
-        await expect(fetchJSON<unknown>('/api/test')).rejects.toThrow(`API error: ${status}`);
+        await expect(fetchJSON<unknown>('/api/test')).rejects.toThrow(`API error ${status}`);
       }
     });
   });
