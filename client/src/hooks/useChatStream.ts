@@ -17,6 +17,7 @@ export const useChatStream = ({ baseThread, activeBot }: UseChatStreamOptions): 
   const [draft, setDraft] = useState('');
   const [extraMsgs, setExtraMsgs] = useState<Record<string, ThreadItem[]>>({});
   const streamAbortRef = useRef<AbortController | null>(null);
+  const readerRef = useRef<ReadableStreamDefaultReader<Uint8Array> | null>(null);
 
   const thread = [...baseThread, ...(extraMsgs[activeBot] || [])];
 
@@ -26,6 +27,12 @@ export const useChatStream = ({ baseThread, activeBot }: UseChatStreamOptions): 
       if (streamAbortRef.current) {
         streamAbortRef.current.abort();
         streamAbortRef.current = null;
+      }
+      if (readerRef.current) {
+        readerRef.current.cancel().catch(() => {
+          // Ignore errors from cancel
+        });
+        readerRef.current = null;
       }
     };
   }, [activeBot]);
@@ -46,7 +53,7 @@ export const useChatStream = ({ baseThread, activeBot }: UseChatStreamOptions): 
         who: 'user',
         name: 'you',
         when,
-        body: [{ p: escapeHtml(t) }],
+        body: [{ p: t }],
       };
 
       // Add user message to thread
@@ -69,11 +76,22 @@ export const useChatStream = ({ baseThread, activeBot }: UseChatStreamOptions): 
         });
 
         if (!response.ok) {
+          let errorDetail = response.statusText || 'Unknown error';
+          try {
+            const errorBody = await response.text();
+            const parsed = JSON.parse(errorBody);
+            errorDetail = parsed.error || parsed.message || errorDetail;
+          } catch {
+            // If we can't parse the body, use statusText (may be empty on HTTP/2)
+            if (!errorDetail) {
+              errorDetail = `HTTP ${response.status}`;
+            }
+          }
           const errorMsg: ThreadMessage = {
             kind: 'msg',
             who: activeBot,
             when,
-            body: [{ p: `Error: ${response.statusText}` }],
+            body: [{ p: `Error: ${errorDetail}` }],
           };
           setExtraMsgs(prev => ({
             ...prev,
@@ -97,6 +115,7 @@ export const useChatStream = ({ baseThread, activeBot }: UseChatStreamOptions): 
           }));
           return;
         }
+        readerRef.current = reader;
 
         const decoder = new TextDecoder();
         let parseErrorShown = false;
@@ -117,53 +136,9 @@ export const useChatStream = ({ baseThread, activeBot }: UseChatStreamOptions): 
               if (jsonStr === '[DONE]') {
                 continue;
               }
+              let parsed;
               try {
-                const parsed = JSON.parse(jsonStr);
-                if (parsed.error) {
-                  const errorMsg: ThreadMessage = {
-                    kind: 'msg',
-                    who: activeBot,
-                    when,
-                    body: [{ p: `Error: ${parsed.error}` }],
-                  };
-                  setExtraMsgs(prev => ({
-                    ...prev,
-                    [activeBot]: [...(prev[activeBot] || []), errorMsg],
-                  }));
-                } else if (parsed.choices?.[0]?.delta?.content) {
-                  // SSE streaming chunk received
-                  const content = parsed.choices[0].delta.content;
-                  setExtraMsgs(prev => {
-                    const botMsgs = prev[activeBot] || [];
-                    const lastMsg = botMsgs[botMsgs.length - 1];
-
-                    if (lastMsg && lastMsg.kind === 'msg' && lastMsg.who === activeBot && lastMsg.body[0]) {
-                      // Append to existing bot message
-                      return {
-                        ...prev,
-                        [activeBot]: [
-                          ...botMsgs.slice(0, -1),
-                          {
-                            ...lastMsg,
-                            body: [{ p: lastMsg.body[0].p + content }],
-                          },
-                        ],
-                      };
-                    } else {
-                      // Create new bot message with first chunk
-                      const botMsg: ThreadMessage = {
-                        kind: 'msg',
-                        who: activeBot,
-                        when,
-                        body: [{ p: content }],
-                      };
-                      return {
-                        ...prev,
-                        [activeBot]: [...botMsgs, botMsg],
-                      };
-                    }
-                  });
-                }
+                parsed = JSON.parse(jsonStr);
               } catch {
                 // Only show parse error once per stream to avoid flooding the UI
                 if (!parseErrorShown) {
@@ -179,6 +154,52 @@ export const useChatStream = ({ baseThread, activeBot }: UseChatStreamOptions): 
                     [activeBot]: [...(prev[activeBot] || []), parseMsg],
                   }));
                 }
+                continue; // Skip this line since we can't parse it
+              }
+              if (parsed.error) {
+                const errorMsg: ThreadMessage = {
+                  kind: 'msg',
+                  who: activeBot,
+                  when,
+                  body: [{ p: `Error: ${parsed.error}` }],
+                };
+                setExtraMsgs(prev => ({
+                  ...prev,
+                  [activeBot]: [...(prev[activeBot] || []), errorMsg],
+                }));
+              } else if (parsed.choices?.[0]?.delta?.content) {
+                // SSE streaming chunk received
+                const content = parsed.choices[0].delta.content;
+                setExtraMsgs(prev => {
+                  const botMsgs = prev[activeBot] || [];
+                  const lastMsg = botMsgs[botMsgs.length - 1];
+
+                  if (lastMsg && lastMsg.kind === 'msg' && lastMsg.who === activeBot && lastMsg.body[0]) {
+                    // Append to existing bot message
+                    return {
+                      ...prev,
+                      [activeBot]: [
+                        ...botMsgs.slice(0, -1),
+                        {
+                          ...lastMsg,
+                          body: [{ p: lastMsg.body[0].p + content }],
+                        },
+                      ],
+                    };
+                  } else {
+                    // Create new bot message with first chunk
+                    const botMsg: ThreadMessage = {
+                      kind: 'msg',
+                      who: activeBot,
+                      when,
+                      body: [{ p: content }],
+                    };
+                    return {
+                      ...prev,
+                      [activeBot]: [...botMsgs, botMsg],
+                    };
+                  }
+                });
               }
             }
           }
@@ -204,6 +225,12 @@ export const useChatStream = ({ baseThread, activeBot }: UseChatStreamOptions): 
         }));
       } finally {
         streamAbortRef.current = null;
+        if (readerRef.current) {
+          readerRef.current.cancel().catch(() => {
+            // Ignore errors from cancel
+          });
+          readerRef.current = null;
+        }
       }
     },
     [activeBot],
@@ -216,13 +243,3 @@ export const useChatStream = ({ baseThread, activeBot }: UseChatStreamOptions): 
     setDraft,
   };
 };
-
-function escapeHtml(s: string) {
-  return s.replace(/[&<>"']/g, c => ({
-    '&': '&amp;',
-    '<': '&lt;',
-    '>': '&gt;',
-    '"': '&quot;',
-    "'": '&#39;',
-  }[c]!));
-}

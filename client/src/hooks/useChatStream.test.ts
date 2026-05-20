@@ -98,7 +98,7 @@ describe('useChatStream hook', () => {
       expect(userMsg.body[0].p).toBe('hello bot');
     });
 
-    it('escapes HTML in user message', async () => {
+    it('stores raw user message without escaping (sanitization at render time)', async () => {
       const { result } = renderHook(() =>
         useChatStream({ baseThread: [], activeBot: 'bot-1' })
       );
@@ -114,7 +114,7 @@ describe('useChatStream hook', () => {
       });
 
       const userMsg = result.current.thread.find(m => m.kind === 'msg' && m.who === 'user') as ThreadMessage;
-      expect(userMsg.body[0].p).toBe('&lt;script&gt;alert(&quot;xss&quot;)&lt;/script&gt;');
+      expect(userMsg.body[0].p).toBe('<script>alert("xss")</script>');
     });
 
     it('sends request to correct endpoint', async () => {
