@@ -18,15 +18,25 @@ export class NtopngClient {
     this.token = token;
   }
 
+  private getHeaders(): Record<string, string> {
+    const headers: Record<string, string> = {};
+    if (this.token) {
+      headers['Authorization'] = `Token ${this.token}`;
+    }
+    return headers;
+  }
+
   private async fetch(path: string, params: Record<string, string | number> = {}): Promise<unknown> {
     const url = new URL(`${this.baseUrl}${path}`);
-    url.searchParams.set('token', this.token);
     for (const [k, v] of Object.entries(params)) {
       url.searchParams.set(k, String(v));
     }
 
     try {
-      const response = await fetchWithTimeout(url.toString(), { timeout: 10000 });
+      const response = await fetchWithTimeout(url.toString(), {
+        headers: this.getHeaders(),
+        timeout: 10000,
+      });
 
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);

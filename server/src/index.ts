@@ -213,6 +213,14 @@ export async function registerRoutes(app: FastifyInstance) {
 
 const fastify = Fastify({ logger: true });
 
+// Validate credentials on startup
+if (!config.ntopngToken) {
+  fastify.log.warn('NTOPNG_TOKEN environment variable is not set. ntopng requests may fail.');
+}
+if (!config.phoneHomeChatToken) {
+  fastify.log.warn('PHONE_HOME_CHAT_TOKEN environment variable is not set. Chat requests may not authenticate.');
+}
+
 // Enable CORS for local development
 await fastify.register(cors, {
   origin: ['http://localhost:5173', 'http://localhost:3000'],
