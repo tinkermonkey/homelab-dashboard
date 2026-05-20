@@ -32,8 +32,8 @@ export const ContainersView: React.FC = () => {
   const totalVolumes = data.hosts.reduce((a, h) => a + h.volumes.length, 0);
 
   const filteredHosts = hostFilter === 'all' ? data.hosts : data.hosts.filter(h => h.id === hostFilter);
-  const degraded = (data as DOCKER_DATA & { degraded?: string[] }).degraded;
-  const dataSource = (data as DOCKER_DATA & { source?: 'real' | 'mock' }).source;
+  const degraded = data.degraded;
+  const dataSource = data.source;
 
   return (
     <div className="containers-view">

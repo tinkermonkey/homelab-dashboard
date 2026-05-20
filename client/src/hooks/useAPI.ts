@@ -68,7 +68,7 @@ export function useDocker() {
       return {
         ...response.data,
         degraded: response.degraded,
-        source: response.source as 'real' | 'mock' | undefined,
+        source: response.source,
       };
     },
     refetchInterval: 30000,
@@ -86,7 +86,7 @@ export function useTopology(enabled = true) {
       return {
         ...response.data,
         degraded: response.degraded,
-        source: response.source as 'real' | 'mock' | undefined,
+        source: response.source,
       };
     },
     enabled,
