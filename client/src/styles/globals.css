@@ -59,7 +59,7 @@
   --shell-fg-4: 74 85 99;
   --shell-border-2: 42 58 92;
 
-  /* New canvas surface and domain tokens */
+  /* Canvas surface and domain tokens */
   --canvas-surface-2: 35 45 60;
   --canvas-border-2: 53 65 80;
   --dom-default: 107 114 128;
