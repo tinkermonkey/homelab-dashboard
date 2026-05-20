@@ -49,7 +49,7 @@ export const OverviewView: React.FC<OverviewViewProps> = ({ data, showAlerts = t
       />
 
       {/* Degradation Banner */}
-      <DegradationBanner degraded={data.degraded} dataSource={data.source} />
+      <DegradationBanner degraded={data.degraded} />
 
       {/* Alerts Strip */}
       {showAlerts && (

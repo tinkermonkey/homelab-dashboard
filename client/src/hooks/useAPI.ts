@@ -6,6 +6,7 @@ const API_BASE = import.meta.env.VITE_API_BASE || '/api';
 interface APIResponse<T> {
   data: T;
   degraded?: string[];
+  source?: string;
 }
 
 export async function fetchJSON<T>(url: string): Promise<APIResponse<T>> {
@@ -19,7 +20,8 @@ export async function fetchJSON<T>(url: string): Promise<APIResponse<T>> {
 
   return {
     data,
-    degraded: response.status === 206 ? data.degraded : undefined,
+    degraded: response.status === 206 ? data?.degraded : undefined,
+    source: data?.source,
   };
 }
 
@@ -62,15 +64,11 @@ export function useDocker() {
   return useQuery({
     queryKey: ['docker'],
     queryFn: async () => {
-      const response = await fetch(`${API_BASE}/docker`);
-      if (!response.ok && response.status !== 206) {
-        throw new Error(`API error: ${response.status}`);
-      }
-      const data = await response.json();
+      const response = await fetchJSON<DOCKER_DATA>(`${API_BASE}/docker`);
       return {
-        ...data,
-        degraded: response.status === 206 ? data.degraded : undefined,
-        source: data.source as 'real' | 'mock',
+        ...response.data,
+        degraded: response.degraded,
+        source: response.source as 'real' | 'mock' | undefined,
       } as DOCKER_DATA & { degraded?: string[]; source?: 'real' | 'mock' };
     },
     refetchInterval: 30000,
@@ -84,15 +82,11 @@ export function useTopology(enabled = true) {
   return useQuery({
     queryKey: ['topology'],
     queryFn: async () => {
-      const response = await fetch(`${API_BASE}/topology`);
-      if (!response.ok && response.status !== 206) {
-        throw new Error(`API error: ${response.status}`);
-      }
-      const data = await response.json();
+      const response = await fetchJSON<TOPOLOGY_DATA>(`${API_BASE}/topology`);
       return {
-        ...data,
-        degraded: response.status === 206 ? data.degraded : undefined,
-        source: data.source as 'real' | 'mock',
+        ...response.data,
+        degraded: response.degraded,
+        source: response.source as 'real' | 'mock' | undefined,
       } as TOPOLOGY_DATA & { degraded?: string[]; source?: 'real' | 'mock' };
     },
     enabled,
@@ -113,7 +107,7 @@ export function useAlerts() {
       const data = await response.json();
       return {
         alerts: data.alerts as Alert[],
-        source: data.source as string,
+        source: data.source,
       };
     },
     refetchInterval: 5000,
