@@ -33,12 +33,20 @@ export const HostFilterBar: React.FC<HostFilterBarProps> = ({
       )}
       <div className="host-filter-bar__chips">
         {hostFilters.map(chip => (
-          <button
+          <div
             key={chip.id}
             className={`host-filter-chip-wrapper ${selectedHost === chip.id ? 'host-filter-chip-wrapper--active' : ''}`}
             onClick={() => onHostSelect(chip.id)}
             data-testid={`host-filter-${chip.id}`}
+            role="button"
+            tabIndex={0}
             aria-pressed={selectedHost === chip.id}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                onHostSelect(chip.id);
+              }
+            }}
           >
             <Chip className="host-filter-chip">
               <span className="host-filter-chip-label">
@@ -58,7 +66,7 @@ export const HostFilterBar: React.FC<HostFilterBarProps> = ({
                 </button>
               )}
             </Chip>
-          </button>
+          </div>
         ))}
       </div>
     </div>
