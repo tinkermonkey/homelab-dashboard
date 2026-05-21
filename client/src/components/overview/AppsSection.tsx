@@ -18,10 +18,9 @@ const CATEGORIES = [
 ];
 
 const HOST_COLORS: Record<string, string> = {
-  nyx: 'rgb(var(--host-nyx-tint))',
-  helios: 'rgb(var(--host-helios-tint))',
-  aether: 'rgb(var(--host-aether-tint))',
-  vega: 'rgb(var(--host-vega-tint))',
+  't5610': 'rgb(var(--host-t5610-tint))',
+  'petit-cochon': 'rgb(var(--host-petit-cochon-tint))',
+  'hp7052': 'rgb(var(--host-hp7052-tint))',
 };
 
 const STATUS_COLORS: Record<string, string> = {

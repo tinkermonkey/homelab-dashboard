@@ -65,7 +65,7 @@ describe('MCP Transformer', () => {
 
       expect(result.data).toEqual(mockFallbackData);
       expect(result.degraded).toContain('phone-home');
-      expect(result.source).toBe('mock');
+      expect(result.source).toBe('unavailable');
       expect(mockLogger.error).toHaveBeenCalledWith(
         expect.objectContaining({ err: error }),
         expect.stringContaining('Error fetching Docker data from MCP')
@@ -85,7 +85,7 @@ describe('MCP Transformer', () => {
 
       expect(result.data).toEqual(mockFallbackData);
       expect(result.degraded).toContain('phone-home');
-      expect(result.source).toBe('mock');
+      expect(result.source).toBe('unavailable');
       expect(mockLogger.error).toHaveBeenCalledWith(
         expect.objectContaining({ err: expect.any(Error) }),
         expect.stringContaining('Error fetching Docker data from MCP')
@@ -114,7 +114,7 @@ describe('MCP Transformer', () => {
       const result = await transformDockerData(mockLogger);
 
       expect(result.degraded).toContain('phone-home');
-      expect(result.source).toBe('mock');
+      expect(result.source).toBe('unavailable');
     });
 
     it('validates that hosts is an array', async () => {
@@ -133,7 +133,7 @@ describe('MCP Transformer', () => {
       const result = await transformDockerData(mockLogger);
 
       expect(result.degraded).toContain('phone-home');
-      expect(result.source).toBe('mock');
+      expect(result.source).toBe('unavailable');
     });
   });
 
@@ -181,7 +181,7 @@ describe('MCP Transformer', () => {
 
       expect(result.data).toEqual(mockFallbackData);
       expect(result.degraded).toContain('phone-home');
-      expect(result.source).toBe('mock');
+      expect(result.source).toBe('unavailable');
       expect(mockLogger.error).toHaveBeenCalledWith(
         expect.objectContaining({ err: error }),
         expect.stringContaining('Error fetching topology data from MCP')
@@ -201,7 +201,7 @@ describe('MCP Transformer', () => {
 
       expect(result.data).toEqual(mockFallbackData);
       expect(result.degraded).toContain('phone-home');
-      expect(result.source).toBe('mock');
+      expect(result.source).toBe('unavailable');
       expect(mockLogger.error).toHaveBeenCalledWith(
         expect.objectContaining({ err: expect.any(Error) }),
         expect.stringContaining('Error fetching topology data from MCP')

@@ -1,6 +1,7 @@
-import { useState, useEffect, type ReactNode } from 'react';
+import { type ReactNode } from 'react';
 import { Icon as HeimdallIcon } from '@tinkermonkey/heimdall-ui';
 import type { LAB_DATA } from '@homelab/shared';
+import { useStatus } from '../../hooks/useAPI';
 
 const metricsItemStyle: React.CSSProperties = {
   fontSize: '11px',
@@ -13,59 +14,24 @@ const monoStyle: React.CSSProperties = {
 };
 
 export const useStatusbarContent = (clusterData?: LAB_DATA & { degraded?: string[] }): { left: ReactNode; right: ReactNode } => {
-  const getInitialTicker = () => ({
-    cpu: clusterData?.servers[0]?.cpu.v || 0,
-    ping: clusterData?.gateway?.pingMs || 0,
-    down: clusterData?.gateway?.downMbps || 0,
-    up: clusterData?.gateway?.upMbps || 0,
-  });
-
-  const [ticker, setTicker] = useState(getInitialTicker);
-
-  useEffect(() => {
-    if (!clusterData) return;
-
-    const interval = setInterval(() => {
-      // Generate lively ticker values with slight jitter
-      const baseCpu = clusterData.servers[0]?.cpu.v || 45;
-      const basePing = clusterData.gateway?.pingMs || 25;
-      const baseDown = clusterData.gateway?.downMbps || 125;
-      const baseUp = clusterData.gateway?.upMbps || 85;
-
-      const jitter = (base: number) => {
-        const variance = Math.random() * 6 - 3; // -3 to +3
-        return Math.max(0, Math.round(base + variance));
-      };
-
-      setTicker({
-        cpu: jitter(baseCpu),
-        ping: jitter(basePing),
-        down: jitter(baseDown),
-        up: jitter(baseUp),
-      });
-    }, 2200); // 2.2s polling
-
-    return () => clearInterval(interval);
-  }, [clusterData]);
+  const { data: statusData } = useStatus();
 
   const getPrimaryAlert = () => {
-    if (!clusterData?.servers || clusterData.servers.length === 0) {
-      return null;
-    }
-
+    if (!clusterData?.servers || clusterData.servers.length === 0) return null;
     const warnServer = clusterData.servers.find((s) => s.status === 'warn');
-    if (warnServer) {
-      return `${warnServer.id.toUpperCase()} MEM ${Math.round(warnServer.mem.v)}%`;
-    }
-
+    if (warnServer) return `${warnServer.id.toUpperCase()} MEM ${Math.round(warnServer.mem.v)}%`;
     return null;
   };
 
   const primaryAlert = getPrimaryAlert();
-  const alertCount = clusterData?.cluster.activeAlerts || 0;
-  const hostCount = clusterData?.servers.length || 4;
-  const appCount = clusterData?.apps.length || 28;
-  const containerCount = 47; // Not available in current API scope
+  const alertCount = clusterData?.cluster.activeAlerts ?? 0;
+  const hostCount = clusterData?.servers.length ?? 0;
+  const appCount = clusterData?.apps.length ?? 0;
+  const containerCount = clusterData?.servers.reduce((sum, s) => sum + s.containers, 0) ?? 0;
+
+  const downMbps = statusData?.downMbps ?? 0;
+  const upMbps = statusData?.upMbps ?? 0;
+  const cpu = statusData?.cpu ?? 0;
 
   const leftMetrics = (
     <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
@@ -80,9 +46,11 @@ export const useStatusbarContent = (clusterData?: LAB_DATA & { degraded?: string
         }} />
         Prometheus <span style={monoStyle}>:9090</span>
       </div>
-      <div style={metricsItemStyle}>
-        {hostCount} host{hostCount > 1 ? 's' : ''} · {appCount} app{appCount > 1 ? 's' : ''} · {containerCount} container{containerCount > 1 ? 's' : ''}
-      </div>
+      {hostCount > 0 && (
+        <div style={metricsItemStyle}>
+          {hostCount} host{hostCount > 1 ? 's' : ''} · {appCount} app{appCount !== 1 ? 's' : ''} · {containerCount} container{containerCount !== 1 ? 's' : ''}
+        </div>
+      )}
       {alertCount > 0 && (
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px' }}>
           <span
@@ -110,17 +78,12 @@ export const useStatusbarContent = (clusterData?: LAB_DATA & { degraded?: string
     <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
       <div style={metricsItemStyle}>
         <span style={monoStyle}>
-          ping {ticker.ping} ms
+          ↓ {downMbps} ↑ {upMbps} Mbps
         </span>
       </div>
       <div style={metricsItemStyle}>
         <span style={monoStyle}>
-          ↓ {ticker.down} ↑ {ticker.up} Mbps
-        </span>
-      </div>
-      <div style={metricsItemStyle}>
-        <span style={monoStyle}>
-          cluster cpu {ticker.cpu}%
+          cluster cpu {cpu}%
         </span>
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', color: 'rgb(var(--shell-fg-2))' }}>
@@ -128,7 +91,7 @@ export const useStatusbarContent = (clusterData?: LAB_DATA & { degraded?: string
           <HeimdallIcon name="check" size={11} />
         </span>
         <span style={monoStyle}>
-          synced {clusterData?.cluster.lastSync || '14s ago'}
+          synced {clusterData?.cluster.lastSync || '—'}
         </span>
       </div>
     </div>

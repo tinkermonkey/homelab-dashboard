@@ -4,12 +4,13 @@ import staticPlugin from '@fastify/static';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import type { LAB_DATA, DOCKER_DATA, TOPOLOGY_DATA, STATUS_DATA } from '@homelab/shared';
-import { getLabData, getDockerData, getTopologyData, getStatusData, getActiveAlerts } from './mock-data.js';
+import { getLabData, getDockerData, getTopologyData, getStatusData } from './mock-data.js';
 import { config } from './config.js';
-import { getCachedData } from './cache.js';
+import { getCachedData, peekCache } from './cache.js';
 import { transformMetrics } from './transformers/metrics-transformer.js';
 import { transformDockerData, transformTopologyData } from './transformers/mcp-transformer.js';
 import { signozClient } from './clients/signoz-client.js';
+import { ntopngClient } from './clients/ntopng-client.js';
 import { fetchWithTimeout } from './utils/fetch-with-timeout.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -27,7 +28,47 @@ export async function registerRoutes(app: FastifyInstance) {
   // GET /api/status (2.2s cadence, 2s cache)
   app.get('/api/status', async (request, reply) => {
     try {
-      const data = await getCachedData('status', 2, () => Promise.resolve(getStatusData()), (msg) => app.log.error(msg));
+      const data = await getCachedData('status', 2, async () => {
+        const degraded: string[] = [];
+        let downMbps = 0;
+        let upMbps = 0;
+        let alertCount = 0;
+        let alertPrimary = '';
+
+        try {
+          const stats = await ntopngClient.getWanInterfaceStats();
+          downMbps = stats.downMbps;
+          upMbps = stats.upMbps;
+        } catch {
+          degraded.push('ntopng');
+        }
+
+        try {
+          const alerts = await signozClient.getActiveAlerts();
+          alertCount = alerts.length;
+          alertPrimary = alerts[0]?.name ?? '';
+        } catch {
+          degraded.push('signoz');
+        }
+
+        // Derive CPU from cluster cache if warm; otherwise 0 (GAP: no dedicated status CPU source)
+        const clusterCache = peekCache<LAB_DATA & { degraded?: string[] }>('cluster');
+        const cpuValues = (clusterCache?.servers ?? []).map(s => s.cpu.v).filter(v => v > 0);
+        const cpu = cpuValues.length > 0
+          ? Math.round(cpuValues.reduce((a, b) => a + b, 0) / cpuValues.length)
+          : 0;
+
+        return {
+          cpu,
+          ping: 0, // GAP: no upstream source for latency probe
+          downMbps,
+          upMbps,
+          alertCount,
+          alertPrimary,
+          degraded,
+          source: 'real',
+        } satisfies STATUS_DATA;
+      }, (msg) => app.log.error(msg));
       reply.send(data);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
@@ -121,12 +162,11 @@ export async function registerRoutes(app: FastifyInstance) {
             source: 'alertmanager',
           };
         } catch (error) {
-          // Fallback to mock data if SigNoz is unavailable
           const message = error instanceof Error ? error.message : 'Unknown error';
-          app.log.warn(`SigNoz Alertmanager unavailable, using mock data: ${message}`);
+          app.log.warn(`SigNoz Alertmanager unavailable: ${message}`);
           return {
-            alerts: getActiveAlerts(),
-            source: 'mock',
+            alerts: [],
+            source: 'unavailable',
           };
         }
       }, (msg) => app.log.error(msg));

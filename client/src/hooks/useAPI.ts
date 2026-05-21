@@ -131,7 +131,7 @@ export function useAlerts() {
         console.warn('Invalid alerts response: alerts field is not an array');
         return {
           alerts: [],
-          source: response.source as 'alertmanager' | 'mock' | undefined,
+          source: response.source as 'alertmanager' | 'mock' | 'unavailable' | undefined,
         };
       }
 
@@ -156,7 +156,7 @@ export function useAlerts() {
 
       return {
         alerts: validAlerts,
-        source: response.source as 'alertmanager' | 'mock' | undefined,
+        source: response.source as 'alertmanager' | 'mock' | 'unavailable' | undefined,
       };
     },
     refetchInterval: 5000,

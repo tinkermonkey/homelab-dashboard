@@ -11,29 +11,23 @@ interface ServerCardProps {
 type HostTint = { rgb: string; a12: string; a31: string; statusColor: StatusColor };
 
 const HOST_TINTS: Record<string, HostTint> = {
-  nyx: {
-    rgb: 'rgb(var(--host-nyx-tint))',
-    a12: 'var(--host-nyx-tint-a12)',
-    a31: 'var(--host-nyx-tint-a31)',
+  't5610': {
+    rgb: 'rgb(var(--host-t5610-tint))',
+    a12: 'var(--host-t5610-tint-a12)',
+    a31: 'var(--host-t5610-tint-a31)',
     statusColor: 'cyan',
   },
-  helios: {
-    rgb: 'rgb(var(--host-helios-tint))',
-    a12: 'var(--host-helios-tint-a12)',
-    a31: 'var(--host-helios-tint-a31)',
+  'petit-cochon': {
+    rgb: 'rgb(var(--host-petit-cochon-tint))',
+    a12: 'var(--host-petit-cochon-tint-a12)',
+    a31: 'var(--host-petit-cochon-tint-a31)',
     statusColor: 'emerald',
   },
-  aether: {
-    rgb: 'rgb(var(--host-aether-tint))',
-    a12: 'var(--host-aether-tint-a12)',
-    a31: 'var(--host-aether-tint-a31)',
+  'hp7052': {
+    rgb: 'rgb(var(--host-hp7052-tint))',
+    a12: 'var(--host-hp7052-tint-a12)',
+    a31: 'var(--host-hp7052-tint-a31)',
     statusColor: 'violet',
-  },
-  vega: {
-    rgb: 'rgb(var(--host-vega-tint))',
-    a12: 'var(--host-vega-tint-a12)',
-    a31: 'var(--host-vega-tint-a31)',
-    statusColor: 'amber',
   },
 };
 
@@ -44,7 +38,7 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 const getStatusColor = (status: string) => STATUS_COLORS[status] || STATUS_COLORS.ok;
-const getTintColor = (hostId: string) => HOST_TINTS[hostId] || HOST_TINTS.nyx;
+const getTintColor = (hostId: string) => HOST_TINTS[hostId] || HOST_TINTS['t5610'];
 
 export const ServerCard: React.FC<ServerCardProps> = ({ server }) => {
   const tintColor = getTintColor(server.id);

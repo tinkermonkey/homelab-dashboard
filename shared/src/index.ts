@@ -65,7 +65,7 @@ export interface Gateway {
 
 export interface App {
   id: string;
-  host: 'nyx' | 'helios' | 'aether' | 'vega';
+  host: 't5610' | 'petit-cochon' | 'hp7052' | 'austins-mac-mini';
   cat: 'media' | 'iot' | 'ai' | 'storage' | 'dev' | 'obs' | 'net';
   version: string;
   state: 'running' | 'degraded' | 'failed' | 'stopped' | 'updating';
@@ -192,7 +192,7 @@ export interface DockerHost {
 export interface DOCKER_DATA {
   hosts: DockerHost[];
   degraded?: string[];
-  source?: 'real' | 'mock';
+  source?: 'real' | 'unavailable';
 }
 
 // Topology data
@@ -222,7 +222,7 @@ export interface TOPOLOGY_DATA {
   hosts: string[];
   bots: TopologyBot[];
   degraded?: string[];
-  source?: 'real' | 'mock';
+  source?: 'real' | 'unavailable';
 }
 
 // Status data
@@ -240,5 +240,5 @@ export interface STATUS_DATA {
 // Alerts data
 export interface ALERTS_DATA {
   alerts: Alert[];
-  source?: 'alertmanager' | 'mock';
+  source?: 'alertmanager' | 'mock' | 'unavailable';
 }

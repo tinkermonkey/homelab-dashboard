@@ -1,20 +1,13 @@
-import type { LAB_DATA, App } from '@homelab/shared';
+import type { LAB_DATA, App, Bot, TopologyBot } from '@homelab/shared';
 import type { FastifyBaseLogger } from 'fastify';
 import { signozClient } from '../clients/signoz-client.js';
 import { ntopngClient } from '../clients/ntopng-client.js';
 import { elastiflowClient } from '../clients/elastiflow-client.js';
 import { metricbeatClient } from '../clients/metricbeat-client.js';
 import { mcpClient } from '../clients/mcp-client.js';
+import { SERVER_REGISTRY } from '../cluster-config.js';
 
-// Maps dashboard server IDs to actual OS hostnames reported by metricbeat
-const METRICS_HOSTNAME: Record<string, string> = {
-  nyx: 't5610',
-  helios: 'petit-cochon',
-  aether: 'hp7052',
-  // vega has no metricbeat instance
-};
-
-const HOSTS = Object.keys(METRICS_HOSTNAME);
+const HOSTS_WITH_METRICS = SERVER_REGISTRY.filter(s => s.metricsHostname !== null);
 
 function isValidAppData(data: unknown): data is App[] {
   if (!Array.isArray(data)) return false;
@@ -30,6 +23,35 @@ function isValidAppData(data: unknown): data is App[] {
   });
 }
 
+function isTopologyBotArray(data: unknown): data is { bots: TopologyBot[] } {
+  if (!data || typeof data !== 'object') return false;
+  const obj = data as Record<string, unknown>;
+  return Array.isArray(obj.bots) && obj.bots.every((bot: unknown) => {
+    if (!bot || typeof bot !== 'object') return false;
+    const b = bot as Record<string, unknown>;
+    return typeof b.id === 'string' &&
+           typeof b.label === 'string' &&
+           typeof b.role === 'string' &&
+           typeof b.avatar === 'string';
+  });
+}
+
+function mapTopologyBotToBot(tb: TopologyBot): Bot {
+  return {
+    id: tb.id,
+    label: tb.label,
+    role: tb.role,
+    avatar: tb.avatar,
+    status: tb.status,
+    desc: tb.desc,
+    model: tb.model,
+  };
+}
+
+function formatLastSync(): string {
+  return 'just now';
+}
+
 export async function transformMetrics(
   labData: LAB_DATA,
   logger: FastifyBaseLogger
@@ -39,18 +61,17 @@ export async function transformMetrics(
 
   // Fetch server metrics from Metricbeat (Elasticsearch)
   try {
-    const promises = HOSTS.map(async (serverId) => {
-      const metricsHostname = METRICS_HOSTNAME[serverId];
+    const promises = HOSTS_WITH_METRICS.map(async (spec) => {
       try {
         const [cpu, mem, disk, load] = await Promise.all([
-          metricbeatClient.getCpuHistory(metricsHostname),
-          metricbeatClient.getMemoryHistory(metricsHostname),
-          metricbeatClient.getDiskHistory(metricsHostname),
-          metricbeatClient.getLoadAverage(metricsHostname),
+          metricbeatClient.getCpuHistory(spec.metricsHostname!),
+          metricbeatClient.getMemoryHistory(spec.metricsHostname!),
+          metricbeatClient.getDiskHistory(spec.metricsHostname!),
+          metricbeatClient.getLoadAverage(spec.metricsHostname!),
         ]);
-        return { serverId, cpu, mem, disk, load };
+        return { serverId: spec.id, cpu, mem, disk, load };
       } catch (error) {
-        logger.error({ err: error }, `Failed to fetch metrics for ${serverId} (${metricsHostname})`);
+        logger.error({ err: error }, `Failed to fetch metrics for ${spec.id} (${spec.metricsHostname})`);
         throw error;
       }
     });
@@ -80,14 +101,16 @@ export async function transformMetrics(
   }
 
   // Fetch gateway metrics from ntopng
+  let gatewayStats: { downMbps: number; upMbps: number; downHist: number[]; upHist: number[]; egressTodayGB: number } | null = null;
   try {
-    const stats = await ntopngClient.getWanInterfaceStats();
+    gatewayStats = await ntopngClient.getWanInterfaceStats();
     result.gateway = {
       ...result.gateway,
-      downMbps: stats.downMbps,
-      upMbps: stats.upMbps,
-      downHist: stats.downHist,
-      upHist: stats.upHist,
+      downMbps: gatewayStats.downMbps,
+      upMbps: gatewayStats.upMbps,
+      downHist: gatewayStats.downHist,
+      upHist: gatewayStats.upHist,
+      egressTodayGB: gatewayStats.egressTodayGB,
     };
   } catch (error) {
     logger.error({ err: error }, 'Error fetching ntopng gateway stats');
@@ -97,16 +120,16 @@ export async function transformMetrics(
   // Fetch per-host network throughput from ElastiFlow
   try {
     const flowResults = await Promise.allSettled(
-      HOSTS.map((serverId) => elastiflowClient.getHostThroughput(serverId))
+      SERVER_REGISTRY.map((spec) => elastiflowClient.getHostThroughput(spec.id))
     );
 
     let hasFailure = false;
-    HOSTS.forEach((serverId, idx) => {
-      const result_ = flowResults[idx];
-      if (result_.status === 'fulfilled' && result_.value.length > 0) {
-        const server = result.servers.find((s) => s.id === serverId);
-        if (server) server.net = { ...server.net, hist: result_.value };
-      } else if (result_.status === 'rejected') {
+    SERVER_REGISTRY.forEach((spec, idx) => {
+      const flowResult = flowResults[idx];
+      if (flowResult.status === 'fulfilled' && flowResult.value.length > 0) {
+        const server = result.servers.find((s) => s.id === spec.id);
+        if (server) server.net = { ...server.net, hist: flowResult.value };
+      } else if (flowResult.status === 'rejected') {
         hasFailure = true;
       }
     });
@@ -129,6 +152,53 @@ export async function transformMetrics(
     logger.error({ err: error }, 'Error fetching apps from phone-home MCP');
     degraded.push('phone-home');
   }
+
+  // Fetch bots from phone-home MCP
+  try {
+    const topologyData = await mcpClient.getTopologyData();
+    if (isTopologyBotArray(topologyData)) {
+      result.bots = topologyData.bots.map(mapTopologyBotToBot);
+    }
+  } catch (error) {
+    logger.error({ err: error }, 'Error fetching bots from phone-home MCP');
+  }
+
+  // Fetch active alerts from SigNoz for cluster.activeAlerts
+  try {
+    const alerts = await signozClient.getActiveAlerts();
+    result.cluster = { ...result.cluster, activeAlerts: alerts.length };
+  } catch (error) {
+    logger.error({ err: error }, 'Error fetching alerts for cluster stats');
+  }
+
+  // Derive current values from histograms and compute status/containers
+  result.servers = result.servers.map(server => {
+    const cpuV = server.cpu.hist.length > 0 ? server.cpu.hist[server.cpu.hist.length - 1] : 0;
+    const memV = server.mem.hist.length > 0 ? server.mem.hist[server.mem.hist.length - 1] : 0;
+    const diskV = server.disk.hist.length > 0 ? server.disk.hist[server.disk.hist.length - 1] : 0;
+    const netV = server.net.hist.length > 0 ? server.net.hist[server.net.hist.length - 1] : 0;
+    const containers = result.apps.filter(a => a.host === server.id).length;
+    const status: 'ok' | 'warn' | 'err' = memV >= 80 || cpuV >= 90 ? 'warn' : 'ok';
+
+    return {
+      ...server,
+      cpu: { ...server.cpu, v: cpuV },
+      mem: { ...server.mem, v: memV },
+      disk: { ...server.disk, v: diskV },
+      net: { ...server.net, v: netV },
+      status,
+      containers,
+    };
+  });
+
+  // Sync egressTodayGB and set lastSync
+  if (gatewayStats) {
+    result.cluster = {
+      ...result.cluster,
+      egressTodayGB: gatewayStats.egressTodayGB,
+    };
+  }
+  result.cluster = { ...result.cluster, lastSync: formatLastSync() };
 
   return { data: result, degraded };
 }

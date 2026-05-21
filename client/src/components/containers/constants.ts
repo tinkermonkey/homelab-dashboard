@@ -1,8 +1,7 @@
 export const ROLE_BY_HOST: Record<string, string> = {
-  nyx: 'compute',
-  helios: 'storage',
-  aether: 'k8s',
-  vega: 'gpu',
+  't5610': 'compute',
+  'petit-cochon': 'compute',
+  'hp7052': 'compute',
 };
 
 export const getNetworkColor = (name: string): string => {

@@ -17,7 +17,6 @@ import { TopologyView } from './components/topology/TopologyView';
 import { PlaceholderView } from './components/shared/PlaceholderView';
 import { ErrorView } from './components/shared/ErrorView';
 import { ChatRail } from './components/chat/ChatRail';
-import { CHAT_DATA } from './data/chatData';
 
 const ROUTES = [
   { path: '/', name: 'Overview', display: 'Overview' },
@@ -253,8 +252,8 @@ const AppContent: React.FC = () => {
           </div>
           {chatVisible && (
             <ChatRail
-              bots={CHAT_DATA.bots}
-              threadByBot={CHAT_DATA.threadByBot}
+              bots={clusterData?.bots ?? []}
+              threadByBot={clusterData?.threadByBot ?? {}}
               activeBot={activeBot}
               onActiveBotChange={setActiveBot}
             />

@@ -28,18 +28,15 @@
   --canvas-bd-light: 209 213 219;
 
   /* Host tints */
-  --host-nyx-tint: 34 211 238;
-  --host-nyx-tint-a12: rgba(34, 211, 238, 0.125);
-  --host-nyx-tint-a31: rgba(34, 211, 238, 0.314);
-  --host-helios-tint: 16 185 129;
-  --host-helios-tint-a12: rgba(16, 185, 129, 0.125);
-  --host-helios-tint-a31: rgba(16, 185, 129, 0.314);
-  --host-aether-tint: 167 139 250;
-  --host-aether-tint-a12: rgba(167, 139, 250, 0.125);
-  --host-aether-tint-a31: rgba(167, 139, 250, 0.314);
-  --host-vega-tint: 245 158 11;
-  --host-vega-tint-a12: rgba(245, 158, 11, 0.125);
-  --host-vega-tint-a31: rgba(245, 158, 11, 0.314);
+  --host-t5610-tint: 34 211 238;
+  --host-t5610-tint-a12: rgba(34, 211, 238, 0.125);
+  --host-t5610-tint-a31: rgba(34, 211, 238, 0.314);
+  --host-petit-cochon-tint: 16 185 129;
+  --host-petit-cochon-tint-a12: rgba(16, 185, 129, 0.125);
+  --host-petit-cochon-tint-a31: rgba(16, 185, 129, 0.314);
+  --host-hp7052-tint: 167 139 250;
+  --host-hp7052-tint-a12: rgba(167, 139, 250, 0.125);
+  --host-hp7052-tint-a31: rgba(167, 139, 250, 0.314);
 
   /* Status colors */
   --status-ok: 16 185 129;

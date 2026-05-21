@@ -1,5 +1,10 @@
 import { config as dotenvConfig } from 'dotenv';
-dotenvConfig();
+import { resolve, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+// Walk up from server/ to the repo root so dotenv finds .env regardless of CWD
+const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
+dotenvConfig({ path: resolve(repoRoot, '.env') });
 
 // Configuration from environment variables
 export const config = {

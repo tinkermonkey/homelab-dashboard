@@ -10,6 +10,7 @@ import { ntopngClient } from '../clients/ntopng-client.js';
 import { elastiflowClient } from '../clients/elastiflow-client.js';
 import { metricbeatClient } from '../clients/metricbeat-client.js';
 import { mcpClient } from '../clients/mcp-client.js';
+import { signozClient } from '../clients/signoz-client.js';
 import type { LAB_DATA } from '@homelab/shared';
 import type { FastifyBaseLogger } from 'fastify';
 
@@ -212,10 +213,9 @@ describe('transformMetrics', () => {
       lastSync: 'never',
     },
     servers: [
-      makeServer('nyx', '10.0.0.11'),
-      makeServer('helios', '10.0.0.12'),
-      makeServer('aether', '10.0.0.13'),
-      makeServer('vega', '10.0.0.14'),
+      makeServer('t5610', '192.168.0.117'),
+      makeServer('petit-cochon', '192.168.0.245'),
+      makeServer('hp7052', '192.168.0.72'),
     ],
     gateway: {
       isp: 'ISP', plan: 'Plan', publicIp: '1.1.1.1', hostname: 'gw.lab.local',
@@ -244,10 +244,13 @@ describe('transformMetrics', () => {
       upMbps: 100,
       downHist: [50],
       upHist: [10],
+      egressTodayGB: 0,
     });
 
     vi.spyOn(elastiflowClient, 'getHostThroughput').mockResolvedValue([1.5]);
     vi.spyOn(mcpClient, 'listContainers').mockResolvedValue([]);
+    vi.spyOn(mcpClient, 'getTopologyData').mockResolvedValue({ bots: [] });
+    vi.spyOn(signozClient, 'getActiveAlerts').mockResolvedValue([]);
   }
 
   it('returns no degraded services when all succeed', async () => {
@@ -259,7 +262,7 @@ describe('transformMetrics', () => {
   it('updates server cpu/mem/disk/load from metricbeat', async () => {
     setupAllMocks();
     const result = await transformMetrics(mockLabData, mockLogger);
-    const nyx = result.data.servers.find((s) => s.id === 'nyx');
+    const nyx = result.data.servers.find((s) => s.id === 't5610');
     expect(nyx?.cpu.hist).toEqual([50]);
     expect(nyx?.mem.hist).toEqual([60]);
     expect(nyx?.disk.hist).toEqual([70]);
@@ -324,21 +327,21 @@ describe('transformMetrics', () => {
     vi.mocked(metricbeatClient.getCpuHistory).mockRejectedValue(new Error('Error'));
     const result = await transformMetrics(mockLabData, mockLogger);
     expect(result.data.cluster.name).toBe('asgard');
-    expect(result.data.servers).toHaveLength(4);
+    expect(result.data.servers).toHaveLength(3);
   });
 
   it('skips server metric update when histogram is empty', async () => {
     setupAllMocks();
     vi.mocked(metricbeatClient.getCpuHistory).mockResolvedValue([]);
     const result = await transformMetrics(mockLabData, mockLogger);
-    const nyx = result.data.servers.find((s) => s.id === 'nyx');
+    const nyx = result.data.servers.find((s) => s.id === 't5610');
     // Empty array should NOT replace existing hist
     expect(nyx?.cpu.hist).not.toEqual([]);
   });
 
   it('updates apps when valid app data is provided', async () => {
     setupAllMocks();
-    const mockApps = [{ id: 'app1', host: 'nyx', cat: 'database', version: '5.0', state: 'running', meta: 'pg' }];
+    const mockApps = [{ id: 'app1', host: 't5610', cat: 'database', version: '5.0', state: 'running', meta: 'pg' }];
     vi.mocked(mcpClient.listContainers).mockResolvedValue(mockApps);
     const result = await transformMetrics(mockLabData, mockLogger);
     expect(result.data.apps).toEqual(mockApps);

@@ -63,13 +63,13 @@ export const OverviewView: React.FC<OverviewViewProps> = ({ data, showAlerts = t
       {/* Alerts Strip */}
       {showAlerts && (
         <>
-          {alertsSource === 'mock' && (
+          {(alertsSource === 'mock' || alertsSource === 'unavailable') && (
             <AlertStrip
               alerts={[
                 {
-                  id: 'mock-alerts',
+                  id: 'alerts-unavailable',
                   severity: 'warn',
-                  message: 'Alert service unavailable. Displaying sample alerts.',
+                  message: 'Alert service unavailable.',
                 },
               ]}
               style={{ marginBottom: '12px' }}

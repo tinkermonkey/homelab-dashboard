@@ -33,6 +33,11 @@ export function getCachedData<T>(
     });
 }
 
+export function peekCache<T>(key: string): T | null {
+  const entry = cache.get(key);
+  return entry ? (entry.data as T) : null;
+}
+
 export function clearCache(): void {
   cache.clear();
 }

@@ -69,6 +69,7 @@ export class NtopngClient {
     upMbps: number;
     downHist: number[];
     upHist: number[];
+    egressTodayGB: number;
   }> {
     const iface = await this.fetch(`${API_V2}/get/interface/data.lua`, { ifid: WAN_IFID }) as Record<string, unknown>;
 
@@ -80,11 +81,16 @@ export class NtopngClient {
     const downMbps = downHist.length > 0 ? this.toNumber(downHist[downHist.length - 1]) / 1000 : 0;
     const upMbps = upHist.length > 0 ? this.toNumber(upHist[upHist.length - 1]) / 1000 : 0;
 
+    // bytes_download is the total bytes received since epoch start (convert to GB)
+    const rawEgressBytes = this.toNumber(iface.bytes_download, 0);
+    const egressTodayGB = rawEgressBytes > 0 ? Math.round((rawEgressBytes / 1e9) * 100) / 100 : 0;
+
     return {
       downMbps: Math.round(downMbps * 100) / 100,
       upMbps: Math.round(upMbps * 100) / 100,
       downHist: downHist.map((v) => this.toNumber(v)),
       upHist: upHist.map((v) => this.toNumber(v)),
+      egressTodayGB,
     };
   }
 }

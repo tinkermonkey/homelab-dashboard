@@ -14,10 +14,9 @@ const TP_BOT_LAYOUT: Record<string, { x: number; y: number }> = {
 };
 
 const HOST_TINT: Record<string, string> = {
-  nyx: 'cyan',
-  helios: 'emerald',
-  aether: 'violet',
-  vega: 'amber',
+  't5610': 'cyan',
+  'petit-cochon': 'emerald',
+  'hp7052': 'violet',
 };
 
 export const TopologyView: React.FC = () => {
