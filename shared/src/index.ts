@@ -72,10 +72,13 @@ export interface App {
   meta: string;
 }
 
+export type AlertSeverity = 'critical' | 'warning' | 'info';
+export type AlertState = 'active' | 'resolved';
+
 export interface Alert {
   name: string;
-  severity: string;
-  state: string;
+  severity: AlertSeverity;
+  state: AlertState;
   labels: Record<string, string>;
 }
 
@@ -100,6 +103,7 @@ export interface ThreadMessage {
   name?: string;
   when: string;
   body: { p: string }[];
+  thinking?: { content: string };
   tool?: {
     name: string;
     status: string;
@@ -129,6 +133,8 @@ export interface LAB_DATA {
   apps: App[];
   bots: Bot[];
   threadByBot: Record<string, ThreadItem[]>;
+  degraded?: string[];
+  source?: 'real' | 'mock';
 }
 
 // Docker data
@@ -185,6 +191,8 @@ export interface DockerHost {
 
 export interface DOCKER_DATA {
   hosts: DockerHost[];
+  degraded?: string[];
+  source?: 'real' | 'mock';
 }
 
 // Topology data
@@ -213,6 +221,8 @@ export interface TopologyBot {
 export interface TOPOLOGY_DATA {
   hosts: string[];
   bots: TopologyBot[];
+  degraded?: string[];
+  source?: 'real' | 'mock';
 }
 
 // Status data
@@ -223,4 +233,12 @@ export interface STATUS_DATA {
   upMbps: number;
   alertCount: number;
   alertPrimary: string;
+  degraded?: string[];
+  source?: 'real' | 'mock';
+}
+
+// Alerts data
+export interface ALERTS_DATA {
+  alerts: Alert[];
+  source?: 'alertmanager' | 'mock';
 }

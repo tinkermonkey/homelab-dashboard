@@ -1,25 +1,49 @@
 import { useQuery } from '@tanstack/react-query';
-import type { LAB_DATA, DOCKER_DATA, TOPOLOGY_DATA, STATUS_DATA, Alert } from '@homelab/shared';
+import type { LAB_DATA, DOCKER_DATA, TOPOLOGY_DATA, STATUS_DATA, ALERTS_DATA, Alert } from '@homelab/shared';
 
 const API_BASE = import.meta.env.VITE_API_BASE || '/api';
 
 interface APIResponse<T> {
   data: T;
   degraded?: string[];
+  source?: 'real' | 'mock';
 }
 
 export async function fetchJSON<T>(url: string): Promise<APIResponse<T>> {
   const response = await fetch(url);
 
   if (!response.ok && response.status !== 206) {
-    throw new Error(`API error: ${response.status}`);
+    let errorMessage = `API error ${response.status}`;
+    try {
+      const contentType = response.headers.get('content-type');
+      if (contentType?.includes('application/json')) {
+        const errorBody = await response.json();
+        if (errorBody?.error) {
+          errorMessage = `API error ${response.status}: ${errorBody.error}`;
+        }
+      } else {
+        const text = await response.text();
+        if (text) {
+          errorMessage = `API error ${response.status}: ${text.slice(0, 100)}`;
+        }
+      }
+    } catch {
+      // If we can't parse the error body, use the default message
+    }
+    throw new Error(errorMessage);
   }
 
-  const data = await response.json();
+  let data;
+  try {
+    data = await response.json();
+  } catch {
+    throw new Error(`API returned status ${response.status} but response body was not valid JSON`);
+  }
 
   return {
     data,
-    degraded: response.status === 206 ? data.degraded : undefined,
+    degraded: response.status === 206 ? data?.degraded : undefined,
+    source: data?.source,
   };
 }
 
@@ -32,7 +56,8 @@ export function useStatus() {
       return {
         ...response.data,
         degraded: response.degraded,
-      } as STATUS_DATA & { degraded?: string[] };
+        source: response.source,
+      };
     },
     refetchInterval: 2200,
     staleTime: 1000,
@@ -49,7 +74,8 @@ export function useCluster() {
       return {
         ...response.data,
         degraded: response.degraded,
-      } as LAB_DATA & { degraded?: string[] };
+        source: response.source,
+      };
     },
     refetchInterval: 15000,
     staleTime: 5000,
@@ -66,7 +92,8 @@ export function useDocker() {
       return {
         ...response.data,
         degraded: response.degraded,
-      } as DOCKER_DATA & { degraded?: string[] };
+        source: response.source,
+      };
     },
     refetchInterval: 30000,
     staleTime: 10000,
@@ -83,7 +110,8 @@ export function useTopology(enabled = true) {
       return {
         ...response.data,
         degraded: response.degraded,
-      } as TOPOLOGY_DATA & { degraded?: string[] };
+        source: response.source,
+      };
     },
     enabled,
     staleTime: 60000,
@@ -96,14 +124,39 @@ export function useAlerts() {
   return useQuery({
     queryKey: ['alerts'],
     queryFn: async () => {
-      const response = await fetch(`${API_BASE}/alerts`);
-      if (!response.ok) {
-        throw new Error(`API error: ${response.status}`);
+      const response = await fetchJSON<ALERTS_DATA>(`${API_BASE}/alerts`);
+
+      // Runtime validation: ensure alerts is an array
+      if (!Array.isArray(response.data.alerts)) {
+        console.warn('Invalid alerts response: alerts field is not an array');
+        return {
+          alerts: [],
+          source: response.source as 'alertmanager' | 'mock' | undefined,
+        };
       }
-      const data = await response.json();
+
+      // Validate each alert has required fields
+      const validAlerts = response.data.alerts.filter(
+        (alert): alert is Alert =>
+          typeof alert === 'object' &&
+          alert !== null &&
+          typeof alert.name === 'string' &&
+          typeof alert.severity === 'string' &&
+          typeof alert.state === 'string' &&
+          typeof alert.labels === 'object' &&
+          alert.labels !== null &&
+          !Array.isArray(alert.labels)
+      );
+
+      if (validAlerts.length !== response.data.alerts.length) {
+        console.warn(
+          `Filtered ${response.data.alerts.length - validAlerts.length} invalid alerts`
+        );
+      }
+
       return {
-        alerts: data.alerts as Alert[],
-        source: data.source as string,
+        alerts: validAlerts,
+        source: response.source as 'alertmanager' | 'mock' | undefined,
       };
     },
     refetchInterval: 5000,

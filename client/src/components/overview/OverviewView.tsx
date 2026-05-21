@@ -1,9 +1,10 @@
-import React from 'react';
-import type { LAB_DATA } from '@homelab/shared';
+import React, { useState } from 'react';
+import type { LAB_DATA, AlertSeverity } from '@homelab/shared';
+import { AlertStrip, PageHeader, StatGrid, StatTile } from '@tinkermonkey/heimdall-ui';
 import { Icon } from '../shared/Icon';
 import { useAlerts } from '../../hooks/useAPI';
 import { ServerCard } from './ServerCard';
-import { AlertsStrip } from './AlertsStrip';
+import { DegradationBanner } from '../shared/DegradationBanner';
 import { GatewayPanel } from './GatewayPanel';
 import { AppsSection } from './AppsSection';
 import './OverviewView.css';
@@ -13,97 +14,114 @@ interface OverviewViewProps {
   showAlerts?: boolean;
 }
 
+function mapSeverity(severity: AlertSeverity): 'error' | 'warn' | 'info' | 'success' {
+  const severityMap: Record<AlertSeverity, 'error' | 'warn' | 'info'> = {
+    critical: 'error',
+    warning: 'warn',
+    info: 'info',
+  };
+  return severityMap[severity];
+}
+
 export const OverviewView: React.FC<OverviewViewProps> = ({ data, showAlerts = true }) => {
   const { data: alertsData } = useAlerts();
   const alerts = alertsData?.alerts ?? [];
+  const alertsSource = alertsData?.source;
+  const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set());
+
+  const handleDismissAlert = (alertId: string) => {
+    setDismissedIds(prev => new Set([...prev, alertId]));
+  };
+
+  const visibleAlerts = alerts.filter(alert => !dismissedIds.has(`${alert.name}-${alert.severity}`));
 
   return (
     <div className="overview-view">
       {/* Page Header */}
-      <div className="page-header">
-        <div className="page-header__main">
-          <div className="page-header__breadcrumb">
-            <span className="breadcrumb-chip">
-              <span className="breadcrumb-dot" />
-              cluster · {data.cluster.name}
-            </span>
-            <span className="breadcrumb-meta">
-              {data.cluster.location} · last sync {data.cluster.lastSync}
-            </span>
+      <PageHeader
+        eyebrow={`${data.cluster.location} · last sync ${data.cluster.lastSync}`}
+        idChip={data.cluster.name}
+        title="Overview"
+        subtitle="Resource state across hosts, gateway health, and deployed services. All systems polled every 15 s."
+        actions={
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button className="btn btn--sm btn--ghost" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <Icon name="refresh" size={13} />
+              Refresh
+            </button>
+            <button className="btn btn--sm btn--primary" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <Icon name="bot" size={13} />
+              Ask lab-bot
+            </button>
           </div>
-          <h1 className="page-header__title">Overview</h1>
-          <p className="page-header__subtitle">
-            Resource state across hosts, gateway health, and deployed services. All systems polled every 15 s.
-          </p>
-        </div>
-        <div className="page-header__actions">
-          <button className="btn btn--sm btn--ghost" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <Icon name="refresh" size={13} />
-            Refresh
-          </button>
-          <button className="btn btn--sm btn--primary" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <Icon name="bot" size={13} />
-            Ask lab-bot
-          </button>
-        </div>
-      </div>
+        }
+      />
 
       {/* Degradation Banner */}
-      {data.degraded && data.degraded.length > 0 && (
-        <div
-          style={{
-            backgroundColor: 'rgba(245, 158, 11, 0.1)',
-            border: '1px solid rgba(245, 158, 11, 0.3)',
-            borderRadius: '4px',
-            padding: '12px 16px',
-            marginBottom: '24px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '12px',
-          }}
-        >
-          <Icon name="alert-triangle" size={16} style={{ color: '#F59E0B' }} />
-          <div style={{ fontSize: '13px' }}>
-            <strong>Partial Data:</strong> {data.degraded.join(', ')} are temporarily unavailable. Showing cached data.
-          </div>
-        </div>
-      )}
+      <DegradationBanner degraded={data.degraded} />
 
       {/* Alerts Strip */}
-      {showAlerts && alerts.length > 0 && (
-        <AlertsStrip alerts={alerts} />
+      {showAlerts && (
+        <>
+          {alertsSource === 'mock' && (
+            <AlertStrip
+              alerts={[
+                {
+                  id: 'mock-alerts',
+                  severity: 'warn',
+                  message: 'Alert service unavailable. Displaying sample alerts.',
+                },
+              ]}
+              style={{ marginBottom: '12px' }}
+            />
+          )}
+          <AlertStrip
+            alerts={visibleAlerts.map(alert => ({
+              id: `${alert.name}-${alert.severity}`,
+              severity: mapSeverity(alert.severity),
+              message: alert.state ? `${alert.name} — ${alert.state}` : alert.name,
+            }))}
+            onDismiss={handleDismissAlert}
+          />
+        </>
       )}
 
       {/* Cluster Stats */}
-      <div className="cluster-stats">
-        <div className="stat-tile stat-tile--cyan">
-          <div className="stat-tile__label">Power Draw</div>
-          <div className="stat-tile__value">{data.cluster.powerDraw}W</div>
-          <div className="stat-tile__meta">
-            avg <span className="stat-tile__label-secondary">{data.cluster.powerAvg}W</span>
-          </div>
-        </div>
-        <div className="stat-tile stat-tile--amber">
-          <div className="stat-tile__label">Active Alerts</div>
-          <div className="stat-tile__value">{data.cluster.activeAlerts}</div>
-        </div>
-        <div className="stat-tile stat-tile--violet">
-          <div className="stat-tile__label">Egress Today</div>
-          <div className="stat-tile__value">{data.cluster.egressTodayGB.toFixed(1)}GB</div>
-          <div className="stat-tile__meta">
-            <span className={`stat-tile__delta ${data.cluster.egressDelta < 0 ? 'stat-tile__delta--down' : 'stat-tile__delta--up'}`}>
-              {data.cluster.egressDelta > 0 ? '+' : ''}{data.cluster.egressDelta}%
-            </span>
-          </div>
-        </div>
-        <div className="stat-tile stat-tile--emerald">
-          <div className="stat-tile__label">Cluster Uptime</div>
-          <div className="stat-tile__value">{data.cluster.uptimeDays}d</div>
-          <div className="stat-tile__meta">
-            <span className="stat-tile__label-secondary">{data.cluster.uptimeHours}h</span>
-          </div>
-        </div>
-      </div>
+      <StatGrid columns={4}>
+        <StatTile
+          color="cyan"
+          label="Power Draw"
+          value={`${data.cluster.powerDraw}W`}
+          delta={{
+            value: data.cluster.powerAvg,
+            label: `avg ${data.cluster.powerAvg}W`,
+          }}
+        />
+        <StatTile
+          color="amber"
+          label="Active Alerts"
+          value={data.cluster.activeAlerts}
+        />
+        <StatTile
+          color="violet"
+          label="Egress Today"
+          value={`${data.cluster.egressTodayGB.toFixed(1)}GB`}
+          delta={{
+            value: Math.abs(data.cluster.egressDelta),
+            direction: data.cluster.egressDelta < 0 ? 'down' : 'up',
+            label: '%',
+          }}
+        />
+        <StatTile
+          color="emerald"
+          label="Cluster Uptime"
+          value={`${data.cluster.uptimeDays}d`}
+          delta={{
+            value: data.cluster.uptimeHours,
+            label: `${data.cluster.uptimeHours}h`,
+          }}
+        />
+      </StatGrid>
 
       {/* Server Cards */}
       <div className="servers-section">

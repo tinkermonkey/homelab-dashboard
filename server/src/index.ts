@@ -41,7 +41,7 @@ export async function registerRoutes(app: FastifyInstance) {
     try {
       const data = await getCachedData('cluster', 10, async () => {
         const baseData = getLabData();
-        const { data: transformedData, degraded } = await transformMetrics(baseData);
+        const { data: transformedData, degraded } = await transformMetrics(baseData, app.log);
 
         return {
           ...transformedData,
@@ -65,10 +65,11 @@ export async function registerRoutes(app: FastifyInstance) {
   app.get('/api/docker', async (request, reply) => {
     try {
       const data = await getCachedData('docker', 20, async () => {
-        const { data: dockerData, degraded } = await transformDockerData();
+        const { data: dockerData, degraded, source } = await transformDockerData(app.log);
         return {
           ...dockerData,
           degraded,
+          source,
         };
       }, (msg) => app.log.error(msg));
 
@@ -88,10 +89,11 @@ export async function registerRoutes(app: FastifyInstance) {
   app.get('/api/topology', async (request, reply) => {
     try {
       const data = await getCachedData('topology', 60, async () => {
-        const { data: topoData, degraded } = await transformTopologyData();
+        const { data: topoData, degraded, source } = await transformTopologyData(app.log);
         return {
           ...topoData,
           degraded,
+          source,
         };
       }, (msg) => app.log.error(msg));
 
@@ -168,7 +170,21 @@ export async function registerRoutes(app: FastifyInstance) {
       });
 
       if (!response.ok) {
-        reply.status(response.status).send({ error: 'Chat service unavailable' });
+        let errorDetail = 'Chat service unavailable';
+        try {
+          const responseText = await response.text();
+          if (responseText) {
+            try {
+              const errorJson = JSON.parse(responseText);
+              errorDetail = errorJson.error || errorJson.message || responseText.slice(0, 100);
+            } catch {
+              errorDetail = responseText.slice(0, 100);
+            }
+          }
+        } catch (readError) {
+          app.log.debug(`Failed to read upstream error body: ${readError instanceof Error ? readError.message : 'Unknown error'}`);
+        }
+        reply.status(response.status).send({ error: errorDetail });
         return;
       }
 
@@ -184,19 +200,31 @@ export async function registerRoutes(app: FastifyInstance) {
       reply.header('Cache-Control', 'no-cache');
       reply.header('Connection', 'keep-alive');
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
+      const decoder = new TextDecoder();
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
 
-        const chunk = new TextDecoder().decode(value);
-        reply.raw.write(chunk);
+          const chunk = decoder.decode(value, { stream: true });
+          reply.raw.write(chunk);
+        }
+
+        reply.raw.end();
+      } finally {
+        await reader.cancel().catch(() => {});
       }
-
-      reply.raw.end();
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
       app.log.error(`Chat proxy error for botId ${botId}: ${message}`);
-      reply.status(500).send({ error: 'Chat service error' });
+
+      // If headers already sent (SSE stream started), write error as SSE event
+      if (reply.raw.headersSent) {
+        reply.raw.write(`data: ${JSON.stringify({ error: 'Chat service error' })}\n\n`);
+        reply.raw.end();
+      } else {
+        reply.status(500).send({ error: 'Chat service error' });
+      }
     }
   });
 
@@ -241,8 +269,18 @@ if (isProduction) {
   });
 }
 
+function validateCredentials(logger: FastifyInstance['log']) {
+  if (!config.ntopngToken) {
+    logger.warn('NTOPNG_TOKEN environment variable is not set. ntopng requests may fail.');
+  }
+  if (!config.phoneHomeChatToken) {
+    logger.warn('PHONE_HOME_CHAT_TOKEN environment variable is not set. Chat requests may not authenticate.');
+  }
+}
+
 const start = async () => {
   try {
+    validateCredentials(fastify.log);
     await fastify.listen({ port: config.port, host: config.host });
     console.log(`Server running at http://${config.host}:${config.port}`);
   } catch (err) {

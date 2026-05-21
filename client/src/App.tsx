@@ -257,7 +257,6 @@ const AppContent: React.FC = () => {
               threadByBot={CHAT_DATA.threadByBot}
               activeBot={activeBot}
               onActiveBotChange={setActiveBot}
-              onClose={() => setChatVisible(false)}
             />
           )}
         </div>

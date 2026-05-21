@@ -1,23 +1,85 @@
-import React from 'react';
+import React, { useCallback, useMemo } from 'react';
+import { GraphCanvas, GraphInspector, TopologyNode, PageHeader, type GraphNodeData, type GraphEdgeData } from '@tinkermonkey/heimdall-ui';
 import { usePersistedState } from '../../utils/localStorage';
 import { useTopology } from '../../hooks/useAPI';
 import { Icon } from '../shared/Icon';
-import { TopologyStage } from './TopologyStage';
-import { BotInspector } from './BotInspector';
+import { DegradationBanner } from '../shared/DegradationBanner';
 import './TopologyView.css';
+
+const TP_BOT_LAYOUT: Record<string, { x: number; y: number }> = {
+  'lab-bot': { x: 150, y: 200 },
+  'ops-bot': { x: 150, y: 500 },
+  'sync-bot': { x: 450, y: 200 },
+  'watch-bot': { x: 750, y: 200 },
+};
+
+const HOST_TINT: Record<string, string> = {
+  nyx: 'cyan',
+  helios: 'emerald',
+  aether: 'violet',
+  vega: 'amber',
+};
 
 export const TopologyView: React.FC = () => {
   const [selectedBotId, setSelectedBotId] = usePersistedState<string>('selectedTopologyBot', 'lab-bot');
   const { data: topologyData, isLoading, error } = useTopology();
 
+  // Render TopologyNode for each node
+  const renderNode = useCallback((node: GraphNodeData) => {
+    if (!topologyData) return null;
+    const bot = topologyData.bots.find(b => b.id === node.id);
+    if (!bot) return null;
+
+    const statusMap: Record<string, 'ok' | 'warning' | 'error' | 'idle'> = {
+      ok: 'ok',
+      busy: 'warning',
+      idle: 'idle',
+    };
+
+    return (
+      <TopologyNode
+        title={bot.label}
+        role={bot.role}
+        status={statusMap[bot.status] || 'idle'}
+      />
+    );
+  }, [topologyData]);
+
+  // Convert TopologyBot[] to GraphNodeData[]
+  const nodes = useMemo((): GraphNodeData[] => {
+    if (!topologyData) return [];
+    return topologyData.bots.map(bot => ({
+      id: bot.id,
+      label: bot.label,
+      kind: bot.role,
+      domainColor: HOST_TINT[bot.host],
+      x: TP_BOT_LAYOUT[bot.id]?.x,
+      y: TP_BOT_LAYOUT[bot.id]?.y,
+    }));
+  }, [topologyData]);
+
+  // Create edges for delegation relationships
+  const edges = useMemo((): GraphEdgeData[] => {
+    if (!topologyData) return [];
+    const result: GraphEdgeData[] = [];
+    const labBot = topologyData.bots.find(b => b.id === 'lab-bot');
+    if (labBot?.delegates) {
+      labBot.delegates.forEach(delegateId => {
+        result.push({
+          id: `${labBot.id}->${delegateId}`,
+          sourceId: labBot.id,
+          targetId: delegateId,
+          label: 'delegates',
+        });
+      });
+    }
+    return result;
+  }, [topologyData]);
+
   if (isLoading) {
     return (
       <div className="topology-view">
-        <div className="page-header">
-          <div className="page-header__main">
-            <h1 className="page-header__title">Loading topology...</h1>
-          </div>
-        </div>
+        <PageHeader eyebrow="" title="Loading topology..." />
       </div>
     );
   }
@@ -25,74 +87,106 @@ export const TopologyView: React.FC = () => {
   if (error || !topologyData) {
     return (
       <div className="topology-view">
-        <div className="page-header">
-          <div className="page-header__main">
-            <h1 className="page-header__title">Failed to load topology</h1>
-            <p className="page-header__subtitle">{error?.message || 'Unknown error'}</p>
-          </div>
-        </div>
+        <PageHeader
+          eyebrow=""
+          title="Failed to load topology"
+          subtitle={error?.message || 'Unknown error'}
+        />
       </div>
     );
   }
 
   const selectedBot = topologyData.bots.find(b => b.id === selectedBotId) || topologyData.bots[0];
-  const degraded = (topologyData as typeof topologyData & { degraded?: string[] }).degraded;
+  const degraded = topologyData.degraded;
+  const dataSource = topologyData.source;
+
+
+  // Prepare GraphInspector data
+  const inspectorNode = selectedBot ? {
+    id: selectedBot.id,
+    title: selectedBot.label,
+    kind: selectedBot.role,
+    domain: HOST_TINT[selectedBot.host],
+    description: selectedBot.desc,
+    metadata: {
+      model: selectedBot.model,
+      host: `${selectedBot.host}.lab.local`,
+      status: selectedBot.status,
+      mcps: `${selectedBot.mcps.length} attached`,
+      manages: `${selectedBot.manages.length} project${selectedBot.manages.length === 1 ? '' : 's'}`,
+      ...(selectedBot.delegates.length > 0 && {
+        delegates: `${selectedBot.delegates.length} bot${selectedBot.delegates.length === 1 ? '' : 's'}`,
+      }),
+    },
+  } : null;
+
+  // Build relationship links for inspector
+  const relationships = selectedBot ? [
+    ...selectedBot.mcps.map(mcp => ({
+      id: `mcp-${mcp.id}`,
+      target: mcp.id,
+      targetTitle: mcp.label,
+      targetDomain: 'mcp' as const,
+      predicate: `sidecar (${mcp.kind})`,
+      direction: 'out' as const,
+    })),
+    ...selectedBot.manages.map(proj => ({
+      id: `manage-${proj.name}`,
+      target: proj.name,
+      targetTitle: proj.name,
+      targetDomain: proj.host,
+      predicate: `manages (${proj.host}:${proj.port})`,
+      direction: 'out' as const,
+    })),
+    ...selectedBot.delegates.map(delegateId => ({
+      id: `delegate-${delegateId}`,
+      target: delegateId,
+      targetTitle: delegateId,
+      targetDomain: 'orchestrator',
+      predicate: 'delegates to',
+      direction: 'out' as const,
+    })),
+  ] : [];
 
   return (
     <div className="topology-view">
-      {/* Page Header */}
-      <div className="page-header">
-        <div className="page-header__main">
-          <div className="page-header__breadcrumb">
-            <span className="breadcrumb-chip breadcrumb-chip--violet">
-              <span className="breadcrumb-dot" />
-              topology · {topologyData.bots.length} bots
-            </span>
-            <span className="breadcrumb-meta">bots · sidecar mcp servers · managed projects</span>
+      <PageHeader
+        eyebrow="bots · sidecar mcp servers · managed projects"
+        idChip={`${topologyData.bots.length} bots`}
+        title="Bot topology"
+        subtitle="Where each bot runs, what MCP sidecars it brings, and which projects it manages. Curves show delegation between bots — the orchestrator fans out to specialists."
+        actions={
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button className="btn btn--sm btn--ghost" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <Icon name="refresh" size={13} />
+              Refresh
+            </button>
+            <button className="btn btn--sm btn--ghost" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <Icon name="ext" size={13} />
+              Export DOT
+            </button>
           </div>
-          <h1 className="page-header__title">Bot topology</h1>
-          <p className="page-header__subtitle">
-            Where each bot runs, what MCP sidecars it brings, and which projects it manages. Curves show delegation between bots — the orchestrator fans out to specialists.
-          </p>
-        </div>
-        <div className="page-header__actions">
-          <button className="btn btn--sm btn--ghost btn--icon-label">
-            <Icon name="refresh" size={13} />
-            Refresh
-          </button>
-          <button className="btn btn--sm btn--ghost btn--icon-label">
-            <Icon name="ext" size={13} />
-            Export DOT
-          </button>
-        </div>
-      </div>
+        }
+      />
 
-      {/* Degradation Banner */}
-      {degraded && degraded.length > 0 && (
-        <div
-          style={{
-            backgroundColor: 'rgba(245, 158, 11, 0.1)',
-            border: '1px solid rgba(245, 158, 11, 0.3)',
-            borderRadius: '4px',
-            padding: '12px 16px',
-            marginBottom: '24px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '12px',
-          }}
-        >
-          <Icon name="alert-triangle" size={16} style={{ color: '#F59E0B' }} />
-          <div style={{ fontSize: '13px' }}>
-            <strong>Partial Data:</strong> {degraded.join(', ')} are temporarily unavailable. Showing cached data.
-          </div>
-        </div>
-      )}
+      <DegradationBanner degraded={degraded} dataSource={dataSource} />
 
-      {/* Topology Stage with Inspector */}
       <div className="topology-container">
-        <TopologyStage bots={topologyData.bots} selectedBotId={selectedBotId} onSelectBot={setSelectedBotId}>
-          <BotInspector bot={selectedBot} />
-        </TopologyStage>
+        <GraphCanvas
+          nodes={nodes}
+          edges={edges}
+          selectedNodeId={selectedBotId}
+          onNodeSelect={setSelectedBotId}
+          renderNode={renderNode}
+          layout="manual"
+          className="graph-canvas-topology"
+        />
+        <GraphInspector
+          node={inspectorNode}
+          relationships={relationships}
+          onNodeSelect={setSelectedBotId}
+          className="graph-inspector-topology"
+        />
       </div>
     </div>
   );

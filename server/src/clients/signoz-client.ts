@@ -1,6 +1,6 @@
 import { config } from '../config.js';
 import { fetchWithTimeout } from '../utils/fetch-with-timeout.js';
-import type { Alert } from '@homelab/shared';
+import type { Alert, AlertSeverity, AlertState } from '@homelab/shared';
 
 export class SigNozClient {
   private baseUrl: string;
@@ -15,6 +15,18 @@ export class SigNozClient {
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
     if (this.apiToken) headers['SIGNOZ-API-KEY'] = this.apiToken;
     return headers;
+  }
+
+  private normalizeSeverity(severity: string | undefined): AlertSeverity {
+    const validSeverities: AlertSeverity[] = ['critical', 'warning', 'info'];
+    const normalized = severity?.toLowerCase();
+    return validSeverities.includes(normalized as AlertSeverity) ? (normalized as AlertSeverity) : 'info';
+  }
+
+  private normalizeState(state: string | undefined): AlertState {
+    const validStates: AlertState[] = ['active', 'resolved'];
+    const normalized = state?.toLowerCase();
+    return validStates.includes(normalized as AlertState) ? (normalized as AlertState) : 'active';
   }
 
   async getActiveAlerts(): Promise<Alert[]> {
@@ -44,8 +56,8 @@ export class SigNozClient {
 
       return data.data.map((alert) => ({
         name: alert.labels?.alertname || 'Unknown Alert',
-        severity: alert.labels?.severity || 'unknown',
-        state: alert.state || 'active',
+        severity: this.normalizeSeverity(alert.labels?.severity),
+        state: this.normalizeState(alert.state),
         labels: alert.labels || {},
       }));
     } catch (error) {

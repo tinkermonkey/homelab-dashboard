@@ -24,6 +24,24 @@ vi.mock('./transformers/mcp-transformer.js');
 vi.mock('./clients/signoz-client.js');
 vi.mock('./utils/fetch-with-timeout.js');
 
+vi.mock('./config.js', () => ({
+  config: {
+    port: 3001,
+    host: 'localhost',
+    signozUrl: 'http://signoz:4317',
+    signozApiToken: '',
+    ntopngUrl: 'http://ntopng:3000',
+    ntopngToken: '',
+    elastiflowUrl: 'http://elastiflow:9200',
+    elastiflowUser: 'elastic',
+    elastiflowPassword: 'secret',
+    phoneHomeUrl: 'http://phone-home:8000',
+    phoneHomeChatUrl: 'http://phone-home:8000/chat',
+    phoneHomeChatToken: 'test-bearer-token',
+    logLevel: 'info',
+  },
+}));
+
 const mockLabData: LAB_DATA = {
   cluster: {
     name: 'asgard',
@@ -189,7 +207,7 @@ describe('Server Routes', () => {
 
   describe('GET /api/docker', () => {
     it('returns docker data with status 200 when no degradation', async () => {
-      const dockerData = { ...mockDockerData, degraded: [] };
+      const dockerData = { ...mockDockerData, degraded: [], source: 'real' };
       vi.mocked(getCachedData).mockResolvedValue(dockerData);
 
       const response = await fastify.inject({
@@ -199,10 +217,11 @@ describe('Server Routes', () => {
 
       expect(response.statusCode).toBe(200);
       expect(JSON.parse(response.body).degraded).toEqual([]);
+      expect(JSON.parse(response.body).source).toBe('real');
     });
 
     it('returns docker data with status 206 when degraded', async () => {
-      const dockerData = { ...mockDockerData, degraded: ['phone-home'] };
+      const dockerData = { ...mockDockerData, degraded: ['phone-home'], source: 'mock' };
       vi.mocked(getCachedData).mockResolvedValue(dockerData);
 
       const response = await fastify.inject({
@@ -212,12 +231,13 @@ describe('Server Routes', () => {
 
       expect(response.statusCode).toBe(206);
       expect(JSON.parse(response.body).degraded).toEqual(['phone-home']);
+      expect(JSON.parse(response.body).source).toBe('mock');
     });
   });
 
   describe('GET /api/topology', () => {
     it('returns topology data with status 200 when no degradation', async () => {
-      const topoData = { ...mockTopologyData, degraded: [] };
+      const topoData = { ...mockTopologyData, degraded: [], source: 'real' };
       vi.mocked(getCachedData).mockResolvedValue(topoData);
 
       const response = await fastify.inject({
@@ -227,10 +247,11 @@ describe('Server Routes', () => {
 
       expect(response.statusCode).toBe(200);
       expect(JSON.parse(response.body).degraded).toEqual([]);
+      expect(JSON.parse(response.body).source).toBe('real');
     });
 
     it('returns topology data with status 206 when degraded', async () => {
-      const topoData = { ...mockTopologyData, degraded: ['phone-home'] };
+      const topoData = { ...mockTopologyData, degraded: ['phone-home'], source: 'mock' };
       vi.mocked(getCachedData).mockResolvedValue(topoData);
 
       const response = await fastify.inject({
@@ -239,6 +260,7 @@ describe('Server Routes', () => {
       });
 
       expect(response.statusCode).toBe(206);
+      expect(JSON.parse(response.body).source).toBe('mock');
     });
   });
 
@@ -349,7 +371,7 @@ describe('Server Routes', () => {
       });
 
       expect(response.statusCode).toBe(503);
-      expect(JSON.parse(response.body)).toEqual({ error: 'Chat service unavailable' });
+      expect(JSON.parse(response.body)).toEqual({ error: 'Service Unavailable' });
     });
 
     it('returns 500 when chat service throws error', async () => {
@@ -363,6 +385,239 @@ describe('Server Routes', () => {
 
       expect(response.statusCode).toBe(500);
       expect(JSON.parse(response.body)).toEqual({ error: 'Chat service error' });
+    });
+
+    it('sends Bearer token in Authorization header when token is configured', async () => {
+      const mockResponse = new Response('data', { status: 200 });
+      vi.mocked(fetchWithTimeout).mockResolvedValue(mockResponse);
+
+      const response = await fastify.inject({
+        method: 'POST',
+        url: '/api/chat/test-bot',
+        payload: { message: 'hello' },
+      });
+
+      // Should call fetchWithTimeout with Authorization header containing Bearer token
+      expect(fetchWithTimeout).toHaveBeenCalled();
+      const call = vi.mocked(fetchWithTimeout).mock.calls[vi.mocked(fetchWithTimeout).mock.calls.length - 1];
+      expect(call[1]?.headers).toEqual(
+        expect.objectContaining({
+          Authorization: 'Bearer test-bearer-token',
+        })
+      );
+    });
+
+    it('successfully handles chat requests to phone-home', async () => {
+      const mockResponse = {
+        ok: true,
+        status: 200,
+        body: {
+          getReader: () => ({
+            read: vi
+              .fn()
+              .mockResolvedValueOnce({ done: false, value: new TextEncoder().encode('data: test\n\n') })
+              .mockResolvedValueOnce({ done: true }),
+          }),
+        },
+      };
+      vi.mocked(fetchWithTimeout).mockResolvedValue(mockResponse as any);
+
+      const response = await fastify.inject({
+        method: 'POST',
+        url: '/api/chat/test-bot',
+        payload: { message: 'hello' },
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(fetchWithTimeout).toHaveBeenCalled();
+    });
+
+    it('constructs correct phoneHome URL with botId', async () => {
+      const mockResponse = {
+        ok: true,
+        status: 200,
+        body: {
+          getReader: () => ({
+            read: vi.fn().mockResolvedValueOnce({ done: true }),
+          }),
+        },
+      };
+      vi.mocked(fetchWithTimeout).mockResolvedValue(mockResponse as any);
+
+      await fastify.inject({
+        method: 'POST',
+        url: '/api/chat/my-custom-bot',
+        payload: { message: 'test' },
+      });
+
+      expect(fetchWithTimeout).toHaveBeenCalled();
+      const call = vi.mocked(fetchWithTimeout).mock.calls[0];
+      expect(call[0]).toBe('http://phone-home:8000/chat/my-custom-bot');
+    });
+
+    it('sends request body as JSON to phone-home', async () => {
+      const mockResponse = {
+        ok: true,
+        status: 200,
+        body: {
+          getReader: () => ({
+            read: vi.fn().mockResolvedValueOnce({ done: true }),
+          }),
+        },
+      };
+      vi.mocked(fetchWithTimeout).mockResolvedValue(mockResponse as any);
+
+      await fastify.inject({
+        method: 'POST',
+        url: '/api/chat/test-bot',
+        payload: { message: 'test message' },
+      });
+
+      expect(fetchWithTimeout).toHaveBeenCalled();
+      const call = vi.mocked(fetchWithTimeout).mock.calls[0];
+      const body = call[1]?.body as string;
+      expect(JSON.parse(body)).toEqual({ message: 'test message' });
+    });
+
+    it('uses 30s timeout for chat requests', async () => {
+      const mockResponse = {
+        ok: true,
+        status: 200,
+        body: {
+          getReader: () => ({
+            read: vi.fn().mockResolvedValueOnce({ done: true }),
+          }),
+        },
+      };
+      vi.mocked(fetchWithTimeout).mockResolvedValue(mockResponse as any);
+
+      await fastify.inject({
+        method: 'POST',
+        url: '/api/chat/test-bot',
+        payload: { message: 'test' },
+      });
+
+      expect(fetchWithTimeout).toHaveBeenCalled();
+      const call = vi.mocked(fetchWithTimeout).mock.calls[0];
+      expect(call[1]?.timeout).toBe(30000);
+    });
+
+    it('omits Authorization header when token is not configured', async () => {
+      // Override config to have empty token for this specific test
+      const configModule = await import('./config.js');
+      const originalToken = (configModule.config as any).phoneHomeChatToken;
+      (configModule.config as any).phoneHomeChatToken = '';
+
+      try {
+        const mockResponse = {
+          ok: true,
+          status: 200,
+          body: {
+            getReader: () => ({
+              read: vi.fn().mockResolvedValueOnce({ done: true }),
+            }),
+          },
+        };
+        vi.mocked(fetchWithTimeout).mockResolvedValue(mockResponse as any);
+
+        await fastify.inject({
+          method: 'POST',
+          url: '/api/chat/test-bot',
+          payload: { message: 'test' },
+        });
+
+        expect(fetchWithTimeout).toHaveBeenCalled();
+        const call = vi.mocked(fetchWithTimeout).mock.calls[0];
+        const headers = call[1]?.headers as Record<string, string> | undefined;
+        expect(headers?.Authorization).toBeUndefined();
+      } finally {
+        (configModule.config as any).phoneHomeChatToken = originalToken;
+      }
+    });
+
+    it('handles response with no body gracefully', async () => {
+      const mockResponse = {
+        ok: true,
+        status: 200,
+        body: null,
+      };
+      vi.mocked(fetchWithTimeout).mockResolvedValue(mockResponse as any);
+
+      const response = await fastify.inject({
+        method: 'POST',
+        url: '/api/chat/test-bot',
+        payload: { message: 'hello' },
+      });
+
+      expect(response.statusCode).toBe(500);
+      expect(JSON.parse(response.body)).toEqual({ error: 'No response body' });
+    });
+
+    it('handles empty bot ID', async () => {
+      const response = await fastify.inject({
+        method: 'POST',
+        url: '/api/chat/',
+        payload: { message: 'hello' },
+      });
+
+      // Empty bot ID is matched by route but fails validation, returns 400
+      expect(response.statusCode).toBe(400);
+    });
+
+
+    it('accepts bot IDs with only valid characters', async () => {
+      const validIds = ['bot', 'bot_123', 'bot-test', 'bot123test', 'BOT_TEST_123'];
+      const mockResponse = {
+        ok: true,
+        status: 200,
+        body: {
+          getReader: () => ({
+            read: vi.fn().mockResolvedValueOnce({ done: true }),
+          }),
+        },
+      };
+      vi.mocked(fetchWithTimeout).mockResolvedValue(mockResponse as any);
+
+      for (const botId of validIds) {
+        vi.clearAllMocks();
+        vi.mocked(fetchWithTimeout).mockResolvedValue(mockResponse as any);
+
+        const response = await fastify.inject({
+          method: 'POST',
+          url: `/api/chat/${botId}`,
+          payload: { message: 'test' },
+        });
+
+        expect(response.statusCode).not.toBe(400);
+      }
+    });
+
+    it('returns 4xx status from upstream when service returns 4xx', async () => {
+      const mockResponse = new Response('Bad Request', { status: 400 });
+      vi.mocked(fetchWithTimeout).mockResolvedValue(mockResponse);
+
+      const response = await fastify.inject({
+        method: 'POST',
+        url: '/api/chat/test-bot',
+        payload: { message: 'hello' },
+      });
+
+      expect(response.statusCode).toBe(400);
+      expect(JSON.parse(response.body)).toEqual({ error: 'Bad Request' });
+    });
+
+    it('returns 5xx status from upstream when service returns 5xx', async () => {
+      const mockResponse = new Response('Internal Server Error', { status: 500 });
+      vi.mocked(fetchWithTimeout).mockResolvedValue(mockResponse);
+
+      const response = await fastify.inject({
+        method: 'POST',
+        url: '/api/chat/test-bot',
+        payload: { message: 'hello' },
+      });
+
+      expect(response.statusCode).toBe(500);
+      expect(JSON.parse(response.body)).toEqual({ error: 'Internal Server Error' });
     });
   });
 
@@ -402,7 +657,7 @@ describe('Server Routes', () => {
     });
 
     it('passes correct cache TTL for docker endpoint', async () => {
-      vi.mocked(getCachedData).mockResolvedValue({ ...mockDockerData, degraded: [] });
+      vi.mocked(getCachedData).mockResolvedValue({ ...mockDockerData, degraded: [], source: 'real' });
 
       await fastify.inject({
         method: 'GET',

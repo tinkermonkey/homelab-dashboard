@@ -1,3 +1,6 @@
+import { config as dotenvConfig } from 'dotenv';
+dotenvConfig();
+
 // Configuration from environment variables
 export const config = {
   // Server
@@ -8,7 +11,7 @@ export const config = {
   signozUrl: process.env.SIGNOZ_URL || 'http://localhost:4317',
   signozApiToken: process.env.SIGNOZ_API_TOKEN || '',
 
-  // ntopng — token auth via ?token= query param
+  // ntopng — token auth via Authorization header
   ntopngUrl: process.env.NTOPNG_URL || 'http://localhost:3000',
   ntopngToken: process.env.NTOPNG_TOKEN || '',
 

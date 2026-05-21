@@ -9,3 +9,4 @@ build/
 .eslintcache
 .playwright-mcp/
 screenshots/
+.claude_prompt_*

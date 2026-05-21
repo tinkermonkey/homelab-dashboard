@@ -2,8 +2,19 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { transformDockerData, transformTopologyData } from './mcp-transformer.js';
 import * as mcpClientModule from '../clients/mcp-client.js';
 import * as mockDataModule from '../mock-data.js';
+import type { FastifyBaseLogger } from 'fastify';
 
 describe('MCP Transformer', () => {
+  const mockLogger: FastifyBaseLogger = {
+    error: vi.fn(),
+    warn: vi.fn(),
+    info: vi.fn(),
+    debug: vi.fn(),
+    fatal: vi.fn(),
+    trace: vi.fn(),
+    silent: vi.fn(),
+  } as any;
+
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -33,25 +44,32 @@ describe('MCP Transformer', () => {
         hosts: [],
       } as any);
 
-      const result = await transformDockerData();
+      const result = await transformDockerData(mockLogger);
 
       expect(result.data).toEqual(mockDockerData);
       expect(result.degraded).toEqual([]);
+      expect(result.source).toBe('real');
     });
 
     it('falls back to mock data when MCP call fails', async () => {
       const mockFallbackData = { hosts: [] };
+      const error = new Error('Network error');
 
       vi.spyOn(mcpClientModule, 'mcpClient', 'get').mockReturnValue({
-        getDockerInventory: vi.fn().mockRejectedValue(new Error('Network error')),
+        getDockerInventory: vi.fn().mockRejectedValue(error),
       } as any);
 
       vi.spyOn(mockDataModule, 'getDockerData').mockReturnValue(mockFallbackData as any);
 
-      const result = await transformDockerData();
+      const result = await transformDockerData(mockLogger);
 
       expect(result.data).toEqual(mockFallbackData);
       expect(result.degraded).toContain('phone-home');
+      expect(result.source).toBe('mock');
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        expect.objectContaining({ err: error }),
+        expect.stringContaining('Error fetching Docker data from MCP')
+      );
     });
 
     it('falls back to mock data when data structure is invalid', async () => {
@@ -63,10 +81,15 @@ describe('MCP Transformer', () => {
 
       vi.spyOn(mockDataModule, 'getDockerData').mockReturnValue(mockFallbackData as any);
 
-      const result = await transformDockerData();
+      const result = await transformDockerData(mockLogger);
 
       expect(result.data).toEqual(mockFallbackData);
       expect(result.degraded).toContain('phone-home');
+      expect(result.source).toBe('mock');
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        expect.objectContaining({ err: expect.any(Error) }),
+        expect.stringContaining('Error fetching Docker data from MCP')
+      );
     });
 
     it('validates host structure', async () => {
@@ -88,9 +111,10 @@ describe('MCP Transformer', () => {
         hosts: [],
       } as any);
 
-      const result = await transformDockerData();
+      const result = await transformDockerData(mockLogger);
 
       expect(result.degraded).toContain('phone-home');
+      expect(result.source).toBe('mock');
     });
 
     it('validates that hosts is an array', async () => {
@@ -106,9 +130,10 @@ describe('MCP Transformer', () => {
         hosts: [],
       } as any);
 
-      const result = await transformDockerData();
+      const result = await transformDockerData(mockLogger);
 
       expect(result.degraded).toContain('phone-home');
+      expect(result.source).toBe('mock');
     });
   });
 
@@ -135,25 +160,32 @@ describe('MCP Transformer', () => {
         bots: [],
       } as any);
 
-      const result = await transformTopologyData();
+      const result = await transformTopologyData(mockLogger);
 
       expect(result.data).toEqual(mockTopologyData);
       expect(result.degraded).toEqual([]);
+      expect(result.source).toBe('real');
     });
 
     it('falls back to mock data when MCP call fails', async () => {
       const mockFallbackData = { hosts: [], bots: [] };
+      const error = new Error('Connection refused');
 
       vi.spyOn(mcpClientModule, 'mcpClient', 'get').mockReturnValue({
-        getTopologyData: vi.fn().mockRejectedValue(new Error('Connection refused')),
+        getTopologyData: vi.fn().mockRejectedValue(error),
       } as any);
 
       vi.spyOn(mockDataModule, 'getTopologyData').mockReturnValue(mockFallbackData as any);
 
-      const result = await transformTopologyData();
+      const result = await transformTopologyData(mockLogger);
 
       expect(result.data).toEqual(mockFallbackData);
       expect(result.degraded).toContain('phone-home');
+      expect(result.source).toBe('mock');
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        expect.objectContaining({ err: error }),
+        expect.stringContaining('Error fetching topology data from MCP')
+      );
     });
 
     it('falls back to mock data when data structure is invalid', async () => {
@@ -165,10 +197,15 @@ describe('MCP Transformer', () => {
 
       vi.spyOn(mockDataModule, 'getTopologyData').mockReturnValue(mockFallbackData as any);
 
-      const result = await transformTopologyData();
+      const result = await transformTopologyData(mockLogger);
 
       expect(result.data).toEqual(mockFallbackData);
       expect(result.degraded).toContain('phone-home');
+      expect(result.source).toBe('mock');
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        expect.objectContaining({ err: expect.any(Error) }),
+        expect.stringContaining('Error fetching topology data from MCP')
+      );
     });
 
     it('validates hosts is string array', async () => {
@@ -186,7 +223,7 @@ describe('MCP Transformer', () => {
         bots: [],
       } as any);
 
-      const result = await transformTopologyData();
+      const result = await transformTopologyData(mockLogger);
 
       expect(result.degraded).toContain('phone-home');
     });
@@ -212,7 +249,7 @@ describe('MCP Transformer', () => {
         bots: [],
       } as any);
 
-      const result = await transformTopologyData();
+      const result = await transformTopologyData(mockLogger);
 
       expect(result.degraded).toContain('phone-home');
     });
@@ -239,7 +276,7 @@ describe('MCP Transformer', () => {
         bots: [],
       } as any);
 
-      const result = await transformTopologyData();
+      const result = await transformTopologyData(mockLogger);
 
       expect(result.degraded).toContain('phone-home');
     });
@@ -266,7 +303,7 @@ describe('MCP Transformer', () => {
         bots: [],
       } as any);
 
-      const result = await transformTopologyData();
+      const result = await transformTopologyData(mockLogger);
 
       expect(result.degraded).toContain('phone-home');
     });
@@ -280,7 +317,7 @@ describe('MCP Transformer', () => {
 
       vi.spyOn(mockDataModule, 'getTopologyData').mockReturnValue(mockFallbackData as any);
 
-      const result = await transformTopologyData();
+      const result = await transformTopologyData(mockLogger);
 
       expect(result.degraded).toContain('phone-home');
     });
@@ -294,7 +331,7 @@ describe('MCP Transformer', () => {
 
       vi.spyOn(mockDataModule, 'getTopologyData').mockReturnValue(mockFallbackData as any);
 
-      const result = await transformTopologyData();
+      const result = await transformTopologyData(mockLogger);
 
       expect(result.degraded).toContain('phone-home');
     });

@@ -14,7 +14,7 @@
   --shell-bg: 11 15 20;
   --shell-bg-2: 15 20 27;
   --shell-surface: 19 26 35;
-  --shell-surface-2: 19 26 35;
+  --shell-surface-2: 26 34 48;
   --shell-fg-1: 230 237 243;
   --shell-fg-2: 139 148 158;
   --shell-border: 30 39 51;
@@ -59,6 +59,14 @@
   --shell-fg-4: 74 85 99;
   --shell-border-2: 42 58 92;
 
+  /* Canvas surface and domain tokens */
+  --canvas-surface-2: 35 45 60;
+  --canvas-border-2: 53 65 80;
+  --dom-default: 107 114 128;
+  --dom-life: 16 185 129;
+  --dom-climate: 34 211 238;
+  --dom-software: 167 139 250;
+
   /* Fonts */
   --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
                "Helvetica Neue", Arial, sans-serif;
@@ -78,6 +86,8 @@ body:not(.dark-canvas) {
   --canvas-bg: 255 255 255;
   --canvas-fg-1: 11 18 32;
   --canvas-bd: 209 213 219;
+  --canvas-surface-2: 240 245 250;
+  --canvas-border-2: 200 210 220;
 }
 
 * {

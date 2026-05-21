@@ -1,6 +1,8 @@
 import React, { useMemo, useId } from 'react';
 import './GatewayChart.css';
 
+// Custom chart retained: Heimdall UI v0.2.0 lacks data visualization components (dual series, gradient fill, tooltips).
+
 interface GatewayChartProps {
   downHist: number[];
   upHist: number[];
