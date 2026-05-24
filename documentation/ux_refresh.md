@@ -591,7 +591,8 @@ interface PageHeaderProps {
 3. Update `client/src/components/shell/Statusbar.tsx` (see 3.2)
 4. Update `App.tsx` to compose shell inline — no `ShellLayout` import
 5. Migrate hierarchical `NAV_TREE` (from `design/shell.jsx`):
-   - Top-level: overview, servers (nyx/helios/aether/vega children), containers (list/networks/volumes), network, apps, storage, bots (4 bot children), logs, settings
+   - Top-level: overview, servers (nyx/helios/aether/vega children), containers (list/networks/volumes), network, applications (count badge), storage (size badge), bots (4 bot children), topology, logs, configuration
+   - **Important:** The last nav item is `"Configuration"` (not "Settings"). `"Applications"` uses its full word (not "Apps") and shows a count badge (`28`). `"Storage"` shows a capacity badge (`90 TB`) not a container count. `"Topology"` is a **top-level** item, NOT nested under Bots.
    - `nav-item.active-parent` for items with active children
    - `.nav-sub` for children (dashed left border, mono labels, 12px)
    - `nav-sub .nav-item.active .nav-count { color: var(--accent-primary) }`
@@ -601,7 +602,7 @@ interface PageHeaderProps {
 
 *Brand row* (`.brand-row`):
 - `.brand-mark` — 28×28 amber-gradient rounded square with 3 dot pseudo-elements
-- `.brand-name` — "Homelab" bold + `<span>` "asgard · v3.2" mono muted
+- `.brand-name` — "asgard" bold + `<span>` "HOMELAB · V3.2" uppercase mono muted (design shows asgard as the primary name, cluster name in all-caps)
 
 *Nav section* (`.nav-section`):
 - `.nav-eyebrow` — section label (hidden in collapsed)
@@ -619,7 +620,9 @@ interface PageHeaderProps {
 - `.ws-chip` — workspace selector: amber dot + "asgard" + chevron, `background: var(--shell-surface)`
 - `.crumbs` — breadcrumb nav: mono slashes + italic labels
 - `.topbar-palette` — `⌘K` keyboard shortcut button (opens CommandPalette — keep existing `CommandPalette.tsx`)
-- `.topbar-ico` — 30×30 icon buttons (bell with `.ind` alert dot, refresh, bot-console toggle)
+- `.topbar-ico` — 30×30 icon buttons (bell with `.ind` alert dot, refresh, **activity/history**, **favorites**, bot-console toggle)
+  - **Activity button**: history/clock icon — opens an activity/audit log view (not yet implemented in design; reserve slot)
+  - **Favorites button**: thumbs-up or bookmark icon — not fully implemented in design; reserve slot
 - `.topbar-ico.active` — filled background when active (e.g., chat toggle)
 - `.env-pill` — "main" branch label, amber-tinted background, amber text
 
@@ -635,11 +638,12 @@ interface PageHeaderProps {
 
 Left side (`sb-left`):
 - `Pulse` (emerald) + "prometheus:9090" link
-- `·` separator + host count (`4 hosts`), container count (`31 ctn`), app count (`84 apps`)
-- `Pulse` (amber) + "1 alert" warning (if alerts exist)
+- `·` separator + host count (`4 hosts`), app count (`28 apps`), container count (`47 containers`)
+- `Pulse` (amber) + alert count + specific alert message inline (e.g., `"● 2 alerts open · aether MEM 81%"`) — alert text shows the top alert description, not just count
 
 Right side (`sb-right`):
-- Four `sb-item` entries: `PING 18 ms`, `NET ↓892 ↑124 Mbps`, `CPU 41%`, `SYNC 04:02`
+- Four `sb-item` entries: `ping NNN ms`, `↓NNN ↑NNN Mbps`, `cluster cpu NN%`, `synced NNs ago`
+  - Note: Statusbar uses lowercase labels in design (e.g., `"ping 12 ms"`, `"cluster cpu 25%"`, `"synced 6s ago"`) — no uppercase `PING/NET/CPU/SYNC` eyebrows; values are inline
 - Each has a `.strong` span for the live value
 - All in mono 11px, `var(--shell-fg-2)` / `.strong { color: var(--shell-fg-1) }`
 
@@ -750,15 +754,17 @@ This is a complete reimplementation using local CSS classes only.
    - Add `Pulse` indicator next to hostname in `.server-name`
    - Replace `MetricRow` package import with local `MetricRow`
    - Apply `metricTone()` logic for bar colors
-4. Update `GatewayPanel.tsx`:
-   - Implement `.gw-split` two-column layout (left=KV details, right=area charts)
-   - Add two `AreaChart` components (down/up throughput + latency)
-   - Add `.gw-stat-strip` footer with 4 stats (clients, uptime, errors, DNS queries)
+4. Update `GatewayPanel.tsx` (Overview version — simpler than Network version):
+   - Implement `.gw-split` two-column layout (left=KV details, right=ONE area chart)
+   - **Overview gateway panel**: single `AreaChart` showing LATENCY · 24H (amber). There is NO throughput chart in the Overview gateway panel.
+   - Bottom stat row: 3 cells — INGRESS TODAY / EGRESS TODAY / DNS · PIHOLE (no "clients" or "uptime" cell)
+   - KV fields visible: PUBLIC IP, GEO, WAN IFACE, PING, LOSS 24H
+   - **Network view gateway panel** (`GatewayHealthPanel.tsx`): has TWO stacked area charts — THROUGHPUT · 24H (dual-color: cyan + violet for down/up) stacked above LATENCY · 24H (amber single-color)
    - Replace `ProgressBar` package import with inline bar markup
 5. Rewrite `AppsSection.tsx`:
    - Add `.cat-chips` filter bar (`.cat-chip.active` → amber-tinted)
    - Add `.apps-stat-row` count summary with `Pulse` dots
-   - Add `.apps-grid` (4-col CSS grid) with `.app-cell[data-host]` items:
+   - Add `.apps-grid` (**3-col CSS grid**, NOT 4-col — confirmed in design) with `.app-cell[data-host]` items:
      - Left 2px border tint by host (nyx=cyan, helios=emerald, aether=violet, vega=amber)
      - `.app-mark` — 26×26 mono badge
      - `.app-body` — name + meta line
@@ -767,6 +773,10 @@ This is a complete reimplementation using local CSS classes only.
    - `.alert-glyph` (amber box with warning icon)
    - `.alerts-list` with `.alert-row` entries + `.sev-badge` / `.sev-badge.info`
    - `.ack` button (acknowledge/dismiss)
+   - **"Open in watch-bot"** action button at the right of the alert strip header — not just `.ack`; there is also a shortcut CTA to open the alert in the watch-bot chat
+
+**Page Header extras (Overview):**
+- The page header actions include a **"Ask lab-bot"** CTA button (in addition to Refresh) — primary amber-styled button that opens/focuses the bot console and pre-populates with a cluster summary prompt
 
 **API Expansions Needed:**
 - Gateway: `downHist: number[]`, `upHist: number[]`, `pingHist: number[]` (24h time series)
@@ -787,16 +797,21 @@ This is a complete reimplementation using local CSS classes only.
 - `HostNetworksPanel` → `.host-row` with `.tbl` table
 - `HostVolumesPanel` → `.host-row` with `.tbl` table
 
+**Containers page header extras:**
+- Eyebrow: violet chip `"docker · 4 hosts"` + subtitle text `"scraped via docker socket · every 30 s"`
+- IdTag: `/cluster/asgard/docker` (not just the sub-route)
+- Page header actions: **"Refresh"** + **"Compose up…"** (amber or primary-styled) — the "Compose up…" action opens a compose stack launch dialog; must be documented and implemented
+
 **Tasks:**
 1. Update `ContainersView.tsx` — replace `PageHeader` package import with local
 2. Rewrite `HostFilterBar.tsx`:
    - Delete package imports (`FilterBar`, `Chip`, `FilterChip` type)
    - Implement `.toolbar` flex row with:
-     - `SearchInput` component (`.search-input` + amber focus ring)
-     - Host `Chip` filters (one per host, `.chip.cyan` / `.chip.emerald` etc.)
+     - `SearchInput` component (`.search-input` + amber focus ring; placeholder: `"Filter by name, image, or tag…"`)
+     - Host `Chip` filters: `"all hosts (31)"`, `"nyx (8)"` etc. — format is `"label (count)"` in parens
      - Chip toggles active host filter state
 3. Delete `TabBarWithIcons.tsx`; replace usages with new `Tabs` component:
-   - Tabs: "Containers" (count) | "Networks" (count) | "Volumes" (count)
+   - Tabs format: `"Containers 28/31"` (running/total) | `"Networks 13"` | `"Volumes 15"` — each tab has an **icon** AND the count in `running/total` format for containers
    - Active tab gets amber underline + amber-tinted count chip
 4. Rewrite `ContainerRow.tsx`:
    - Grid: `18px 240px 1fr 140px` (dot | name/image | detail | stats)
@@ -804,7 +819,7 @@ This is a complete reimplementation using local CSS classes only.
    - Col 2: `.ctn-name` (mono bold) + `.ctn-id` (10px muted) + `.ctn-image` with `.tag` (amber) + `.ctn-badges` (MiniBadge)
    - Col 3: `.ctn-detail` with `.ctn-detail-row` entries (key=56px, pills=1fr):
      - Port pills (`.port-pill`) — cyan-tinted background + cyan text
-     - Mount pills (`.mount-pill`) — `.typ.B` (violet-tinted) / `.typ.V` (amber-tinted) / `.ro` (rose) type badges
+     - Mount pills (`.mount-pill`) — `.typ.B` (bind, violet-tinted) / `.typ.V` (volume, amber-tinted) type badges; the `RO` flag appears **inline at the end of the mount path string** within the pill (e.g., `/srv/media → /media RO`), NOT as a separate sibling pill
      - Net pills (`.net-pill`) — colored dot by network name pattern
    - Col 4: `.ctn-stats` — right-aligned mono: uptime, image size, cpu/mem, optional `.gpu` (amber on light, amber on dark)
 5. Update `HostContainersPanel.tsx`:
@@ -818,8 +833,20 @@ This is a complete reimplementation using local CSS classes only.
    - `.host-row` wrapper with `.host-row-head`
    - `.tbl` table: Volume, Driver, Size, Mount, Used By (`.used-by-pill` chips)
 
+**MiniBadge states (containers):**
+- State badges: `RUNNING` (emerald), `EXITED` (muted), `RESTARTING` (cyan)
+- Health badges: `HEALTHY` (emerald), `UNHEALTHY` (rose), `DEGRADED` (amber) — `DEGRADED` is a distinct health state, not just a generic status
+- Both state and health badges can appear together (e.g., `RUNNING` + `DEGRADED`)
+
+**RoleMark colors:** RoleMark color is determined by **role type**, NOT by host identity:
+- `compute` → cyan tint
+- `storage` → emerald tint
+- `k8s` → violet tint
+- `gpu` → amber tint
+(This corrects an earlier assumption that RoleMark used host color; host chips in the filter bar use host colors, but RoleMark in the host header uses role type)
+
 **API Expansions Needed:**
-- Containers: `size: string`, `gpu?: number`, `health?: 'healthy' | 'unhealthy' | 'starting'`
+- Containers: `size: string`, `gpu?: number`, `health?: 'healthy' | 'unhealthy' | 'degraded' | 'starting'`
 - Networks: `name`, `driver`, `subnet`, `gateway`, `scope`, `attached` count — per host
 - Volumes: `name`, `driver`, `size`, `mount`, `usedBy: string[]` — per host
 
@@ -830,6 +857,11 @@ This is a complete reimplementation using local CSS classes only.
 **Reference:** `design/view-topology.jsx`
 
 **Architecture:** The v2 topology is NOT a graph library — it is a pure React/CSS/SVG implementation with absolute-positioned cards on a styled canvas. All package graph components (`GraphCanvas`, `TopologyNode`, `GraphInspector`, `GraphNodeData`, `GraphEdgeData`) are ELIMINATED.
+
+**Page header:**
+- Title: `"Bot topology"` (not just "Topology")
+- Eyebrow: violet chip `"topology · 4 bots"` + subtitle `"bots · sidecar mcp servers · managed projects"`
+- IdTag: `/cluster/asgard/topology`
 
 **Components:**
 - `PageHeader` (local)
@@ -871,11 +903,13 @@ body.dark-canvas .topo-stage {
 //   .model-pill — amber dot + model name
 //   .bot-section-eyebrow — "MCP SIDECARS" label + count chip
 //   .mcp-pills → .mcp-pill (violet-tinted, dot solid=local / hollow=remote)
-//   .bot-section-eyebrow — "DELEGATES TO"
-//   .proj-pills → .proj-pill.delegate (amber-tinted)
-//   .bot-section-eyebrow — "MANAGES"
+//   .bot-section-eyebrow — "DELEGATES TO" + count chip
+//   .proj-pills → .proj-pill.delegate (amber-tinted) — pills show OTHER BOT NAMES (not projects)
+//   .bot-section-eyebrow — "MANAGES" + count chip
 //   .proj-pills → .proj-pill[data-host] (dot tinted by host)
 //     .proj-pill .port — port number (muted, separated by border)
+// Bot roles (design confirms exact role labels): CONCIERGE, OPS, ALERTS, BACKUP
+// Selected card: amber border + amber glow box-shadow (.bot-card.selected)
 ```
 
 **EdgeLayer (SVG):**
@@ -885,7 +919,7 @@ body.dark-canvas .topo-stage {
 // <defs><marker id="arrowhead"> → path fill="#FBBF24" (amber arrowhead)
 // Edges: stroke="#FBBF24", strokeOpacity=0.75, strokeWidth=1.5, strokeDasharray="5 4"
 // Cubic bezier paths between bot card anchor points
-// Inline label chip at midpoint: amber bg (#FFFBEB), amber border, "delegates" text in mono dark
+// Inline label chip at midpoint: amber bg (#FFFBEB), amber border, "DELEGATE" text (uppercase) in mono dark
 ```
 
 **TopologyInspector component:**
@@ -906,7 +940,7 @@ body.dark-canvas .topo-stage {
 
 **Topology legend** (`.topo-legend`, bottom-right of stage):
 - Frosted glass panel (backdrop-filter blur)
-- Legend rows: dashed amber line = "delegates", solid violet = "MCP", colored dot = host
+- Legend rows: dashed amber line = "delegation", solid line = "MCP sidecar", colored dot = host
 
 **Tasks:**
 1. Delete all package imports from `TopologyView.tsx`
@@ -931,6 +965,13 @@ body.dark-canvas .topo-stage {
 
 **Important:** The design does NOT use `PieChart` or `ActivityTimeline` from the package. All components use simple CSS patterns.
 
+**Page header:**
+- Title: `"Network"`
+- Eyebrow: emerald/cyan chip `"network · lab.local"` + subtitle sources `"elastiflow · ntopng · metricbeat"`
+- IdTag: `/cluster/asgard/network`
+- Subtitle: `"WAN, DNS, VPN, reverse proxy, and L3 switch health alongside flow records and client breakdown."`
+- Page actions: `"Refresh"` + **copy-to-clipboard icon button** (not a settings gear)
+
 **Components:**
 - `PageHeader` (local)
 - `SubsystemStrip` — `.subsys-strip` / `.subsys` with state-colored icons
@@ -939,7 +980,13 @@ body.dark-canvas .topo-stage {
 - `ClientBreakdownPanel` — same `.talker-row` pattern with colored bars (no PieChart)
 - `NetworkEventsPanel` — `.evt-row` list (not ActivityTimeline)
 
-**SubsystemStrip** (`.subsys-strip`):
+**SubsystemStrip** (`.subsys-strip`) — 5 monitored services:
+- WAN (`gw.lab.local`) — value: `"online · 4124/88↑ Mbps"`
+- DNS (`pihole + unbound`) — value: `"1,421 q · 18% blocked"`
+- VPN (`wireguard`) — value: `"2/4 peers · 41s hs"` (peer count + handshake age)
+- Reverse proxy (`traefik`) — value: `"32 routes · N !"`
+- Switch (5th subsystem — partially off-screen in viewport)
+
 ```css
 .subsys-strip { display: flex; gap: 0; }
 .subsys { display: flex; align-items: center; gap: 12px; padding: 14px; border-right: 1px solid var(--canvas-border); }
@@ -947,28 +994,38 @@ body.dark-canvas .topo-stage {
 .subsys.ok   .ico { emerald bg/border/color }
 .subsys.warn .ico { amber bg/border/color }
 .subsys.err  .ico { rose bg/border/color }
-/* .info: .n name, .s sub, .v value */
+/* .info: .n name, .s sub (source label), .v value */
 ```
 
-**TopTalkersPanel** (`.talkers` / `.talker-row`):
+**TopTalkersPanel** (`.talkers` / `.talker-row`) — header: `"Top talkers · 5m"` + source tags + `"live"` emerald pulse badge:
+- Each row: `rank number` + `hostname or IP` + secondary tag line below (`app1 · app2 · app3`) + horizontal bar + `NNN Mbps ↑/↓`
+- Bar color matches host tint (helios=emerald, nyx=cyan, vega=amber, aether=violet)
+- Rows are ordered by throughput descending
+
 ```css
 .talker-row { display: grid; grid-template-columns: 28px 1fr 120px 72px; gap: 12px; align-items: center; padding: 11px 14px; border-bottom: 1px solid var(--canvas-border); }
 .talker-row .rank { mono muted }
 .talker-row .name { mono fg-1 }
-.talker-row .meta { mono 10.5px fg-3 }
+.talker-row .meta { mono 10.5px fg-3 } /* app tags below hostname */
 .talker-bar { height: 5px; background: var(--canvas-bg-2); border-radius: full; }
-.talker-bar > div { height: 100%; border-radius: inherit; background: var(--status-cyan); }
-.talker-row .val { mono fg-2 text-right }
+.talker-bar > div { height: 100%; border-radius: inherit; /* color = host tint */ }
+.talker-row .val { mono fg-2 text-right } /* includes ↑/↓ direction arrow */
 ```
 
 **ClientBreakdownPanel** — same `.talker-bar` bar rows as TopTalkers, each with a colored dot + category label + count/share. NOT a PieChart.
+- 5 categories in design: **Servers** (cyan), **IoT devices** (amber), **Workstations** (violet), **Mobile** (emerald), **Other** (rose)
+- Panel header shows total client count chip
 
-**NetworkEventsPanel** (`.evt-row`):
+**NetworkEventsPanel** (`.evt-row`) — header: `"Network events · 24h"` + `"alertmanager + traefik logs"` source sub:
+- Row format: `8px colored dot` + `level badge (WARN/INFO/OK/ERR)` + `service name` (bold mono) + `message text`
+- Services appearing: traefik, pihole, wg-vpn, wan, unbound, switch, dhcp
+
 ```css
-.evt-row { display: grid; grid-template-columns: 8px 48px 1fr 44px; gap: 10px; align-items: center; padding: 9px 14px; border-bottom: var(--canvas-border); }
+.evt-row { display: grid; grid-template-columns: 8px 48px 80px 1fr; gap: 10px; align-items: center; padding: 9px 14px; border-bottom: 1px solid var(--canvas-border); }
 .evt-row .d { 8px dot, state-colored }
-.evt-row .sev { mono 9.5px badge: ok=emerald, warn=amber, err=rose, info=cyan }
-.evt-row .when { mono 10px fg-3 }
+.evt-row .sev { mono 9.5px badge (uppercase): OK=emerald, WARN=amber, ERR=rose, INFO=cyan }
+.evt-row .who { mono bold — service name (traefik, pihole, etc.) }
+.evt-row .txt { mono fg-2 — event message }
 ```
 
 **Tasks:**
@@ -988,7 +1045,7 @@ body.dark-canvas .topo-stage {
 
 ---
 
-### 4.5 Placeholder Views (Servers, Bots, Apps, Storage, Logs, Settings)
+### 4.5 Placeholder Views (Servers, Bots, Applications, Storage, Logs, Configuration)
 
 **Reference:** `design/view-other.jsx` (stubs only)
 
@@ -1331,10 +1388,10 @@ body.dark-canvas .topo-stage {
 1. **Responsive Design:** Mobile/tablet breakpoints
 2. **Servers View:** Full implementation with per-server drill-down
 3. **Bots View:** Bot management, conversation history
-4. **Apps View:** Application catalog with install/update actions
+4. **Applications View:** Application catalog with install/update actions
 5. **Storage View:** Disk usage breakdown, SMART status
 6. **Logs View:** Live log streaming with search/filter
-7. **Settings View:** User preferences, cluster config
+7. **Configuration View:** User preferences, cluster config
 8. **Light Canvas Polish:** Ensure light mode looks as good as dark
 9. **Advanced Topology:** Custom layouts, filters, grouping
 10. **Real-time Subscriptions:** WebSocket for live updates (replace polling)
@@ -1688,7 +1745,7 @@ All CSS classes from `design/styles/app.css` that the implementation must use. D
 .cat-chips            Category chip filter row
 .cat-chip             Single category filter chip
 .cat-chip.active      Amber-tinted active chip
-.apps-grid            4-col app cell grid
+.apps-grid            3-col app cell grid
 .app-cell[data-host]  App card (2px left border tinted by host color)
 .app-mark             26×26 mono app initials badge
 .state-pill[data-s]   Status pill (running/degraded/failed/updating/stopped)
