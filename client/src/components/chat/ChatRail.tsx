@@ -54,7 +54,7 @@ export const ChatRail: React.FC<ChatRailProps> = ({
       onChange={setDraft}
       onSubmit={(text) => send(text).catch(console.error)}
       placeholder={`Ask ${activeBotObj?.label || 'bot'} to do something…`}
-      scopeLabel={`talking to ${activeBotObj?.label || 'bot'}`}
+      scopeLabel={activeBotObj?.label || 'bot'}
     />
   );
 

@@ -19,18 +19,19 @@ import { PlaceholderView } from './components/shared/PlaceholderView';
 import { ErrorView } from './components/shared/ErrorView';
 import { ChatRail } from './components/chat/ChatRail';
 
+// Nav order and labels must match design (ux_refresh.md §3.1 NAV_TREE)
 const ROUTES = [
   { path: '/', name: 'Overview', display: 'Overview' },
   { path: '/cluster/overview', name: 'Overview', display: 'Overview', icon: 'dashboard' },
-  { path: '/cluster/containers', name: 'Containers', display: 'Containers', icon: 'layers' },
-  { path: '/cluster/topology', name: 'Topology', display: 'Topology', icon: 'globe' },
   { path: '/cluster/servers', name: 'Servers', display: 'Servers', icon: 'cpu' },
+  { path: '/cluster/containers', name: 'Containers', display: 'Containers', icon: 'layers' },
   { path: '/cluster/network', name: 'Network', display: 'Network', icon: 'link' },
-  { path: '/cluster/apps', name: 'Apps', display: 'Apps', icon: 'zap' },
+  { path: '/cluster/applications', name: 'Applications', display: 'Applications', icon: 'zap' },
   { path: '/cluster/storage', name: 'Storage', display: 'Storage', icon: 'database' },
   { path: '/cluster/bots', name: 'Bots', display: 'Bots', icon: 'bot' },
+  { path: '/cluster/topology', name: 'Topology', display: 'Topology', icon: 'globe' },
   { path: '/cluster/logs', name: 'Logs', display: 'Logs', icon: 'history' },
-  { path: '/cluster/settings', name: 'Settings', display: 'Settings', icon: 'settings' },
+  { path: '/cluster/configuration', name: 'Configuration', display: 'Configuration', icon: 'settings' },
 ];
 
 interface NavItem {
@@ -114,7 +115,7 @@ const AppContent: React.FC = () => {
 
   const sidebarSections = [
     {
-      title: 'Cluster',
+      title: '',
       items: NAV_ITEMS.map(item => ({
         id: item.id,
         label: item.label,
@@ -158,8 +159,8 @@ const AppContent: React.FC = () => {
   return (
     <ShellLayout
         appTitle={{
-          title: 'Homelab',
-          version: clusterData?.cluster?.name ?? '',
+          title: clusterData?.cluster?.name ?? 'Homelab',
+          version: 'HOMELAB',
         }}
         sidebar={{
           sections: sidebarSections,
@@ -244,11 +245,14 @@ const AppContent: React.FC = () => {
               <Route path="/cluster/topology" element={<TopologyView />} />
               <Route path="/cluster/servers" element={<PlaceholderView routeName="Servers" />} />
               <Route path="/cluster/network" element={<NetworkView />} />
-              <Route path="/cluster/apps" element={<PlaceholderView routeName="Apps" />} />
+              <Route path="/cluster/applications" element={<PlaceholderView routeName="Applications" />} />
               <Route path="/cluster/storage" element={<PlaceholderView routeName="Storage" />} />
               <Route path="/cluster/bots" element={<PlaceholderView routeName="Bots" />} />
               <Route path="/cluster/logs" element={<PlaceholderView routeName="Logs" />} />
-              <Route path="/cluster/settings" element={<PlaceholderView routeName="Settings" />} />
+              <Route path="/cluster/configuration" element={<PlaceholderView routeName="Configuration" />} />
+              {/* Legacy redirects for old routes */}
+              <Route path="/cluster/apps" element={<Navigate to="/cluster/applications" replace />} />
+              <Route path="/cluster/settings" element={<Navigate to="/cluster/configuration" replace />} />
             </Routes>
           </div>
           {chatVisible && (
