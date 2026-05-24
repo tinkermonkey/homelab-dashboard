@@ -2,32 +2,9 @@
 @import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
 @import url("https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap");
 
-/* Token overrides — applied after Heimdall to override defaults */
+/* Custom tokens — extensions to Heimdall's design system */
 :root {
-  /* Override Heimdall's amber accent with dashboard's cyan */
-  --accent-primary: 34 211 238;
-  --accent-primary-hover: 6 182 212;
-  --accent-primary-deep: 14 126 163;
-  --accent-primary-ring: rgba(34, 211, 238, 0.15);
-
-  /* Override Heimdall's shell colors */
-  --shell-bg: 11 15 20;
-  --shell-bg-2: 15 20 27;
-  --shell-surface: 19 26 35;
-  --shell-surface-2: 26 34 48;
-  --shell-fg-1: 230 237 243;
-  --shell-fg-2: 139 148 158;
-  --shell-border: 30 39 51;
-
-  /* Canvas colors — dark and light */
-  --canvas-bg-dark: 20 25 31;
-  --canvas-bg-light: 255 255 255;
-  --canvas-fg-1-dark: 230 237 243;
-  --canvas-fg-1-light: 11 18 32;
-  --canvas-bd-dark: 42 50 60;
-  --canvas-bd-light: 209 213 219;
-
-  /* Host tints */
+  /* Per-host color tints */
   --host-t5610-tint: 34 211 238;
   --host-t5610-tint-a12: rgba(34, 211, 238, 0.125);
   --host-t5610-tint-a31: rgba(34, 211, 238, 0.314);
@@ -38,13 +15,13 @@
   --host-hp7052-tint-a12: rgba(167, 139, 250, 0.125);
   --host-hp7052-tint-a31: rgba(167, 139, 250, 0.314);
 
-  /* Status colors */
+  /* Status colors — intentional design-spec values */
   --status-ok: 16 185 129;
   --status-warn: 245 158 11;
   --status-error: 244 63 94;
   --status-updating: 34 211 238;
 
-  /* Accent colors for shell-specific styles */
+  /* Extended accent palette */
   --accent-cyan: 34 211 238;
   --accent-cyan-2: 6 182 212;
   --accent-cyan-deep: 14 126 163;
@@ -52,39 +29,12 @@
   --accent-violet: 167 139 250;
   --accent-emerald: 16 185 129;
   --accent-rose: 244 63 94;
-  --shell-fg-3: 110 122 135;
-  --shell-fg-4: 74 85 99;
-  --shell-border-2: 42 58 92;
-
-  /* Canvas surface and domain tokens */
-  --canvas-surface-2: 35 45 60;
-  --canvas-border-2: 53 65 80;
-  --dom-default: 107 114 128;
-  --dom-life: 16 185 129;
-  --dom-climate: 34 211 238;
-  --dom-software: 167 139 250;
 
   /* Fonts */
   --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
                "Helvetica Neue", Arial, sans-serif;
   --font-mono: "JetBrains Mono", Menlo, ui-monospace, SFMono-Regular, Monaco,
                Consolas, "Liberation Mono", "Courier New", monospace;
-}
-
-/* Default canvas is dark */
-:root {
-  --canvas-bg: 20 25 31;
-  --canvas-fg-1: 230 237 243;
-  --canvas-bd: 42 50 60;
-}
-
-/* Light mode canvas when dark-canvas class is removed from body */
-body:not(.dark-canvas) {
-  --canvas-bg: 255 255 255;
-  --canvas-fg-1: 11 18 32;
-  --canvas-bd: 209 213 219;
-  --canvas-surface-2: 240 245 250;
-  --canvas-border-2: 200 210 220;
 }
 
 * {
@@ -115,11 +65,8 @@ code, pre, .monospace {
 
 /* Compact density mode */
 body.density-compact {
-  /* Reduce card header padding */
   --density-card-header-padding: 8px 12px;
-  /* Reduce metric row padding */
   --density-metric-row-padding: 4px 0;
-  /* Reduce canvas padding */
   --density-canvas-padding: 12px;
 }
 
@@ -132,45 +79,34 @@ body.density-compact .table__row {
   line-height: 1.3;
 }
 
-/* Canvas + Chat Rail wrapper adjustment */
-.shell-layout__canvas {
-  min-width: 1100px;
-  overflow-x: auto;
-  overflow-y: auto;
-}
-
-/* Topology stage min-width */
+/* Topology stage needs a minimum width to render the graph usefully */
 .topology-stage {
   min-width: 1560px;
 }
 
-/* Responsive sizing at narrow viewports */
-@media (max-width: 1200px) {
-  .shell-layout__canvas {
-    min-width: 1000px;
-  }
-}
-
-/* Sidebar collapse hint for narrow viewports */
+/* Show the sidebar collapse toggle using the same styling as sidebar nav items */
 .sidebar__toggle {
-  display: flex !important;
-  opacity: 0.6;
-  transition: opacity 80ms ease-out;
+  display: flex;
+  width: 100%;
+  align-items: center;
+  padding: 8px 10px;
+  border-radius: var(--radius-md);
+  color: rgb(var(--shell-fg-2));
+  background: none;
+  border: none;
+  cursor: pointer;
+  margin-bottom: 4px;
+  transition: all 80ms ease-out;
 }
 
 .sidebar__toggle:hover {
-  opacity: 1;
+  background: rgb(var(--shell-surface));
+  color: rgb(var(--shell-fg-1));
 }
 
-@media (min-width: 768px) {
-  .sidebar__toggle {
-    opacity: 0.4;
-    transition: opacity 80ms ease-out;
-  }
-
-  .sidebar__toggle:hover {
-    opacity: 1;
-  }
+.sidebar--collapsed .sidebar__toggle {
+  justify-content: center;
+  padding: 8px;
 }
 
 /* Ensure topbar buttons stack properly */

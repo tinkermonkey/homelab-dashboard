@@ -11,7 +11,7 @@
 
 .gateway-charts__divider {
   height: 1px;
-  background: rgb(var(--canvas-bd));
+  background: rgb(var(--canvas-border));
 }
 
 .gateway-chart {
@@ -56,7 +56,7 @@
 }
 
 .gateway-chart__grid-line {
-  stroke: rgb(var(--canvas-bd));
+  stroke: rgb(var(--canvas-border));
   stroke-width: 1;
   stroke-dasharray: 2,2;
   opacity: 0.5;

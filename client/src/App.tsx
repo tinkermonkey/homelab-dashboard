@@ -235,8 +235,8 @@ const AppContent: React.FC = () => {
           onClose={() => setCommandPaletteOpen(false)}
           commands={commandPaletteCommands}
         />
-        <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
-          <div style={{ flex: 1, overflow: 'auto' }}>
+        <div style={{ display: 'flex', height: '100%', overflow: 'hidden' }}>
+          <div style={{ flex: 1, overflow: 'auto', height: '100%' }}>
             <Routes>
               <Route path="/" element={<Navigate to={activeRoute} replace />} />
               <Route path="/cluster/overview" element={viewContent} />
