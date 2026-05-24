@@ -9,8 +9,10 @@ import { config } from './config.js';
 import { getCachedData, peekCache } from './cache.js';
 import { transformMetrics } from './transformers/metrics-transformer.js';
 import { transformDockerData, transformTopologyData } from './transformers/mcp-transformer.js';
+import { transformNetworkData } from './transformers/network-transformer.js';
 import { signozClient } from './clients/signoz-client.js';
 import { ntopngClient } from './clients/ntopng-client.js';
+import { mcpClient } from './clients/mcp-client.js';
 import { fetchWithTimeout } from './utils/fetch-with-timeout.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -51,7 +53,19 @@ export async function registerRoutes(app: FastifyInstance) {
           degraded.push('signoz');
         }
 
-        // Derive CPU from cluster cache if warm; otherwise 0 (GAP: no dedicated status CPU source)
+        // Ping latency from UDM Pro WAN monitoring (uptime_stats.WAN.latency_average)
+        let ping = 0;
+        try {
+          const raw = await mcpClient.callTool('homelab-data', 'udm_get_network_health') as {
+            result?: Array<{ subsystem: string; uptime_stats?: { WAN?: { latency_average?: number } } }>;
+          };
+          const wan = (raw?.result ?? []).find(s => s.subsystem === 'wan');
+          ping = wan?.uptime_stats?.WAN?.latency_average ?? 0;
+        } catch {
+          degraded.push('udm');
+        }
+
+        // Derive CPU from cluster cache if warm; otherwise 0
         const clusterCache = peekCache<LAB_DATA & { degraded?: string[] }>('cluster');
         const cpuValues = (clusterCache?.servers ?? []).map(s => s.cpu.v).filter(v => v > 0);
         const cpu = cpuValues.length > 0
@@ -60,7 +74,7 @@ export async function registerRoutes(app: FastifyInstance) {
 
         return {
           cpu,
-          ping: 0, // GAP: no upstream source for latency probe
+          ping,
           downMbps,
           upMbps,
           alertCount,
@@ -176,6 +190,26 @@ export async function registerRoutes(app: FastifyInstance) {
       const message = error instanceof Error ? error.message : 'Unknown error';
       app.log.error(`Failed to fetch alerts: ${message}`);
       reply.status(500).send({ error: 'Failed to fetch alerts' });
+    }
+  });
+
+  // GET /api/network (30s cadence, 20s cache) — UDM subsystem health, clients, IPS events
+  app.get('/api/network', async (request, reply) => {
+    try {
+      const data = await getCachedData('network', 20, async () => {
+        const { data: networkData, degraded } = await transformNetworkData(app.log);
+        return { ...networkData, degraded };
+      }, (msg) => app.log.error(msg));
+
+      if (data.degraded && data.degraded.length > 0) {
+        reply.status(206);
+      }
+
+      reply.send(data);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      app.log.error(`Failed to fetch network data: ${message}`);
+      reply.status(500).send({ error: 'Failed to fetch network data' });
     }
   });
 

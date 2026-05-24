@@ -1,5 +1,6 @@
 import React from 'react';
 import type { Gateway } from '@homelab/shared';
+import { ProgressBar } from '@tinkermonkey/heimdall-ui';
 import { GatewayChart } from './GatewayChart';
 import './GatewayPanel.css';
 
@@ -15,6 +16,8 @@ const STATUS_COLORS: Record<string, string> = {
 
 export const GatewayPanel: React.FC<GatewayPanelProps> = ({ gateway }) => {
   const statusColor = STATUS_COLORS[gateway.status] || STATUS_COLORS.online;
+  const wlanErr = gateway.wlanStatus === 'error';
+  const lanErr = gateway.lanStatus === 'error';
 
   return (
     <div className="gateway-panel">
@@ -27,6 +30,12 @@ export const GatewayPanel: React.FC<GatewayPanelProps> = ({ gateway }) => {
               style={{ backgroundColor: statusColor }}
             />
             <span className="gateway-panel__status-text">{gateway.status.toUpperCase()}</span>
+            {wlanErr && (
+              <span className="gateway-panel__subsystem-badge gateway-panel__subsystem-badge--warn">WLAN</span>
+            )}
+            {lanErr && (
+              <span className="gateway-panel__subsystem-badge gateway-panel__subsystem-badge--warn">LAN</span>
+            )}
           </div>
         </div>
       </div>
@@ -65,6 +74,18 @@ export const GatewayPanel: React.FC<GatewayPanelProps> = ({ gateway }) => {
             <span className="gateway-panel__label">UPTIME</span>
             <span className="gateway-panel__value">{gateway.statusFor}</span>
           </div>
+          {gateway.wwwLatencyMs != null && (
+            <div className="gateway-panel__info-item">
+              <span className="gateway-panel__label">WWW LATENCY</span>
+              <span className="gateway-panel__value monospace">{gateway.wwwLatencyMs} ms</span>
+            </div>
+          )}
+          {gateway.clientsTotal != null && (
+            <div className="gateway-panel__info-item">
+              <span className="gateway-panel__label">CLIENTS</span>
+              <span className="gateway-panel__value">{gateway.clientsTotal}</span>
+            </div>
+          )}
         </div>
 
         <div className="gateway-panel__divider" />
@@ -92,6 +113,38 @@ export const GatewayPanel: React.FC<GatewayPanelProps> = ({ gateway }) => {
             </div>
           </div>
         </div>
+
+        {(gateway.cpuPct != null || gateway.memPct != null) && (
+          <>
+            <div className="gateway-panel__divider" />
+            <div className="gateway-panel__router-health">
+              {gateway.cpuPct != null && (
+                <div className="gateway-panel__router-meter">
+                  <div className="gateway-panel__router-meter-header">
+                    <span className="gateway-panel__label">ROUTER CPU</span>
+                    <span className="gateway-panel__value monospace">{gateway.cpuPct.toFixed(1)}%</span>
+                  </div>
+                  <ProgressBar
+                    percent={gateway.cpuPct}
+                    color={gateway.cpuPct >= 90 ? 'rose' : gateway.cpuPct >= 70 ? 'amber' : 'emerald'}
+                  />
+                </div>
+              )}
+              {gateway.memPct != null && (
+                <div className="gateway-panel__router-meter">
+                  <div className="gateway-panel__router-meter-header">
+                    <span className="gateway-panel__label">ROUTER MEM</span>
+                    <span className="gateway-panel__value monospace">{gateway.memPct.toFixed(1)}%</span>
+                  </div>
+                  <ProgressBar
+                    percent={gateway.memPct}
+                    color={gateway.memPct >= 90 ? 'rose' : gateway.memPct >= 80 ? 'amber' : 'emerald'}
+                  />
+                </div>
+              )}
+            </div>
+          </>
+        )}
 
         <div className="gateway-panel__divider" />
 

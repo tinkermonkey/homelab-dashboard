@@ -1,4 +1,4 @@
-import type { LAB_DATA, App, Bot, TopologyBot } from '@homelab/shared';
+import type { LAB_DATA } from '@homelab/shared';
 import type { FastifyBaseLogger } from 'fastify';
 import { signozClient } from '../clients/signoz-client.js';
 import { ntopngClient } from '../clients/ntopng-client.js';
@@ -9,47 +9,54 @@ import { SERVER_REGISTRY } from '../cluster-config.js';
 
 const HOSTS_WITH_METRICS = SERVER_REGISTRY.filter(s => s.metricsHostname !== null);
 
-function isValidAppData(data: unknown): data is App[] {
-  if (!Array.isArray(data)) return false;
-  return data.every((app: unknown) => {
-    if (!app || typeof app !== 'object') return false;
-    const a = app as Record<string, unknown>;
-    return typeof a.id === 'string' &&
-           typeof a.host === 'string' &&
-           typeof a.cat === 'string' &&
-           typeof a.version === 'string' &&
-           typeof a.state === 'string' &&
-           typeof a.meta === 'string';
-  });
-}
-
-function isTopologyBotArray(data: unknown): data is { bots: TopologyBot[] } {
-  if (!data || typeof data !== 'object') return false;
-  const obj = data as Record<string, unknown>;
-  return Array.isArray(obj.bots) && obj.bots.every((bot: unknown) => {
-    if (!bot || typeof bot !== 'object') return false;
-    const b = bot as Record<string, unknown>;
-    return typeof b.id === 'string' &&
-           typeof b.label === 'string' &&
-           typeof b.role === 'string' &&
-           typeof b.avatar === 'string';
-  });
-}
-
-function mapTopologyBotToBot(tb: TopologyBot): Bot {
-  return {
-    id: tb.id,
-    label: tb.label,
-    role: tb.role,
-    avatar: tb.avatar,
-    status: tb.status,
-    desc: tb.desc,
-    model: tb.model,
-  };
-}
-
 function formatLastSync(): string {
   return 'just now';
+}
+
+interface UdmSubsystem {
+  subsystem: string;
+  status?: string;
+  // WAN fields
+  wan_ip?: string;
+  isp_name?: string;
+  asn?: number;
+  gw_name?: string;
+  uptime_stats?: { WAN?: { latency_average?: number } };
+  // WLAN/LAN fields
+  num_user?: number;
+  num_disconnected?: number;
+  num_ap?: number;
+  num_sw?: number;
+  // VPN fields
+  remote_user_num_active?: number;
+  remote_user_num_inactive?: number;
+  // WWW fields
+  latency?: number;
+  // gw_system-stats fields (uptime in seconds as string)
+  uptime?: string;
+  cpu?: string;
+  mem?: string;
+}
+
+interface UdmHealthResult {
+  result?: UdmSubsystem[];
+}
+
+interface UdmClient {
+  hostname?: string;
+  ip?: string;
+  is_wired?: boolean;
+  uptime_s?: number;
+}
+
+interface UdmClientsResult {
+  result?: UdmClient[];
+}
+
+function secondsToUptimeString(seconds: number): string {
+  const days = Math.floor(seconds / 86400);
+  const hours = Math.floor((seconds % 86400) / 3600);
+  return `${days}d ${hours}h`;
 }
 
 export async function transformMetrics(
@@ -100,7 +107,7 @@ export async function transformMetrics(
     degraded.push('metricbeat');
   }
 
-  // Fetch gateway metrics from ntopng
+  // Fetch gateway throughput from ntopng
   let gatewayStats: { downMbps: number; upMbps: number; downHist: number[]; upHist: number[]; egressTodayGB: number } | null = null;
   try {
     gatewayStats = await ntopngClient.getWanInterfaceStats();
@@ -115,6 +122,88 @@ export async function transformMetrics(
   } catch (error) {
     logger.error({ err: error }, 'Error fetching ntopng gateway stats');
     degraded.push('ntopng');
+  }
+
+  // Fetch gateway identity, ping, and server uptime from UniFi UDM
+  try {
+    const [healthRaw, clientsRaw] = await Promise.all([
+      mcpClient.callTool('homelab-data', 'udm_get_network_health'),
+      mcpClient.callTool('homelab-data', 'udm_get_connected_clients'),
+    ]);
+
+    const subsystems: UdmSubsystem[] = (healthRaw as UdmHealthResult)?.result ?? [];
+    const wan = subsystems.find(s => s.subsystem === 'wan');
+    const gwStats = subsystems.find(s => s.subsystem === 'gw_system-stats');
+    const vpn = subsystems.find(s => s.subsystem === 'vpn');
+
+    if (wan) {
+      result.gateway = {
+        ...result.gateway,
+        isp: wan.isp_name ?? result.gateway.isp,
+        publicIp: wan.wan_ip ?? result.gateway.publicIp,
+        asn: wan.asn != null ? String(wan.asn) : result.gateway.asn,
+        hostname: wan.gw_name ?? result.gateway.hostname,
+        pingMs: wan.uptime_stats?.WAN?.latency_average ?? result.gateway.pingMs,
+        status: wan.status === 'ok' ? 'online' : 'degraded',
+      };
+    }
+
+    if (gwStats?.uptime) {
+      result.gateway = {
+        ...result.gateway,
+        statusFor: secondsToUptimeString(parseInt(gwStats.uptime, 10)),
+        cpuPct: Math.round(parseFloat(gwStats.cpu ?? '0') * 10) / 10,
+        memPct: Math.round(parseFloat(gwStats.mem ?? '0') * 10) / 10,
+      };
+    }
+
+    const wlan = subsystems.find(s => s.subsystem === 'wlan');
+    const lan = subsystems.find(s => s.subsystem === 'lan');
+    const www = subsystems.find(s => s.subsystem === 'www');
+
+    result.gateway = {
+      ...result.gateway,
+      wlanStatus: wlan ? (wlan.status === 'ok' ? 'ok' : 'error') : undefined,
+      lanStatus: lan ? (lan.status === 'ok' ? 'ok' : 'error') : undefined,
+      wwwLatencyMs: www?.latency,
+    };
+
+    if (vpn) {
+      const active = vpn.remote_user_num_active ?? 0;
+      const inactive = vpn.remote_user_num_inactive ?? 0;
+      result.gateway = {
+        ...result.gateway,
+        vpnPeers: active + inactive,
+        vpnPeersActive: active,
+      };
+    }
+
+    const clients: UdmClient[] = (clientsRaw as UdmClientsResult)?.result ?? [];
+    const clusterUptimes: number[] = [];
+    for (const spec of SERVER_REGISTRY) {
+      const client = clients.find(c => c.hostname === spec.hostname && c.is_wired);
+      if (client?.uptime_s) {
+        const server = result.servers.find(s => s.id === spec.id);
+        if (server) {
+          server.uptime = secondsToUptimeString(client.uptime_s);
+          clusterUptimes.push(client.uptime_s);
+        }
+      }
+    }
+
+    if (clusterUptimes.length > 0) {
+      const minUptime = Math.min(...clusterUptimes);
+      result.cluster = {
+        ...result.cluster,
+        uptimeDays: Math.floor(minUptime / 86400),
+        uptimeHours: Math.floor((minUptime % 86400) / 3600),
+      };
+    }
+
+    result.gateway = { ...result.gateway, clientsTotal: clients.length };
+  } catch (error) {
+    logger.error({ err: error }, 'Error fetching UDM network health');
+    degraded.push('udm');
   }
 
   // Fetch per-host network throughput from ElastiFlow
@@ -140,29 +229,6 @@ export async function transformMetrics(
     degraded.push('elastiflow');
   }
 
-  // Fetch apps from phone-home MCP
-  try {
-    const appsData = await mcpClient.listContainers();
-    if (isValidAppData(appsData)) {
-      result.apps = appsData;
-    } else {
-      throw new Error('Invalid Docker data structure from MCP');
-    }
-  } catch (error) {
-    logger.error({ err: error }, 'Error fetching apps from phone-home MCP');
-    degraded.push('phone-home');
-  }
-
-  // Fetch bots from phone-home MCP
-  try {
-    const topologyData = await mcpClient.getTopologyData();
-    if (isTopologyBotArray(topologyData)) {
-      result.bots = topologyData.bots.map(mapTopologyBotToBot);
-    }
-  } catch (error) {
-    logger.error({ err: error }, 'Error fetching bots from phone-home MCP');
-  }
-
   // Fetch active alerts from SigNoz for cluster.activeAlerts
   try {
     const alerts = await signozClient.getActiveAlerts();
@@ -177,7 +243,6 @@ export async function transformMetrics(
     const memV = server.mem.hist.length > 0 ? server.mem.hist[server.mem.hist.length - 1] : 0;
     const diskV = server.disk.hist.length > 0 ? server.disk.hist[server.disk.hist.length - 1] : 0;
     const netV = server.net.hist.length > 0 ? server.net.hist[server.net.hist.length - 1] : 0;
-    const containers = result.apps.filter(a => a.host === server.id).length;
     const status: 'ok' | 'warn' | 'err' = memV >= 80 || cpuV >= 90 ? 'warn' : 'ok';
 
     return {
@@ -187,7 +252,7 @@ export async function transformMetrics(
       disk: { ...server.disk, v: diskV },
       net: { ...server.net, v: netV },
       status,
-      containers,
+      containers: 0, // GAP: no container inventory source via MCP
     };
   });
 

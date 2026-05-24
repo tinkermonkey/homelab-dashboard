@@ -1,13 +1,27 @@
 import { config } from '../config.js';
 import { fetchWithTimeout } from '../utils/fetch-with-timeout.js';
 
-// phone-home REST API: POST /v1/servers/{server}/tools/{tool}
-// Docs: ../../../phone-home/docs/openapi.json
+// phone-home REST API — docs: ../../../phone-home/docs/openapi.json
+// In this architecture, MCP servers ARE agents: GET /v1/servers is the source of truth
+// for "what agents are online."
+
+export interface McpServer {
+  name: string;
+  url: string;
+  healthy: boolean;
+  tool_count: number | null;
+  error: string | null;
+}
+
+interface ServerListResponse {
+  servers: McpServer[];
+}
+
 interface InvokeResponse {
   server: string;
   tool: string;
   is_error: boolean;
-  content: Array<Record<string, unknown>>;
+  content: Array<{ type?: string; text?: string; [key: string]: unknown }>;
   structured_content?: Record<string, unknown> | null;
 }
 
@@ -28,6 +42,19 @@ export class MCPClient {
       'Content-Type': 'application/json',
       ...(this.token ? { Authorization: `Bearer ${this.token}` } : {}),
     };
+  }
+
+  async getServers(): Promise<McpServer[]> {
+    const url = `${this.baseUrl}/v1/servers`;
+    const response = await fetchWithTimeout(url, {
+      headers: this.getHeaders(),
+      timeout: 10000,
+    });
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+    const data = (await response.json()) as ServerListResponse;
+    return data.servers;
   }
 
   async callTool(server: string, tool: string, args: Record<string, unknown> = {}): Promise<unknown> {
@@ -52,24 +79,33 @@ export class MCPClient {
         throw new Error(`Tool error: ${msg}`);
       }
 
-      // Prefer structured_content when available, fall back to raw content array
-      return data.structured_content ?? data.content;
+      if (data.structured_content != null) {
+        return data.structured_content;
+      }
+
+      // Single text item: try JSON parse (agents without structured_content return JSON strings)
+      if (data.content.length === 1 && data.content[0].type === 'text' && data.content[0].text) {
+        try {
+          return JSON.parse(data.content[0].text);
+        } catch {
+          return data.content[0].text;
+        }
+      }
+
+      return data.content;
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
       throw new Error(`MCP tool call failed (${server}/${tool}): ${message}`);
     }
   }
 
-  async getDockerInventory(): Promise<unknown> {
-    return this.callTool('homelab-data', 'list_containers');
-  }
-
-  async getTopologyData(): Promise<unknown> {
-    return this.callTool('homelab-data', 'list_bots');
-  }
-
-  async listContainers(): Promise<unknown> {
-    return this.callTool('homelab-data', 'list_containers');
+  async getAgentStatus(serverName: string): Promise<string> {
+    const result = await this.callTool(serverName, 'get_status');
+    if (result && typeof result === 'object' && !Array.isArray(result)) {
+      const state = (result as Record<string, unknown>).state;
+      if (typeof state === 'string') return state;
+    }
+    return 'idle';
   }
 }
 

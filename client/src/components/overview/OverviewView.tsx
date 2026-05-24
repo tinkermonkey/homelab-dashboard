@@ -90,12 +90,12 @@ export const OverviewView: React.FC<OverviewViewProps> = ({ data, showAlerts = t
       <StatGrid columns={4}>
         <StatTile
           color="cyan"
-          label="Power Draw"
-          value={`${data.cluster.powerDraw}W`}
-          delta={{
-            value: data.cluster.powerAvg,
-            label: `avg ${data.cluster.powerAvg}W`,
-          }}
+          label="Clients Online"
+          value={data.gateway.clientsTotal ?? '—'}
+          delta={data.gateway.clientsTotal != null ? {
+            value: data.gateway.clientsTotal,
+            label: 'connected',
+          } : undefined}
         />
         <StatTile
           color="amber"

@@ -14,6 +14,7 @@ import { useStatusbarContent } from './components/shell/Statusbar';
 import { OverviewView } from './components/overview/OverviewView';
 import { ContainersView } from './components/containers/ContainersView';
 import { TopologyView } from './components/topology/TopologyView';
+import { NetworkView } from './components/network/NetworkView';
 import { PlaceholderView } from './components/shared/PlaceholderView';
 import { ErrorView } from './components/shared/ErrorView';
 import { ChatRail } from './components/chat/ChatRail';
@@ -242,7 +243,7 @@ const AppContent: React.FC = () => {
               <Route path="/cluster/containers" element={<ContainersView />} />
               <Route path="/cluster/topology" element={<TopologyView />} />
               <Route path="/cluster/servers" element={<PlaceholderView routeName="Servers" />} />
-              <Route path="/cluster/network" element={<PlaceholderView routeName="Network" />} />
+              <Route path="/cluster/network" element={<NetworkView />} />
               <Route path="/cluster/apps" element={<PlaceholderView routeName="Apps" />} />
               <Route path="/cluster/storage" element={<PlaceholderView routeName="Storage" />} />
               <Route path="/cluster/bots" element={<PlaceholderView routeName="Bots" />} />

@@ -65,7 +65,7 @@ describe('MCPClient', () => {
       expect(opts.headers['Authorization']).toBeUndefined();
     });
 
-    it('falls back to content array when structured_content is null', async () => {
+    it('falls back to content array when structured_content is null and no type field', async () => {
       global.fetch = vi.fn().mockResolvedValue({
         ok: true,
         json: async () => ({
@@ -78,6 +78,36 @@ describe('MCPClient', () => {
       const client = new MCPClient();
       const result = await client.callTool('s', 't');
       expect(result).toEqual([{ text: 'hello' }]);
+    });
+
+    it('JSON-parses single text/type content item when structured_content absent', async () => {
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          server: 's', tool: 't', is_error: false,
+          content: [{ type: 'text', text: '{"state":"idle"}' }],
+          structured_content: null,
+        }),
+      });
+
+      const client = new MCPClient();
+      const result = await client.callTool('s', 't');
+      expect(result).toEqual({ state: 'idle' });
+    });
+
+    it('returns raw string when single text item is not valid JSON', async () => {
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          server: 's', tool: 't', is_error: false,
+          content: [{ type: 'text', text: 'not json' }],
+          structured_content: null,
+        }),
+      });
+
+      const client = new MCPClient();
+      const result = await client.callTool('s', 't');
+      expect(result).toBe('not json');
     });
 
     it('throws when is_error is true', async () => {
@@ -126,38 +156,58 @@ describe('MCPClient', () => {
     });
   });
 
-  describe('convenience methods', () => {
-    it('getDockerInventory calls homelab-data/list_containers', async () => {
-      const fetchMock = vi.fn().mockResolvedValue(successResponse([]));
+  describe('getServers', () => {
+    it('calls GET /v1/servers and returns server list', async () => {
+      const fetchMock = vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          servers: [
+            { name: 'homelab-data', url: 'http://homelab-data-mcp:3220/mcp/', healthy: true, tool_count: 19, error: null },
+            { name: 't5610', url: 'http://100.104.222.123:3210/mcp/', healthy: true, tool_count: 7, error: null },
+          ],
+        }),
+      });
       global.fetch = fetchMock;
 
       const client = new MCPClient('http://localhost:8000', 'tok');
-      await client.getDockerInventory();
+      const servers = await client.getServers();
 
-      const [url] = fetchMock.mock.calls[0];
-      expect(url).toContain('/v1/servers/homelab-data/tools/list_containers');
+      const [url, opts] = fetchMock.mock.calls[0];
+      expect(url).toBe('http://localhost:8000/v1/servers');
+      expect(opts?.method).toBeUndefined(); // GET by default
+      expect(servers).toHaveLength(2);
+      expect(servers[0]).toMatchObject({ name: 'homelab-data', healthy: true, tool_count: 19 });
     });
 
-    it('listContainers calls homelab-data/list_containers', async () => {
-      const fetchMock = vi.fn().mockResolvedValue(successResponse([]));
-      global.fetch = fetchMock;
+    it('throws on HTTP error', async () => {
+      global.fetch = vi.fn().mockResolvedValue({ ok: false, status: 503, statusText: 'Service Unavailable' });
+
+      const client = new MCPClient();
+      await expect(client.getServers()).rejects.toThrow(/HTTP 503/);
+    });
+  });
+
+  describe('getAgentStatus', () => {
+    it('returns state string from structured result', async () => {
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          server: 't5610', tool: 'get_status', is_error: false,
+          content: [{ type: 'text', text: '{"state":"running"}' }],
+          structured_content: null,
+        }),
+      });
 
       const client = new MCPClient('http://localhost:8000', 'tok');
-      await client.listContainers();
-
-      const [url] = fetchMock.mock.calls[0];
-      expect(url).toContain('/v1/servers/homelab-data/tools/list_containers');
+      const state = await client.getAgentStatus('t5610');
+      expect(state).toBe('running');
     });
 
-    it('getTopologyData calls homelab-data/list_bots', async () => {
-      const fetchMock = vi.fn().mockResolvedValue(successResponse([]));
-      global.fetch = fetchMock;
+    it('returns idle on tool failure', async () => {
+      global.fetch = vi.fn().mockRejectedValue(new Error('timeout'));
 
       const client = new MCPClient('http://localhost:8000', 'tok');
-      await client.getTopologyData();
-
-      const [url] = fetchMock.mock.calls[0];
-      expect(url).toContain('/v1/servers/homelab-data/tools/list_bots');
+      await expect(client.getAgentStatus('t5610')).rejects.toThrow();
     });
   });
 });

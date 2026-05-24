@@ -61,6 +61,13 @@ export interface Gateway {
   dnsBlocked: number;
   vpnPeers: number;
   vpnPeersActive: number;
+  // Optional fields populated when UDM is reachable (no extra API call)
+  cpuPct?: number;
+  memPct?: number;
+  wwwLatencyMs?: number;
+  wlanStatus?: 'ok' | 'warn' | 'error';
+  lanStatus?: 'ok' | 'warn' | 'error';
+  clientsTotal?: number;
 }
 
 export interface App {
@@ -241,4 +248,62 @@ export interface STATUS_DATA {
 export interface ALERTS_DATA {
   alerts: Alert[];
   source?: 'alertmanager' | 'mock' | 'unavailable';
+}
+
+// Network data
+export type SubsystemId = 'wan' | 'wlan' | 'lan' | 'vpn' | 'www';
+
+export interface SubsystemHealth {
+  id: SubsystemId;
+  status: 'ok' | 'warn' | 'error';
+  latencyMs?: number;
+  clientCount: number;
+  deviceCount?: number;
+  details: string;
+}
+
+export interface NetworkClient {
+  hostname: string;
+  ip: string;
+  mac: string;
+  isWired: boolean;
+  signalDbm?: number;
+  bytesTx: number;
+  bytesRx: number;
+  uptimeS: number;
+}
+
+export interface IpsEvent {
+  id: string;
+  timestamp: string;
+  severity: 'critical' | 'warning' | 'info';
+  category: string;
+  srcIp: string;
+  dstIp: string;
+  message: string;
+}
+
+export interface NetworkEvent {
+  id: string;
+  timestamp: string;
+  type: 'create' | 'update' | 'delete' | 'run';
+  subject: string;
+}
+
+export interface NETWORK_DATA {
+  subsystems: SubsystemHealth[];
+  clients: {
+    total: number;
+    wired: number;
+    wireless: number;
+    topTalkers: NetworkClient[];
+  };
+  gateway: {
+    cpuPct: number;
+    memPct: number;
+  };
+  ipsEvents: IpsEvent[];
+  events: NetworkEvent[];
+  degraded?: string[];
+  source?: 'real' | 'unavailable';
 }

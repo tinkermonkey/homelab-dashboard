@@ -233,6 +233,58 @@ describe('transformMetrics', () => {
   beforeEach(() => { vi.clearAllMocks(); });
   afterEach(() => { vi.clearAllMocks(); });
 
+  const udmHealthResponse = {
+    result: [
+      {
+        subsystem: 'wan',
+        status: 'ok',
+        wan_ip: '172.20.203.8',
+        isp_name: 'FirstLight Fiber',
+        asn: 27382,
+        gw_name: 'A Bigger Dream',
+        uptime_stats: { WAN: { latency_average: 4 } },
+      },
+      {
+        subsystem: 'wlan',
+        status: 'error',
+        num_user: 32,
+        num_disconnected: 2,
+      },
+      {
+        subsystem: 'lan',
+        status: 'error',
+        num_user: 6,
+        num_disconnected: 3,
+      },
+      {
+        subsystem: 'vpn',
+        status: 'ok',
+        remote_user_num_active: 2,
+        remote_user_num_inactive: 1,
+      },
+      {
+        subsystem: 'www',
+        status: 'ok',
+        latency: 12,
+      },
+      {
+        subsystem: 'gw_system-stats',
+        uptime: '148314',
+        cpu: '28.8',
+        mem: '75.2',
+      },
+    ],
+  };
+
+  const udmClientsResponse = {
+    result: [
+      { hostname: 't5610', ip: '192.168.0.117', is_wired: true, uptime_s: 148314 },
+      { hostname: 'petit-cochon', ip: '192.168.0.245', is_wired: true, uptime_s: 86400 },
+      { hostname: 'hp7052', ip: '192.168.0.72', is_wired: true, uptime_s: 172800 },
+      { hostname: 'some-phone', ip: '192.168.0.50', is_wired: false, uptime_s: 3600 },
+    ],
+  };
+
   function setupAllMocks() {
     vi.spyOn(metricbeatClient, 'getCpuHistory').mockResolvedValue([50]);
     vi.spyOn(metricbeatClient, 'getMemoryHistory').mockResolvedValue([60]);
@@ -247,9 +299,12 @@ describe('transformMetrics', () => {
       egressTodayGB: 0,
     });
 
+    vi.spyOn(mcpClient, 'callTool').mockImplementation(async (_server, tool) => {
+      if (tool === 'udm_get_network_health') return udmHealthResponse;
+      if (tool === 'udm_get_connected_clients') return udmClientsResponse;
+      return {};
+    });
     vi.spyOn(elastiflowClient, 'getHostThroughput').mockResolvedValue([1.5]);
-    vi.spyOn(mcpClient, 'listContainers').mockResolvedValue([]);
-    vi.spyOn(mcpClient, 'getTopologyData').mockResolvedValue({ bots: [] });
     vi.spyOn(signozClient, 'getActiveAlerts').mockResolvedValue([]);
   }
 
@@ -310,16 +365,89 @@ describe('transformMetrics', () => {
     expect(result.degraded).toContain('elastiflow');
   });
 
-  it('degrades phone-home when apps fetch fails', async () => {
+  it('populates gateway fields from UDM network health', async () => {
     setupAllMocks();
-    const error = new Error('Connection refused');
-    vi.mocked(mcpClient.listContainers).mockRejectedValue(error);
     const result = await transformMetrics(mockLabData, mockLogger);
-    expect(result.degraded).toContain('phone-home');
-    expect(mockLogger.error).toHaveBeenCalledWith(
-      expect.objectContaining({ err: error }),
-      expect.stringContaining('Error fetching apps from phone-home MCP')
-    );
+    expect(result.data.gateway.pingMs).toBe(4);
+    expect(result.data.gateway.isp).toBe('FirstLight Fiber');
+    expect(result.data.gateway.publicIp).toBe('172.20.203.8');
+    expect(result.data.gateway.asn).toBe('27382');
+    expect(result.data.gateway.status).toBe('online');
+  });
+
+  it('populates gateway statusFor from gw_system-stats uptime', async () => {
+    setupAllMocks();
+    const result = await transformMetrics(mockLabData, mockLogger);
+    // 148314s = 1d 17h
+    expect(result.data.gateway.statusFor).toBe('1d 17h');
+  });
+
+  it('populates gateway vpnPeers and vpnPeersActive from VPN subsystem', async () => {
+    setupAllMocks();
+    const result = await transformMetrics(mockLabData, mockLogger);
+    expect(result.data.gateway.vpnPeers).toBe(3); // active(2) + inactive(1)
+    expect(result.data.gateway.vpnPeersActive).toBe(2);
+  });
+
+  it('populates server uptime from UDM connected clients', async () => {
+    setupAllMocks();
+    const result = await transformMetrics(mockLabData, mockLogger);
+    const t5610 = result.data.servers.find(s => s.id === 't5610');
+    const pc = result.data.servers.find(s => s.id === 'petit-cochon');
+    // 148314s = 1d 17h; 86400s = 1d 0h
+    expect(t5610?.uptime).toBe('1d 17h');
+    expect(pc?.uptime).toBe('1d 0h');
+  });
+
+  it('ignores wireless clients when computing server uptime', async () => {
+    setupAllMocks();
+    const result = await transformMetrics(mockLabData, mockLogger);
+    // 'some-phone' is wireless — none of our servers should get 1h uptime from it
+    result.data.servers.forEach(s => {
+      expect(s.uptime).not.toBe('0d 1h');
+    });
+  });
+
+  it('populates cluster uptimeDays and uptimeHours from minimum server uptime', async () => {
+    setupAllMocks();
+    const result = await transformMetrics(mockLabData, mockLogger);
+    // minimum is petit-cochon at 86400s = 1d 0h
+    expect(result.data.cluster.uptimeDays).toBe(1);
+    expect(result.data.cluster.uptimeHours).toBe(0);
+  });
+
+  it('degrades udm when UDM health fetch fails', async () => {
+    setupAllMocks();
+    vi.mocked(mcpClient.callTool).mockRejectedValue(new Error('UDM unreachable'));
+    const result = await transformMetrics(mockLabData, mockLogger);
+    expect(result.degraded).toContain('udm');
+  });
+
+  it('populates gateway cpuPct and memPct from gw_system-stats', async () => {
+    setupAllMocks();
+    const result = await transformMetrics(mockLabData, mockLogger);
+    expect(result.data.gateway.cpuPct).toBe(28.8);
+    expect(result.data.gateway.memPct).toBe(75.2);
+  });
+
+  it('populates gateway wlanStatus and lanStatus from WLAN/LAN subsystems', async () => {
+    setupAllMocks();
+    const result = await transformMetrics(mockLabData, mockLogger);
+    expect(result.data.gateway.wlanStatus).toBe('error');
+    expect(result.data.gateway.lanStatus).toBe('error');
+  });
+
+  it('populates gateway wwwLatencyMs from WWW subsystem', async () => {
+    setupAllMocks();
+    const result = await transformMetrics(mockLabData, mockLogger);
+    expect(result.data.gateway.wwwLatencyMs).toBe(12);
+  });
+
+  it('populates gateway clientsTotal from connected clients count', async () => {
+    setupAllMocks();
+    const result = await transformMetrics(mockLabData, mockLogger);
+    // udmClientsResponse has 4 clients (3 wired servers + 1 wireless)
+    expect(result.data.gateway.clientsTotal).toBe(4);
   });
 
   it('preserves original data structure when transformations fail', async () => {
@@ -339,23 +467,4 @@ describe('transformMetrics', () => {
     expect(nyx?.cpu.hist).not.toEqual([]);
   });
 
-  it('updates apps when valid app data is provided', async () => {
-    setupAllMocks();
-    const mockApps = [{ id: 'app1', host: 't5610', cat: 'database', version: '5.0', state: 'running', meta: 'pg' }];
-    vi.mocked(mcpClient.listContainers).mockResolvedValue(mockApps);
-    const result = await transformMetrics(mockLabData, mockLogger);
-    expect(result.data.apps).toEqual(mockApps);
-  });
-
-  it('degrades phone-home on invalid apps shape', async () => {
-    setupAllMocks();
-    vi.mocked(mcpClient.listContainers).mockResolvedValue({ not: 'array' } as any);
-    const result = await transformMetrics(mockLabData, mockLogger);
-    expect(result.degraded).toContain('phone-home');
-    expect(result.data.apps).toEqual([]);
-    expect(mockLogger.error).toHaveBeenCalledWith(
-      expect.objectContaining({ err: expect.any(Error) }),
-      expect.stringContaining('Error fetching apps from phone-home MCP')
-    );
-  });
 });

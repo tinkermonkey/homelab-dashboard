@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import type { LAB_DATA, DOCKER_DATA, TOPOLOGY_DATA, STATUS_DATA, ALERTS_DATA, Alert } from '@homelab/shared';
+import type { LAB_DATA, DOCKER_DATA, TOPOLOGY_DATA, STATUS_DATA, ALERTS_DATA, NETWORK_DATA, Alert } from '@homelab/shared';
 
 const API_BASE = import.meta.env.VITE_API_BASE || '/api';
 
@@ -116,6 +116,24 @@ export function useTopology(enabled = true) {
     enabled,
     staleTime: 60000,
     gcTime: 10 * 60 * 1000,
+  });
+}
+
+// Network data hook (30s polling) — UDM subsystem health, connected clients, IPS events
+export function useNetwork() {
+  return useQuery({
+    queryKey: ['network'],
+    queryFn: async () => {
+      const response = await fetchJSON<NETWORK_DATA>(`${API_BASE}/network`);
+      return {
+        ...response.data,
+        degraded: response.degraded,
+        source: response.source,
+      };
+    },
+    refetchInterval: 30000,
+    staleTime: 10000,
+    gcTime: 15 * 60 * 1000,
   });
 }
 

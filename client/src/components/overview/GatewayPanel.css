@@ -212,3 +212,37 @@
   font-weight: 600;
   letter-spacing: -0.005em;
 }
+
+.gateway-panel__subsystem-badge {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 1px 6px;
+  border-radius: 8px;
+}
+
+.gateway-panel__subsystem-badge--warn {
+  background: rgb(var(--status-warn) / 0.15);
+  color: rgb(var(--status-warn));
+}
+
+.gateway-panel__router-health {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin-bottom: 4px;
+}
+
+.gateway-panel__router-meter {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.gateway-panel__router-meter-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
