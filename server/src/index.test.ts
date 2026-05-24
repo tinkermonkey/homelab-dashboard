@@ -44,7 +44,7 @@ vi.mock('./config.js', () => ({
 
 const mockLabData: LAB_DATA = {
   cluster: {
-    name: 'asgard',
+    name: 'test-cluster',
     location: 'rack-01',
     domain: 'lab.local',
     powerDraw: 412,

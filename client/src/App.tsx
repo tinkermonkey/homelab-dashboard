@@ -159,7 +159,7 @@ const AppContent: React.FC = () => {
     <ShellLayout
         appTitle={{
           title: 'Homelab',
-          version: 'asgard',
+          version: clusterData?.cluster?.name ?? '',
         }}
         sidebar={{
           sections: sidebarSections,
