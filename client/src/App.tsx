@@ -1,16 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
-import {
-  ShellLayout,
-  Icon as HeimdallIcon,
-  type IconName,
-} from '@tinkermonkey/heimdall-ui';
 import './styles/heimdall.css';
 import './styles/globals.css';
 import { usePersistedState } from './utils/localStorage';
 import { useCluster } from './hooks/useAPI';
 import { CommandPalette } from './components/shell/CommandPalette';
-import { useStatusbarContent } from './components/shell/Statusbar';
+import { Sidebar, NAV_TREE, PATH_TO_NAV_ID, NAV_ID_TO_PATH } from './components/shell/Sidebar';
+import { Topbar } from './components/shell/Topbar';
+import { Statusbar } from './components/shell/Statusbar';
 import { OverviewView } from './components/overview/OverviewView';
 import { ContainersView } from './components/containers/ContainersView';
 import { TopologyView } from './components/topology/TopologyView';
@@ -19,40 +16,19 @@ import { PlaceholderView } from './components/shared/PlaceholderView';
 import { ErrorView } from './components/shared/ErrorView';
 import { ChatRail } from './components/chat/ChatRail';
 
-// Nav order and labels must match design (ux_refresh.md §3.1 NAV_TREE)
-const ROUTES = [
-  { path: '/', name: 'Overview', display: 'Overview' },
-  { path: '/cluster/overview', name: 'Overview', display: 'Overview', icon: 'dashboard' },
-  { path: '/cluster/servers', name: 'Servers', display: 'Servers', icon: 'cpu' },
-  { path: '/cluster/containers', name: 'Containers', display: 'Containers', icon: 'layers' },
-  { path: '/cluster/network', name: 'Network', display: 'Network', icon: 'link' },
-  { path: '/cluster/applications', name: 'Applications', display: 'Applications', icon: 'zap' },
-  { path: '/cluster/storage', name: 'Storage', display: 'Storage', icon: 'database' },
-  { path: '/cluster/bots', name: 'Bots', display: 'Bots', icon: 'bot' },
-  { path: '/cluster/topology', name: 'Topology', display: 'Topology', icon: 'globe' },
-  { path: '/cluster/logs', name: 'Logs', display: 'Logs', icon: 'history' },
-  { path: '/cluster/configuration', name: 'Configuration', display: 'Configuration', icon: 'settings' },
-];
-
-interface NavItem {
-  id: string;
-  label: string;
-  icon: string;
-  path: string;
-}
-
-const NAV_ITEMS: NavItem[] = ROUTES
-  .filter(r => r.icon)
-  .map(r => ({
-    id: r.path.split('/').pop() || 'overview',
-    label: r.display,
-    icon: r.icon!,
-    path: r.path,
-  }));
+// Command palette commands derived from nav tree
+const PALETTE_COMMANDS = NAV_TREE.map(item => ({
+  id: item.id,
+  label: item.label,
+  path: NAV_ID_TO_PATH[item.id] ?? '/cluster/overview',
+  icon: item.icon,
+  category: 'Navigation',
+}));
 
 const AppContent: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
+
   const [sidebarCollapsed, setSidebarCollapsed] = usePersistedState('sidebarCollapsed', false);
   const [darkCanvas] = usePersistedState('darkCanvas', true);
   const [chatVisible, setChatVisible] = usePersistedState('chatVisible', true);
@@ -61,18 +37,12 @@ const AppContent: React.FC = () => {
   const [density] = usePersistedState('density', 'regular');
   const [showAlerts, setShowAlerts] = usePersistedState('showAlerts', true);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
+
   const { data: clusterData, isLoading, error, refetch } = useCluster();
-  const statusbarContent = useStatusbarContent(clusterData);
 
-  const currentRoute = ROUTES.find(r => r.path === location.pathname) || ROUTES[0];
-
-  const commandPaletteCommands = ROUTES.filter(r => r.icon).map(r => ({
-    id: r.path,
-    label: r.display,
-    path: r.path,
-    icon: r.icon || 'dashboard',
-    category: 'Navigation',
-  }));
+  const clusterName = clusterData?.cluster?.name ?? 'homelab';
+  const activeNavId = PATH_TO_NAV_ID[location.pathname] ?? 'overview';
+  const alertsCount = clusterData?.cluster?.activeAlerts ?? 0;
 
   useEffect(() => {
     document.body.classList.toggle('dark-canvas', darkCanvas);
@@ -95,47 +65,11 @@ const AppContent: React.FC = () => {
         setCommandPaletteOpen(false);
       }
     };
-
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [commandPaletteOpen]);
 
-  const iconMap: Record<string, IconName> = {
-    dashboard: 'dashboard',
-    layers: 'layout',
-    globe: 'graph',
-    cpu: 'info',
-    link: 'link',
-    zap: 'alert',
-    database: 'data',
-    bot: 'user',
-    history: 'reload',
-    settings: 'settings',
-  };
-
-  const sidebarSections = [
-    {
-      title: '',
-      items: NAV_ITEMS.map(item => ({
-        id: item.id,
-        label: item.label,
-        icon: iconMap[item.icon] || 'dashboard',
-      })),
-    },
-  ];
-
-  const iconButtonBaseStyle: React.CSSProperties = {
-    background: 'none',
-    border: 'none',
-    cursor: 'pointer',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: '4px',
-    color: 'rgb(var(--shell-fg-1))',
-  };
-
-  const viewContent = isLoading ? (
+  const overviewContent = isLoading ? (
     <PlaceholderView routeName="Overview" />
   ) : error ? (
     <ErrorView
@@ -144,10 +78,7 @@ const AppContent: React.FC = () => {
       isDegraded={false}
     />
   ) : clusterData ? (
-    <OverviewView
-      data={clusterData}
-      showAlerts={showAlerts}
-    />
+    <OverviewView data={clusterData} showAlerts={showAlerts} />
   ) : (
     <ErrorView
       title="No Data Available"
@@ -157,114 +88,72 @@ const AppContent: React.FC = () => {
   );
 
   return (
-    <ShellLayout
-        appTitle={{
-          title: clusterData?.cluster?.name ?? 'Homelab',
-          version: 'HOMELAB',
-        }}
-        sidebar={{
-          sections: sidebarSections,
-          activeItemId: NAV_ITEMS.find(i => i.path === location.pathname)?.id,
-          collapsed: sidebarCollapsed,
-          onCollapse: setSidebarCollapsed,
-          onSelectItem: (itemId) => {
-            const item = NAV_ITEMS.find(i => i.id === itemId);
-            if (item) navigate(item.path);
-          },
-        }}
-        topbar={{
-          breadcrumbs: [
-            { label: 'cluster', onClick: () => navigate('/cluster/overview') },
-            { label: currentRoute.display },
-          ],
-          children: (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginLeft: 'auto' }}>
-              <button
-                onClick={() => setShowAlerts(!showAlerts)}
-                title="Activity"
-                style={iconButtonBaseStyle}
-              >
-                <HeimdallIcon name="bell" size={16} />
-              </button>
-              <button
-                onClick={() => refetch()}
-                title="Refresh"
-                style={iconButtonBaseStyle}
-              >
-                <HeimdallIcon name="reload" size={16} />
-              </button>
-              <button
-                onClick={() => setChatVisible(!chatVisible)}
-                title={chatVisible ? 'Close bot console' : 'Open bot console'}
-                style={{
-                  ...iconButtonBaseStyle,
-                  background: chatVisible ? 'rgb(var(--shell-surface))' : 'none',
-                  color: chatVisible ? 'rgb(var(--accent-cyan))' : 'rgb(var(--shell-fg-1))',
-                }}
-              >
-                <HeimdallIcon name="user" size={16} />
-              </button>
-              <span
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '4px',
-                  fontSize: '12px',
-                  color: 'rgb(var(--accent-cyan))',
-                  marginLeft: '8px',
-                  paddingLeft: '8px',
-                  borderLeft: '1px solid rgb(var(--shell-border))',
-                }}
-              >
-                <span
-                  style={{
-                    width: '6px',
-                    height: '6px',
-                    borderRadius: '50%',
-                    backgroundColor: 'rgb(var(--accent-cyan))',
-                  }}
-                />
-                main
-              </span>
-            </div>
-          ),
-        }}
-        statusbar={statusbarContent}
-      >
-        <CommandPalette
-          isOpen={commandPaletteOpen}
-          onClose={() => setCommandPaletteOpen(false)}
-          commands={commandPaletteCommands}
+    <div className="desktop">
+      <div className={`app-shell${chatVisible ? ' with-chat' : ' no-chat'}`}>
+
+        <Sidebar
+          activeId={activeNavId}
+          clusterName={clusterName}
+          collapsed={sidebarCollapsed}
+          onCollapse={setSidebarCollapsed}
+          onNavigate={(path) => navigate(path)}
+          servers={clusterData?.servers}
+          apps={clusterData?.apps}
+          bots={clusterData?.bots}
         />
-        <div style={{ display: 'flex', height: '100%', overflow: 'hidden' }}>
-          <div style={{ flex: 1, overflow: 'auto', height: '100%' }}>
-            <Routes>
-              <Route path="/" element={<Navigate to={activeRoute} replace />} />
-              <Route path="/cluster/overview" element={viewContent} />
-              <Route path="/cluster/containers" element={<ContainersView />} />
-              <Route path="/cluster/topology" element={<TopologyView />} />
-              <Route path="/cluster/servers" element={<PlaceholderView routeName="Servers" />} />
-              <Route path="/cluster/network" element={<NetworkView />} />
-              <Route path="/cluster/applications" element={<PlaceholderView routeName="Applications" />} />
-              <Route path="/cluster/storage" element={<PlaceholderView routeName="Storage" />} />
-              <Route path="/cluster/bots" element={<PlaceholderView routeName="Bots" />} />
-              <Route path="/cluster/logs" element={<PlaceholderView routeName="Logs" />} />
-              <Route path="/cluster/configuration" element={<PlaceholderView routeName="Configuration" />} />
-              {/* Legacy redirects for old routes */}
-              <Route path="/cluster/apps" element={<Navigate to="/cluster/applications" replace />} />
-              <Route path="/cluster/settings" element={<Navigate to="/cluster/configuration" replace />} />
-            </Routes>
-          </div>
-          {chatVisible && (
-            <ChatRail
-              bots={clusterData?.bots ?? []}
-              threadByBot={clusterData?.threadByBot ?? {}}
-              activeBot={activeBot}
-              onActiveBotChange={setActiveBot}
-            />
-          )}
+
+        <div className="workspace">
+          <Topbar
+            navId={activeNavId}
+            clusterName={clusterName}
+            alertsCount={alertsCount}
+            chatVisible={chatVisible}
+            sidebarCollapsed={sidebarCollapsed}
+            onSidebarCollapse={setSidebarCollapsed}
+            onChatToggle={() => setChatVisible(!chatVisible)}
+            onRefresh={() => refetch()}
+            onOpenCommandPalette={() => setCommandPaletteOpen(true)}
+          />
+
+          <main className="canvas-area">
+            <div className="canvas-inner">
+              <CommandPalette
+                isOpen={commandPaletteOpen}
+                onClose={() => setCommandPaletteOpen(false)}
+                commands={PALETTE_COMMANDS}
+              />
+              <Routes>
+                <Route path="/" element={<Navigate to={activeRoute} replace />} />
+                <Route path="/cluster/overview" element={overviewContent} />
+                <Route path="/cluster/containers" element={<ContainersView />} />
+                <Route path="/cluster/topology" element={<TopologyView />} />
+                <Route path="/cluster/servers" element={<PlaceholderView routeName="Servers" />} />
+                <Route path="/cluster/network" element={<NetworkView />} />
+                <Route path="/cluster/applications" element={<PlaceholderView routeName="Applications" />} />
+                <Route path="/cluster/storage" element={<PlaceholderView routeName="Storage" />} />
+                <Route path="/cluster/bots" element={<PlaceholderView routeName="Bots" />} />
+                <Route path="/cluster/logs" element={<PlaceholderView routeName="Logs" />} />
+                <Route path="/cluster/configuration" element={<PlaceholderView routeName="Configuration" />} />
+                <Route path="/cluster/apps" element={<Navigate to="/cluster/applications" replace />} />
+                <Route path="/cluster/settings" element={<Navigate to="/cluster/configuration" replace />} />
+              </Routes>
+            </div>
+          </main>
         </div>
-      </ShellLayout>
+
+        {chatVisible && (
+          <ChatRail
+            bots={clusterData?.bots ?? []}
+            threadByBot={clusterData?.threadByBot ?? {}}
+            activeBot={activeBot}
+            onActiveBotChange={setActiveBot}
+            onClose={() => setChatVisible(false)}
+          />
+        )}
+      </div>
+
+      <Statusbar clusterData={clusterData} />
+    </div>
   );
 };
 

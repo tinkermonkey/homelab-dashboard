@@ -1,41 +1,18 @@
-/* Font imports */
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
-@import url("https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap");
+/* Project-specific overrides — heimdall-tokens.css is the canonical token source */
 
-/* Custom tokens — extensions to Heimdall's design system */
+/* Per-host color tints mapped to actual server host IDs from the API */
 :root {
-  /* Per-host color tints */
-  --host-t5610-tint: 34 211 238;
-  --host-t5610-tint-a12: rgba(34, 211, 238, 0.125);
-  --host-t5610-tint-a31: rgba(34, 211, 238, 0.314);
-  --host-petit-cochon-tint: 16 185 129;
-  --host-petit-cochon-tint-a12: rgba(16, 185, 129, 0.125);
-  --host-petit-cochon-tint-a31: rgba(16, 185, 129, 0.314);
-  --host-hp7052-tint: 167 139 250;
-  --host-hp7052-tint-a12: rgba(167, 139, 250, 0.125);
-  --host-hp7052-tint-a31: rgba(167, 139, 250, 0.314);
-
-  /* Status colors — intentional design-spec values */
-  --status-ok: 16 185 129;
-  --status-warn: 245 158 11;
-  --status-error: 244 63 94;
-  --status-updating: 34 211 238;
-
-  /* Extended accent palette */
-  --accent-cyan: 34 211 238;
-  --accent-cyan-2: 6 182 212;
-  --accent-cyan-deep: 14 126 163;
-  --accent-amber: 245 158 11;
-  --accent-violet: 167 139 250;
-  --accent-emerald: 16 185 129;
-  --accent-rose: 244 63 94;
-
-  /* Fonts */
-  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
-               "Helvetica Neue", Arial, sans-serif;
-  --font-mono: "JetBrains Mono", Menlo, ui-monospace, SFMono-Regular, Monaco,
-               Consolas, "Liberation Mono", "Courier New", monospace;
+  --host-t5610-tint:        var(--status-cyan);
+  --host-petit-cochon-tint: var(--status-emerald);
+  --host-hp7052-tint:       var(--status-violet);
+  --host-austins-mac-mini-tint: var(--status-amber);
 }
+
+/* app-cell host left-border tints (uses actual host IDs from API data) */
+.app-cell[data-host="t5610"]         { border-left-color: var(--status-cyan); }
+.app-cell[data-host="petit-cochon"]  { border-left-color: var(--status-emerald); }
+.app-cell[data-host="hp7052"]        { border-left-color: var(--status-violet); }
+.app-cell[data-host="austins-mac-mini"] { border-left-color: var(--status-amber); }
 
 * {
   box-sizing: border-box;
@@ -46,17 +23,12 @@ html, body {
   padding: 0;
   width: 100%;
   height: 100%;
-  font-family: var(--font-sans);
-  color: rgb(var(--canvas-fg-1));
-  background: rgb(var(--canvas-bg));
-  line-height: 1.5;
+  overflow: hidden;
 }
 
 #root {
   width: 100%;
   height: 100%;
-  display: flex;
-  flex-direction: column;
 }
 
 code, pre, .monospace {
@@ -84,61 +56,4 @@ body.density-compact .table__row {
   min-width: 1560px;
 }
 
-/* Show the sidebar collapse toggle using the same styling as sidebar nav items */
-.sidebar__toggle {
-  display: flex;
-  width: 100%;
-  align-items: center;
-  padding: 8px 10px;
-  border-radius: var(--radius-md);
-  color: rgb(var(--shell-fg-2));
-  background: none;
-  border: none;
-  cursor: pointer;
-  margin-bottom: 4px;
-  transition: all 80ms ease-out;
-}
 
-.sidebar__toggle:hover {
-  background: rgb(var(--shell-surface));
-  color: rgb(var(--shell-fg-1));
-}
-
-.sidebar--collapsed .sidebar__toggle {
-  justify-content: center;
-  padding: 8px;
-}
-
-/* Ensure topbar buttons stack properly */
-.topbar {
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-@media (max-width: 768px) {
-  .topbar {
-    flex-wrap: wrap;
-    row-gap: 6px;
-  }
-
-  .topbar__breadcrumb {
-    order: 2;
-    flex-basis: 100%;
-  }
-}
-
-/* Pulse animation for status indicators */
-@keyframes pulse {
-  0%, 100% {
-    opacity: 1;
-    transform: scale(1);
-  }
-  50% {
-    opacity: 0.6;
-    transform: scale(1.2);
-  }
-}
-
-.pulse {
-  animation: pulse 1.6s ease-in-out infinite;
-}
