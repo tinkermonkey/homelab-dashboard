@@ -1,2 +1,3 @@
-/* Import Heimdall's base design system CSS from package */
-@import '@tinkermonkey/heimdall-ui/css';
+/* Heimdall v2 — local token + composition layers */
+@import './heimdall-tokens.css';
+@import './heimdall-components.css';

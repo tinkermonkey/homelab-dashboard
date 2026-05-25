@@ -1,5 +1,5 @@
 ---
-description: "Run conformance tests (vitest + tsc + visual screenshot diff), plan and fix all deficiencies using parallel sub-agents, then re-run. Loops up to 5 times until clean. Use when: fixing test failures, conformance failures, UX migration gaps, visual design gaps."
+description: "Run conformance tests (vitest + tsc + Heimdall component audit + visual screenshot diff), plan and fix all deficiencies using parallel sub-agents, then re-run. Loops up to 5 times until clean. Heimdall component structure must be clean before visual comparison runs. Use when: fixing test failures, conformance failures, UX migration gaps, visual design gaps."
 name: "Conformance Fix Loop"
 argument-hint: "Optional focus area (e.g. 'client', 'server', 'visual', or leave blank for all)"
 agent: "agent"
@@ -62,7 +62,44 @@ Collect all failures:
 
 ---
 
-### Step 3 — Visual Comparison (all 4 implemented views)
+### Step 3 — Heimdall Component Audit
+
+Before any visual comparison, verify that every implementation file is using the correct Heimdall CSS classes rather than ad-hoc styles.
+
+**Reference sources (read-only):**
+- `client/src/styles/heimdall-components.css` — canonical class names for all shell, canvas, nav, card, and bot-console components
+- `client/src/styles/heimdall-tokens.css` — canonical CSS custom-property tokens
+- `client/src/styles/heimdall.css` — entry point that imports both layers
+
+**Audit procedure:**
+
+1. Enumerate every top-level Heimdall class defined in `heimdall-components.css` (e.g. `.app-shell`, `.shell-rail`, `.workspace`, `.topbar`, `.canvas-area`, `.statusbar`, `.nav-section`, `.nav-item`, `.card`, `.card-head`, `.stat-block`, `.host-pill`, `.bc-*`, etc.).
+
+2. For each implementation file under `client/src/components/` and `client/src/App.tsx`, grep for usage of the corresponding Heimdall class or token:
+
+```bash
+grep -rn "className=" client/src/components/ client/src/App.tsx | grep -v "node_modules"
+```
+
+3. Flag any component that:
+   - Uses an inline `style={{}}` override where a Heimdall token/class exists for the same property
+   - Defines a local CSS class duplicating a Heimdall class (check paired `.css` files next to each `.tsx`)
+   - Applies raw hex colours or hardcoded pixel values instead of `var(--…)` tokens
+   - Is missing the expected Heimdall structural class (e.g. a sidebar rendered without `.shell-rail`, a view wrapper without `.canvas-area`)
+
+4. Classify every violation as one of:
+   - **Wrong class** — component exists in Heimdall but the impl uses a different/custom class name → replace with the Heimdall class
+   - **Missing class** — a required structural wrapper class is absent entirely → add it
+   - **Raw value** — hardcoded colour/size where a token exists → replace with the correct `var(--…)` token
+   - **Duplicate local style** — a local CSS rule re-implements a Heimdall class → delete local rule and use Heimdall class
+
+**Gate:** If any Heimdall violations are found, add them to the fix plan (Step 4) and **do not proceed to visual comparison (Step 5) this iteration**. Fix the structure first, re-run Step 3 in the next iteration, and only advance to Step 5 when this audit is clean.
+
+---
+
+### Step 4 — Visual Comparison (all 4 implemented views)
+
+> **Prerequisite:** Step 3 (Heimdall Component Audit) must be clean — zero violations — before running this step. If violations remain, skip this step and proceed directly to Step 5 (fix plan).
 
 For each view below, screenshot **both** the design prototype and the live implementation, then analyze the diff using `view_image` on both images side-by-side, cross-referencing [documentation/ux_refresh.md](../documentation/ux_refresh.md):
 
@@ -96,7 +133,7 @@ For scroll-dependent content, scroll the canvas area before the second screensho
 
 ---
 
-### Step 4 — Create Fix Plan
+### Step 5 — Create Fix Plan
 
 Append (or create) `documentation/conformance-fix-plan.md`:
 
@@ -108,14 +145,17 @@ Generated: <ISO timestamp>
 ## Summary
 - Test failures: X client, Y server
 - Type errors: Z
+- Heimdall violations: W (wrong-class / missing-class / raw-value / duplicate-local-style)
 - Visual gaps: A structural, B data, C styling, D needs-human-review
+  _(visual gaps only populated when Heimdall audit is clean)_
 
 ## Deficiencies
 
 | # | Type | View / File | Description | Root Cause | Fix Strategy |
-|---|------|-------------|-------------|------------|--------------|
-| 1 | structural | Overview | Missing AlertsStrip component | Not rendered in JSX | Add <AlertsStrip> to OverviewView |
-| 2 | data | Containers | Hardcoded tab count "28" | Should derive from containers.length | Wire from API data |
+|---|------|-------------|-------------|------------|----------------------------------------------|
+| 1 | heimdall | Shell | Sidebar uses `.sidebar` instead of `.shell-rail` | Custom class, not migrated | Replace className with `.shell-rail` |
+| 2 | structural | Overview | Missing AlertsStrip component | Not rendered in JSX | Add <AlertsStrip> to OverviewView |
+| 3 | data | Containers | Hardcoded tab count "28" | Should derive from containers.length | Wire from API data |
 
 ## Parallel Work Batches
 
@@ -132,7 +172,7 @@ Fixes: #2, #4 ...
 
 ---
 
-### Step 5 — Fix with Sub-Agents (Parallel Where Possible)
+### Step 6 — Fix with Sub-Agents (Parallel Where Possible)
 
 Launch one sub-agent per independent batch. Non-overlapping file sets → parallel; same-file fixes → sequential.
 
@@ -154,15 +194,16 @@ After all sub-agents complete, check for conflicting edits to the same file.
 
 ---
 
-### Step 6 — Update Tests If Needed
+### Step 7 — Update Tests If Needed
 
 If a test contains stale assertions that no longer match a legitimately updated implementation, update it to reflect the new correct behavior. Never delete tests.
 
 ---
 
-### Step 7 — Assess Loop Continuation
+### Step 8 — Assess Loop Continuation
 
-- **All automated tests pass + no type errors + no structural/data/styling visual gaps** → proceed to Final Summary and stop.
+- **All automated tests pass + no type errors + Heimdall audit clean + no structural/data/styling visual gaps** → proceed to Final Summary and stop.
+- **Heimdall violations remain but tests pass** → increment iteration counter and return to Step 1 (do not count as a full pass).
 - **Iteration 5 reached** → stop and list all remaining open issues.
 - **Otherwise** → increment iteration counter and return to Step 1.
 
@@ -178,10 +219,11 @@ Output:
 Iterations run: N / 5
 Final status: PASS | PARTIAL | FAIL
 
-Automated tests:   X passing, Y failing
-Type errors:       Z
-Visual gaps fixed: A structural, B data, C styling
-Needs human review: D items (see documentation/conformance-fix-plan.md)
+Automated tests:     X passing, Y failing
+Type errors:         Z
+Heimdall violations: W remaining (0 = audit clean)
+Visual gaps fixed:   A structural, B data, C styling
+Needs human review:  D items (see documentation/conformance-fix-plan.md)
 
 Files changed:
 - ...

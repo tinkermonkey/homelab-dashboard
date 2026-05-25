@@ -1,180 +1,145 @@
 import React from 'react';
 import type { Gateway } from '@homelab/shared';
 import { ProgressBar } from '@tinkermonkey/heimdall-ui';
+import { Icon } from '../shared/Icon';
 import { GatewayChart } from './GatewayChart';
-import './GatewayPanel.css';
 
 interface GatewayPanelProps {
   gateway: Gateway;
 }
 
-const STATUS_COLORS: Record<string, string> = {
-  online: 'rgb(var(--status-ok))',
-  degraded: 'rgb(var(--status-warn))',
-  offline: 'rgb(var(--status-error))',
-};
-
 export const GatewayPanel: React.FC<GatewayPanelProps> = ({ gateway }) => {
-  const statusColor = STATUS_COLORS[gateway.status] || STATUS_COLORS.online;
   const wlanErr = gateway.wlanStatus === 'error';
   const lanErr = gateway.lanStatus === 'error';
 
+  const statusTone =
+    gateway.status === 'degraded' ? 'amber' :
+    gateway.status === 'offline'  ? 'rose'  : 'emerald';
+
   return (
-    <div className="gateway-panel">
-      <div className="gateway-panel__header">
-        <div className="gateway-panel__title-block">
-          <h3 className="gateway-panel__title">Gateway</h3>
-          <div className="gateway-panel__status">
-            <span
-              className="gateway-panel__status-dot"
-              style={{ backgroundColor: statusColor }}
-            />
-            <span className="gateway-panel__status-text">{gateway.status.toUpperCase()}</span>
-            {wlanErr && (
-              <span className="gateway-panel__subsystem-badge gateway-panel__subsystem-badge--warn">WLAN</span>
-            )}
-            {lanErr && (
-              <span className="gateway-panel__subsystem-badge gateway-panel__subsystem-badge--warn">LAN</span>
-            )}
-          </div>
+    <div className="panel">
+      <div className="panel-head">
+        <span className="panel-title">
+          <Icon name="globe" size={16} />
+          Internet connection
+          <span className="panel-sub">{gateway.hostname}</span>
+        </span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span className={`chip ${statusTone}`}>
+            <span className="dot" />
+            {gateway.status}
+          </span>
+          {wlanErr && <span className="chip amber">WLAN</span>}
+          {lanErr  && <span className="chip amber">LAN</span>}
         </div>
       </div>
 
-      <div className="gateway-panel__content">
-        <div className="gateway-panel__info-grid">
-          <div className="gateway-panel__info-item">
-            <span className="gateway-panel__label">ISP</span>
-            <span className="gateway-panel__value">{gateway.isp}</span>
-          </div>
-          <div className="gateway-panel__info-item">
-            <span className="gateway-panel__label">PLAN</span>
-            <span className="gateway-panel__value">{gateway.plan}</span>
-          </div>
-          <div className="gateway-panel__info-item">
-            <span className="gateway-panel__label">PUBLIC IP</span>
-            <span className="gateway-panel__value monospace">{gateway.publicIp}</span>
-          </div>
-          <div className="gateway-panel__info-item">
-            <span className="gateway-panel__label">LOCATION</span>
-            <span className="gateway-panel__value">{gateway.geo}</span>
-          </div>
-          <div className="gateway-panel__info-item">
-            <span className="gateway-panel__label">HOSTNAME</span>
-            <span className="gateway-panel__value monospace">{gateway.hostname}</span>
-          </div>
-          <div className="gateway-panel__info-item">
-            <span className="gateway-panel__label">ASN</span>
-            <span className="gateway-panel__value monospace">{gateway.asn}</span>
-          </div>
-          <div className="gateway-panel__info-item">
-            <span className="gateway-panel__label">WAN INTERFACE</span>
-            <span className="gateway-panel__value monospace">{gateway.wanIf}</span>
-          </div>
-          <div className="gateway-panel__info-item">
-            <span className="gateway-panel__label">UPTIME</span>
-            <span className="gateway-panel__value">{gateway.statusFor}</span>
-          </div>
-          {gateway.wwwLatencyMs != null && (
-            <div className="gateway-panel__info-item">
-              <span className="gateway-panel__label">WWW LATENCY</span>
-              <span className="gateway-panel__value monospace">{gateway.wwwLatencyMs} ms</span>
-            </div>
-          )}
-          {gateway.clientsTotal != null && (
-            <div className="gateway-panel__info-item">
-              <span className="gateway-panel__label">CLIENTS</span>
-              <span className="gateway-panel__value">{gateway.clientsTotal}</span>
-            </div>
-          )}
-        </div>
-
-        <div className="gateway-panel__divider" />
-
-        <div className="gateway-panel__charts">
-          <GatewayChart
-            downHist={gateway.downHist}
-            upHist={gateway.upHist}
-            pingHist={gateway.pingHist}
-            currentDown={gateway.downMbps}
-            currentUp={gateway.upMbps}
-            currentPing={gateway.pingMs}
-          />
-        </div>
-
-        <div className="gateway-panel__quality-section">
-          <div className="gateway-panel__quality-stats">
-            <div className="gateway-panel__quality-item">
-              <span className="gateway-panel__quality-label">JITTER</span>
-              <span className="gateway-panel__quality-value">±{gateway.jitterMs} ms</span>
-            </div>
-            <div className="gateway-panel__quality-item">
-              <span className="gateway-panel__quality-label">PACKET LOSS</span>
-              <span className="gateway-panel__quality-value">{gateway.lossPct.toFixed(2)}%</span>
-            </div>
-          </div>
-        </div>
-
-        {(gateway.cpuPct != null || gateway.memPct != null) && (
-          <>
-            <div className="gateway-panel__divider" />
-            <div className="gateway-panel__router-health">
-              {gateway.cpuPct != null && (
-                <div className="gateway-panel__router-meter">
-                  <div className="gateway-panel__router-meter-header">
-                    <span className="gateway-panel__label">ROUTER CPU</span>
-                    <span className="gateway-panel__value monospace">{gateway.cpuPct.toFixed(1)}%</span>
-                  </div>
-                  <ProgressBar
-                    percent={gateway.cpuPct}
-                    color={gateway.cpuPct >= 90 ? 'rose' : gateway.cpuPct >= 70 ? 'amber' : 'emerald'}
-                  />
-                </div>
+      <div className="panel-body flush">
+        <div className="gw-split">
+          <div className="gw-left">
+            <div className="gw-eyebrow">Connection · {gateway.plan}</div>
+            <div className="kv">
+              <div className="k">ISP</div>
+              <div className="v">{gateway.isp}</div>
+              <div className="k">ASN</div>
+              <div className="v">{gateway.asn}</div>
+              <div className="k">Public IP</div>
+              <div className="v">
+                {gateway.publicIp}
+                <span className="flag">↗ ipv4</span>
+              </div>
+              <div className="k">Geo</div>
+              <div className="v">{gateway.geo}</div>
+              <div className="k">WAN iface</div>
+              <div className="v">{gateway.wanIf}</div>
+              <div className="k">Ping</div>
+              <div className="v">{gateway.pingMs} ms · jitter {gateway.jitterMs} ms</div>
+              <div className="k">Loss 24h</div>
+              <div className="v">{gateway.lossPct.toFixed(2)} %</div>
+              <div className="k">Uptime</div>
+              <div className="v">{gateway.statusFor}</div>
+              {gateway.wwwLatencyMs != null && (
+                <>
+                  <div className="k">WWW latency</div>
+                  <div className="v">{gateway.wwwLatencyMs} ms</div>
+                </>
               )}
-              {gateway.memPct != null && (
-                <div className="gateway-panel__router-meter">
-                  <div className="gateway-panel__router-meter-header">
-                    <span className="gateway-panel__label">ROUTER MEM</span>
-                    <span className="gateway-panel__value monospace">{gateway.memPct.toFixed(1)}%</span>
-                  </div>
-                  <ProgressBar
-                    percent={gateway.memPct}
-                    color={gateway.memPct >= 90 ? 'rose' : gateway.memPct >= 80 ? 'amber' : 'emerald'}
-                  />
-                </div>
+              {gateway.clientsTotal != null && (
+                <>
+                  <div className="k">Clients</div>
+                  <div className="v">{gateway.clientsTotal}</div>
+                </>
               )}
             </div>
-          </>
-        )}
 
-        <div className="gateway-panel__divider" />
+            {(gateway.cpuPct != null || gateway.memPct != null) && (
+              <div style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {gateway.cpuPct != null && (
+                  <div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                      <span className="gw-eyebrow" style={{ marginBottom: 0 }}>ROUTER CPU</span>
+                      <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11 }}>{gateway.cpuPct.toFixed(1)}%</span>
+                    </div>
+                    <ProgressBar
+                      percent={gateway.cpuPct}
+                      color={gateway.cpuPct >= 90 ? 'rose' : gateway.cpuPct >= 70 ? 'amber' : 'emerald'}
+                    />
+                  </div>
+                )}
+                {gateway.memPct != null && (
+                  <div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                      <span className="gw-eyebrow" style={{ marginBottom: 0 }}>ROUTER MEM</span>
+                      <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11 }}>{gateway.memPct.toFixed(1)}%</span>
+                    </div>
+                    <ProgressBar
+                      percent={gateway.memPct}
+                      color={gateway.memPct >= 90 ? 'rose' : gateway.memPct >= 80 ? 'amber' : 'emerald'}
+                    />
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
 
-        <div className="gateway-panel__stats-strip">
-          <div className="gateway-panel__stat">
-            <span className="gateway-panel__stat-label">EGRESS TODAY</span>
-            <span className="gateway-panel__stat-value">{gateway.egressTodayGB.toFixed(1)} GB</span>
+          <div className="gw-right">
+            <div className="gw-charts">
+              <GatewayChart
+                downHist={gateway.downHist}
+                upHist={gateway.upHist}
+                pingHist={gateway.pingHist}
+                currentDown={gateway.downMbps}
+                currentUp={gateway.upMbps}
+                currentPing={gateway.pingMs}
+              />
+            </div>
           </div>
-          <div className="gateway-panel__stat">
-            <span className="gateway-panel__stat-label">INGRESS TODAY</span>
-            <span className="gateway-panel__stat-value">{gateway.ingressTodayGB.toFixed(1)} GB</span>
+        </div>
+
+        <div className="gw-stat-strip">
+          <div>
+            <span className="k">Egress · today</span>
+            <span className="v">{gateway.egressTodayGB.toFixed(1)} GB</span>
+            <span className="m">↑ {gateway.egressMonthTB.toFixed(2)} TB this month</span>
           </div>
-          <div className="gateway-panel__stat">
-            <span className="gateway-panel__stat-label">EGRESS MONTH</span>
-            <span className="gateway-panel__stat-value">{gateway.egressMonthTB.toFixed(2)} TB</span>
+          <div>
+            <span className="k">Ingress · today</span>
+            <span className="v">{gateway.ingressTodayGB.toFixed(1)} GB</span>
+            <span className="m">↓ {gateway.downMbps} Mbps now</span>
           </div>
-          <div className="gateway-panel__stat">
-            <span className="gateway-panel__stat-label">DNS BLOCKED</span>
-            <span className="gateway-panel__stat-value">{gateway.blockedPct}%</span>
+          <div>
+            <span className="k">DNS · blocked</span>
+            <span className="v">{gateway.blockedPct}%</span>
+            <span className="m">{gateway.dnsBlocked.toLocaleString()} of {gateway.dnsResolved.toLocaleString()}</span>
           </div>
-          <div className="gateway-panel__stat">
-            <span className="gateway-panel__stat-label">DNS RESOLVED</span>
-            <span className="gateway-panel__stat-value">{gateway.dnsResolved.toLocaleString()}</span>
-          </div>
-          <div className="gateway-panel__stat">
-            <span className="gateway-panel__stat-label">VPN PEERS</span>
-            <span className="gateway-panel__stat-value">{gateway.vpnPeersActive} / {gateway.vpnPeers}</span>
+          <div>
+            <span className="k">VPN peers</span>
+            <span className="v">{gateway.vpnPeersActive} / {gateway.vpnPeers}</span>
+            <span className="m">active tunnels</span>
           </div>
         </div>
       </div>
     </div>
   );
 };
+

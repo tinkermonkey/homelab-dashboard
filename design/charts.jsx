@@ -1,85 +1,80 @@
-// Charts — small inline SVG sparklines + line charts
-// Pure functions over arrays of numbers; render at fixed viewBox sizes.
-
-function sparkPaths(values, width = 84, height = 22, pad = 1.5) {
-  if (!values || values.length === 0) return { line: '', fill: '' };
+// Sparkline utilities — pure functions from arrays of numbers
+function sparkPaths(values, w, h, padY = 2) {
+  if (!values || values.length === 0) return { line: '', area: '' };
   const min = Math.min(...values);
   const max = Math.max(...values);
-  const range = max - min || 1;
-  const innerW = width - pad * 2;
-  const innerH = height - pad * 2;
-  const step = innerW / (values.length - 1 || 1);
-  const pts = values.map((v, i) => {
-    const x = pad + step * i;
-    const y = pad + innerH - ((v - min) / range) * innerH;
-    return [x, y];
+  const range = (max - min) || 1;
+  const step = w / Math.max(1, values.length - 1);
+  let line = '';
+  let area = `M 0 ${h}`;
+  values.forEach((v, i) => {
+    const x = +(i * step).toFixed(2);
+    const y = +(h - padY - ((v - min) / range) * (h - padY * 2)).toFixed(2);
+    line += (i === 0 ? `M ${x} ${y}` : ` L ${x} ${y}`);
+    area += ` L ${x} ${y}`;
   });
-  const line = pts.map((p, i) => (i === 0 ? `M${p[0].toFixed(1)} ${p[1].toFixed(1)}` : `L${p[0].toFixed(1)} ${p[1].toFixed(1)}`)).join(' ');
-  const fill = `${line} L${pts[pts.length-1][0].toFixed(1)} ${height-pad} L${pts[0][0].toFixed(1)} ${height-pad} Z`;
-  return { line, fill };
+  area += ` L ${w} ${h} Z`;
+  return { line, area };
 }
 
-function Sparkline({ data, width = 84, height = 22, color }) {
-  const { line, fill } = sparkPaths(data, width, height);
+const Spark = ({ values, w = 92, h = 20, tone = 'cyan' }) => {
+  const { line, area } = sparkPaths(values, w, h);
+  const stroke = `var(--status-${tone})`;
   return (
-    <svg className="m-spark" data-color={color} viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" width={width} height={height}>
-      <path className="fill" d={fill} />
-      <path className="line" d={line} />
+    <svg className="spark" viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none">
+      <path d={area} style={{ fill: stroke, fillOpacity: 0.12 }} />
+      <path d={line} style={{ stroke, fill: 'none' }} strokeWidth="1.25" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
-}
+};
 
-// Full-size line chart with axis labels for the gateway
-function GwChart({ series, height = 88, color = 'cyan', yFmt = (v) => v, yMaxOverride, fillKey = 'f-down', lineKey = 'l-down' }) {
-  // series = [{ key, values, line, fill }]
-  const allVals = series.flatMap(s => s.values);
-  const min = 0; // anchor to zero for traffic/ping
-  const max = yMaxOverride != null ? yMaxOverride : Math.max(...allVals) * 1.1 || 1;
-  const W = 280;
-  const H = height;
-  const padL = 28, padR = 6, padT = 6, padB = 16;
-  const innerW = W - padL - padR;
-  const innerH = H - padT - padB;
-
-  const xAt = (i, n) => padL + (innerW * i) / (n - 1 || 1);
-  const yAt = (v) => padT + innerH - ((v - min) / (max - min || 1)) * innerH;
-
-  const buildPath = (vals) => {
-    const pts = vals.map((v, i) => [xAt(i, vals.length), yAt(v)]);
-    const line = pts.map((p, i) => (i === 0 ? `M${p[0].toFixed(1)} ${p[1].toFixed(1)}` : `L${p[0].toFixed(1)} ${p[1].toFixed(1)}`)).join(' ');
-    const fill = `${line} L${pts[pts.length-1][0].toFixed(1)} ${padT + innerH} L${pts[0][0].toFixed(1)} ${padT + innerH} Z`;
-    return { line, fill };
+// Bigger area chart with axis grid
+const AreaChart = ({ values, h = 72, color = 'var(--status-amber)', dashed = false,
+                    secondValues = null, secondColor = 'var(--status-violet)' }) => {
+  const w = 480;
+  const all = secondValues ? [...values, ...secondValues] : values;
+  const min = 0;
+  const max = Math.max(...all) * 1.1;
+  const range = max - min || 1;
+  const padY = 14, padX = 4;
+  const usableW = w - padX * 2;
+  const usableH = h - padY * 2;
+  const toPath = (vals) => {
+    const step = usableW / Math.max(1, vals.length - 1);
+    let line = '';
+    let area = `M ${padX} ${h - padY}`;
+    vals.forEach((v, i) => {
+      const x = +(padX + i * step).toFixed(2);
+      const y = +(h - padY - ((v - min) / range) * usableH).toFixed(2);
+      line += (i === 0 ? `M ${x} ${y}` : ` L ${x} ${y}`);
+      area += ` L ${x} ${y}`;
+    });
+    area += ` L ${w - padX} ${h - padY} Z`;
+    return { line, area };
   };
-
-  // y axis labels (3 lines: max, mid, 0)
-  const yTicks = [0, max / 2, max];
-
+  const a = toPath(values);
+  const b = secondValues ? toPath(secondValues) : null;
+  const gridLines = [0.25, 0.5, 0.75];
   return (
-    <svg className="gw-chart-svg" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" width="100%" height={height}>
-      <g className="grid">
-        {yTicks.map((t, i) => (
-          <line key={i} x1={padL} x2={W - padR} y1={yAt(t)} y2={yAt(t)} />
-        ))}
-      </g>
-      <g className="axis">
-        {yTicks.map((t, i) => (
-          <text key={i} x={padL - 4} y={yAt(t) + 3} textAnchor="end">{yFmt(t)}</text>
-        ))}
-        <text x={padL} y={H - 3} textAnchor="start">-24h</text>
-        <text x={W - padR} y={H - 3} textAnchor="end">now</text>
-      </g>
-      {series.map((s, i) => {
-        const { line, fill } = buildPath(s.values);
-        return (
-          <g key={i}>
-            <path className={`fill ${s.fillKey || fillKey}`} d={fill} />
-            <path className={`line ${s.lineKey || lineKey}`} d={line} />
-          </g>
-        );
-      })}
+    <svg className="gw-chart-svg" viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none">
+      {gridLines.map((p, i) => (
+        <line key={i} x1={padX} x2={w - padX} y1={padY + usableH * p} y2={padY + usableH * p}
+          stroke="currentColor" strokeOpacity="0.10" strokeDasharray="2 3" />
+      ))}
+      <path d={a.area} style={{ fill: color, fillOpacity: 0.14 }} />
+      <path d={a.line} style={{ stroke: color, fill: 'none' }} strokeWidth="1.5"
+        strokeDasharray={dashed ? '4 3' : '0'} strokeLinecap="round" strokeLinejoin="round" />
+      {b && <>
+        <path d={b.area} style={{ fill: secondColor, fillOpacity: 0.10 }} />
+        <path d={b.line} style={{ stroke: secondColor, fill: 'none' }} strokeWidth="1.5"
+          strokeDasharray="4 3" strokeLinecap="round" strokeLinejoin="round" />
+      </>}
+      <text className="gw-axis" x={padX} y={h - 2}>-24h</text>
+      <text className="gw-axis" x={w - padX} y={h - 2} textAnchor="end">now</text>
     </svg>
   );
-}
+};
 
-window.Sparkline = Sparkline;
-window.GwChart = GwChart;
+window.Spark = Spark;
+window.AreaChart = AreaChart;
+window.sparkPaths = sparkPaths;

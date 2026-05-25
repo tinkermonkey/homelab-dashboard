@@ -124,24 +124,17 @@ export const OverviewView: React.FC<OverviewViewProps> = ({ data, showAlerts = t
       </StatGrid>
 
       {/* Server Cards */}
-      <div className="servers-section">
-        <h2 className="section-title">Servers</h2>
-        <div className="servers-grid">
-          {data.servers.map(server => (
-            <ServerCard key={server.id} server={server} />
-          ))}
-        </div>
+      <div className="server-grid">
+        {data.servers.map(server => (
+          <ServerCard key={server.id} server={server} />
+        ))}
       </div>
 
       {/* Gateway Panel */}
-      <div style={{ marginTop: '24px' }}>
-        <GatewayPanel gateway={data.gateway} />
-      </div>
+      <GatewayPanel gateway={data.gateway} />
 
       {/* Apps Section */}
-      <div style={{ marginTop: '24px' }}>
-        <AppsSection apps={data.apps} />
-      </div>
+      <AppsSection apps={data.apps} />
     </div>
   );
 };

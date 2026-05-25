@@ -1,13 +1,14 @@
 import React from 'react';
-import { getIconSvgPath } from '../../utils/icons';
+import { getIconSvgPath, type IconName } from '../../utils/icons';
 
 interface IconProps {
-  name: string;
+  name: IconName;
   size?: number;
   style?: React.CSSProperties;
+  className?: string;
 }
 
-export const Icon: React.FC<IconProps> = ({ name, size = 24, style }) => {
+export const Icon: React.FC<IconProps> = ({ name, size = 24, style, className }) => {
   const pathData = getIconSvgPath(name);
   if (!pathData) return null;
 
@@ -22,6 +23,7 @@ export const Icon: React.FC<IconProps> = ({ name, size = 24, style }) => {
       strokeLinecap="round"
       strokeLinejoin="round"
       style={style}
+      className={className}
     >
       <g dangerouslySetInnerHTML={{ __html: pathData }} />
     </svg>

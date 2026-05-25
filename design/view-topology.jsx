@@ -1,249 +1,201 @@
-// Bot topology view — servers as columns, bots as nodes with
-// MCP sidecars + managed projects inline. SVG overlay for
-// delegation curves between lab-bot and other bots.
+// View — Topology (/cluster/asgard/topology)
 
-const { useState: useState_t } = React;
+const ROLE_MARK = { nyx: 'NX', helios: 'HS', aether: 'AE', vega: 'VG' };
+const ROLE_NAME = { nyx: 'compute', helios: 'storage', aether: 'k8s', vega: 'gpu' };
+const HOST_LABEL = { nyx: 'compute · nyx.lab.local', helios: 'storage · helios.lab.local',
+                     aether: 'k8s · aether.lab.local', vega: 'gpu · vega.lab.local' };
 
-// Stage dimensions and bot positions (centers)
-const TP_STAGE_W = 1240;
-const TP_STAGE_H = 800;
-const TP_COL_X = { nyx: 30, helios: 330, aether: 630, vega: 930 };
-const TP_BOT_W = 270;
-
-// Position each bot inside its host's column
-const TP_BOT_LAYOUT = {
-  'lab-bot':   { x: 30,  y: 88,  host: 'nyx' },
-  'ops-bot':   { x: 30,  y: 408, host: 'nyx' },
-  'sync-bot':  { x: 330, y: 88,  host: 'helios' },
-  'watch-bot': { x: 630, y: 88,  host: 'aether' },
+// Bot positions in the stage (relative to .topo-canvas)
+const BOT_POS = {
+  'lab-bot':   { x: 30,  y: 16  },
+  'ops-bot':   { x: 30,  y: 370 },
+  'sync-bot':  { x: 320, y: 16  },
+  'watch-bot': { x: 610, y: 16  },
 };
 
-const HOST_ROLE = { nyx: 'compute', helios: 'storage', aether: 'k8s', vega: 'gpu' };
-const HOST_SUB = {
-  nyx: 'compute · 24c / 128GB',
-  helios: 'storage · zfs · 90 TB',
-  aether: 'k3s · 64 GB',
-  vega: 'gpu · 2× rtx 4090',
-};
-
-function TpServerHeader({ id, isEmpty, botCount }) {
-  return (
-    <div className={'tp-server' + (isEmpty ? ' empty' : '')}>
-      <div className="mk" data-role={HOST_ROLE[id]}>{id.slice(0,2).toUpperCase()}</div>
-      <div className="info">
-        <div className="n">{id}</div>
-        <div className="sub">{HOST_SUB[id]}</div>
+const BotCard = ({ bot, selected, onSelect }) => (
+  <div
+    className={`bot-card ${selected ? 'selected' : ''}`}
+    style={{ left: BOT_POS[bot.id].x, top: BOT_POS[bot.id].y }}
+    onClick={() => onSelect(bot.id)}>
+    <div className="head">
+      <span className="bot-avatar" data-id={bot.id}>{bot.avatar}</span>
+      <div>
+        <div className="name">{bot.label}</div>
+        <div className="role">{bot.role}</div>
       </div>
-      <div className="badge">
-        {isEmpty ? '— no bot —' : <><b>{botCount}</b> bot{botCount > 1 ? 's' : ''}</>}
-      </div>
+      <Pulse tone={bot.status === 'busy' ? 'amber' : bot.status === 'idle' ? 'neutral' : 'emerald'} size="sm" />
     </div>
-  );
-}
-
-function TpBot({ bot, selected, onSelect }) {
-  const pos = TP_BOT_LAYOUT[bot.id];
-  return (
-    <div
-      className={'tp-bot' + (selected ? ' selected' : '')}
-      data-bot={bot.id}
-      data-status={bot.status}
-      style={{ left: pos.x, top: pos.y, width: TP_BOT_W }}
-      onClick={() => onSelect(bot.id)}
-    >
-      <div className="tp-bot-head">
-        <div className="tp-bot-av">{bot.avatar}</div>
-        <div>
-          <div className="n">{bot.label}</div>
-          <div className="role">{bot.role}</div>
+    <div className="desc">{bot.desc}</div>
+    <div className="model-pill">
+      <span className="dot" />
+      {bot.model}
+    </div>
+    <div className="bot-section-eyebrow">
+      MCP sidecars
+      <span className="ct">{bot.mcps.length}</span>
+    </div>
+    <div className="mcp-pills">
+      {bot.mcps.map(m => (
+        <span key={m.id} className={`mcp-pill ${m.kind === 'remote' ? 'remote' : ''}`}>
+          <span className="dot" />
+          {m.label}
+        </span>
+      ))}
+    </div>
+    {bot.delegates.length > 0 && (
+      <>
+        <div className="bot-section-eyebrow">
+          Delegates to
+          <span className="ct">{bot.delegates.length}</span>
         </div>
-        <div className="pulse-state"></div>
-      </div>
-      <div className="desc">{bot.desc}</div>
-      <div className="model"><span className="dot"></span>{bot.model}</div>
-
-      <div className="tp-section">
-        MCP sidecars <span className="ct">{bot.mcps.length}</span>
-      </div>
-      <div className="tp-mcp-list">
-        {bot.mcps.map(m => (
-          <span key={m.id} className={'tp-mcp' + (m.kind === 'remote' ? ' remote' : '')} title={`${m.label} v${m.ver} — ${m.desc}`}>
-            <span className="dot"></span>{m.label}
-          </span>
-        ))}
-      </div>
-
-      {bot.manages.length > 0 && (
-        <>
-          <div className="tp-section">
-            Manages <span className="ct">{bot.manages.length}</span>
-          </div>
-          <div className="tp-project-list">
-            {bot.manages.map(p => (
-              <span key={p.name} className="tp-project" data-host={p.host} title={`${p.name} on ${p.host}:${p.port}`}>
-                <span className="host-dot"></span>{p.name}
-                <span className="port">:{p.port}</span>
-              </span>
-            ))}
-          </div>
-        </>
-      )}
-      {bot.delegates && bot.delegates.length > 0 && (
-        <>
-          <div className="tp-section">
-            Delegates to <span className="ct">{bot.delegates.length}</span>
-          </div>
-          <div className="tp-mcp-list">
-            {bot.delegates.map(d => (
-              <span key={d} className="tp-project" data-host="orchestrator" style={{borderColor:'color-mix(in oklab, var(--accent-cyan) 35%, transparent)', background:'color-mix(in oklab, var(--accent-cyan) 8%, transparent)', color:'var(--accent-cyan-deep)'}}>
-                <span className="host-dot" style={{background:'var(--accent-cyan)'}}></span>{d}
-              </span>
-            ))}
-          </div>
-        </>
-      )}
+        <div className="proj-pills">
+          {bot.delegates.map(d => (
+            <span key={d} className="proj-pill delegate">
+              <span className="dot" />
+              {d}
+            </span>
+          ))}
+        </div>
+      </>
+    )}
+    <div className="bot-section-eyebrow">
+      Manages
+      <span className="ct">{bot.manages.length}</span>
     </div>
-  );
-}
+    <div className="proj-pills">
+      {bot.manages.slice(0, 6).map((p, i) => (
+        <span key={i} className="proj-pill" data-host={p.host}>
+          <span className="dot" />
+          {p.name}
+          <span className="port">:{p.port}</span>
+        </span>
+      ))}
+    </div>
+  </div>
+);
 
-// Bezier helper for SVG curves
-function bezier(x1, y1, x2, y2, curvature = 0.35) {
-  const dx = x2 - x1;
-  const dy = y2 - y1;
-  const mx = (x1 + x2) / 2;
-  const my = (y1 + y2) / 2;
-  // Perpendicular offset
-  const dist = Math.hypot(dx, dy);
-  const nx = -dy / (dist || 1);
-  const ny = dx / (dist || 1);
-  const off = Math.min(120, dist * curvature);
-  return `M ${x1} ${y1} Q ${mx + nx * off} ${my + ny * off} ${x2} ${y2}`;
-}
-
-function TpEdges({ bots }) {
-  // For lab-bot, draw curves to each delegate
-  const lab = bots.find(b => b.id === 'lab-bot');
-  if (!lab || !lab.delegates) return null;
-  const labPos = TP_BOT_LAYOUT['lab-bot'];
-  // start from right edge of lab-bot card (approximately)
-  const startX = labPos.x + TP_BOT_W;
-  const startY = labPos.y + 38; // around the head
-
-  const paths = lab.delegates.map((targetId) => {
-    const tp = TP_BOT_LAYOUT[targetId];
-    if (!tp) return null;
-    // end at left edge of target (or top if it's below)
-    let endX, endY;
-    if (targetId === 'ops-bot') {
-      // ops-bot is below lab-bot — curve goes down through nyx column
-      // end at top center of ops-bot
-      endX = tp.x + 50;
-      endY = tp.y;
-    } else {
-      endX = tp.x;
-      endY = tp.y + 38;
-    }
-    return {
-      id: targetId,
-      d: bezier(startX, startY, endX, endY, targetId === 'ops-bot' ? 0.18 : 0.18),
-      midX: (startX + endX) / 2,
-      midY: (startY + endY) / 2,
-    };
-  }).filter(Boolean);
-
+// SVG edges from lab-bot to each delegate
+const EdgeLayer = () => {
+  // lab-bot card is at (30, 16), size 230x~variable; anchor right edge centre
+  // delegates are at sync-bot (320,16), watch-bot (610,16), ops-bot (30,370)
+  // anchor coords from card top-left (assume avg card height ~360)
+  const startX = 30 + 230;
+  const startY = 16 + 70;  // upper area of lab-bot
+  const edges = [
+    { id: 'sync',  x2: 320, y2: 16 + 70, label: 'delegates' },
+    { id: 'watch', x2: 610, y2: 16 + 70, label: 'delegates' },
+    // ops-bot is below lab-bot in same column; route down-out-right-in
+    { id: 'ops',   x2: 30 + 115, y2: 370, label: 'delegates', vertical: true },
+  ];
   return (
-    <svg className="tp-edges" viewBox={`0 0 ${TP_STAGE_W} ${TP_STAGE_H}`} preserveAspectRatio="none">
+    <svg className="edges" viewBox="0 0 1100 760" preserveAspectRatio="none">
       <defs>
-        <marker id="tp-arrow-cyan" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-          <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--accent-cyan)"/>
+        <marker id="arrowhead" viewBox="0 0 10 10" refX="8" refY="5"
+          markerWidth="6" markerHeight="6" orient="auto">
+          <path d="M0,0 L10,5 L0,10 z" fill="#FBBF24" />
         </marker>
       </defs>
-      {paths.map(p => (
-        <g key={p.id}>
-          <path className="delegate" d={p.d} markerEnd="url(#tp-arrow-cyan)" />
-        </g>
-      ))}
-      {paths.map(p => (
-        <g key={'lbl-' + p.id}>
-          <rect
-            x={p.midX - 28} y={p.midY - 8}
-            width={56} height={16} rx={3}
-            fill="var(--canvas-card)"
-            stroke="color-mix(in oklab, var(--accent-cyan) 30%, transparent)"
-          />
-          <text x={p.midX} y={p.midY + 3.5} textAnchor="middle" fill="var(--accent-cyan-deep)">delegates</text>
-        </g>
-      ))}
+      {edges.map((e, i) => {
+        let d, midX, midY;
+        if (e.vertical) {
+          const sx = 30 + 115, sy = 16 + 360;
+          d = `M ${sx} ${sy} C ${sx} ${sy + 5}, ${e.x2} ${e.y2 - 5}, ${e.x2} ${e.y2}`;
+          midX = sx;
+          midY = (sy + e.y2) / 2;
+        } else {
+          d = `M ${startX} ${startY} C ${startX + 60} ${startY}, ${e.x2 - 60} ${e.y2}, ${e.x2} ${e.y2}`;
+          midX = (startX + e.x2) / 2;
+          midY = startY;
+        }
+        return (
+          <g key={i}>
+            <path d={d} stroke="#FBBF24" strokeOpacity="0.75" strokeWidth="1.5"
+              strokeDasharray="5 4" fill="none" />
+            <g transform={`translate(${midX}, ${midY})`}>
+              <rect x="-32" y="-9" width="64" height="18" rx="9"
+                fill="#FFFBEB" stroke="rgba(245,158,11,0.40)" strokeWidth="1" />
+              <text x="0" y="3.5" fontFamily="var(--font-mono)" fontSize="9.5"
+                textAnchor="middle" fill="#92400E" style={{ letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+                {e.label}
+              </text>
+            </g>
+          </g>
+        );
+      })}
     </svg>
   );
-}
+};
 
-function TpInspector({ bot }) {
-  if (!bot) return (
-    <div className="tp-inspector">
-      <div style={{textAlign:'center', color:'var(--canvas-fg-3)', fontSize:12, padding:'24px 0', fontFamily:'var(--mono)'}}>
-        Select a bot to inspect.
-      </div>
-    </div>
-  );
-  const D = window.LAB_DATA;
+const TopologyInspector = ({ bot }) => {
+  if (!bot) return null;
   return (
-    <div className="tp-inspector">
-      <div className="tp-i-head" data-bot={bot.id}>
-        <div className="av">{bot.avatar}</div>
-        <div>
-          <div className="nm">{bot.label}</div>
-          <div className="rl">{bot.role} · on {bot.host}</div>
+    <div className="inspector">
+      <header className="inspector-head">
+        <span className="bot-avatar" data-id={bot.id} style={{ width: 36, height: 36, fontSize: 13 }}>{bot.avatar}</span>
+        <div className="main">
+          <div className="t">{bot.label}</div>
+          <div className="s">{bot.role} · {bot.host}</div>
+        </div>
+      </header>
+      <div className="inspector-section">
+        <p style={{ fontSize: 12.5, lineHeight: 1.55, color: 'var(--canvas-fg-2)' }}>{bot.desc}</p>
+      </div>
+      <div className="inspector-section">
+        <div className="kv">
+          <div className="k">Model</div><div className="v">{bot.model}</div>
+          <div className="k">Host</div><div className="v">{bot.host}.lab.local</div>
+          <div className="k">Status</div><div className="v">
+            <Pulse tone={bot.status === 'busy' ? 'amber' : bot.status === 'idle' ? 'neutral' : 'emerald'} size="sm" />
+            &nbsp;{bot.status}
+          </div>
+          <div className="k">MCPs</div><div className="v">{bot.mcps.length}</div>
+          <div className="k">Manages</div><div className="v">{bot.manages.length} projects</div>
+          {bot.delegates.length > 0 && <><div className="k">Delegates</div><div className="v">{bot.delegates.length} bots</div></>}
         </div>
       </div>
-      <div style={{fontSize:12.5, color:'var(--canvas-fg-2)', lineHeight:1.5}}>{bot.desc}</div>
-      <dl className="tp-i-kv">
-        <dt>model</dt><dd>{bot.model}</dd>
-        <dt>host</dt><dd>{bot.host}.lab.local</dd>
-        <dt>status</dt><dd style={{color: bot.status === 'busy' ? 'var(--accent-amber)' : bot.status === 'idle' ? 'var(--canvas-fg-3)' : 'var(--accent-emerald)'}}>● {bot.status}</dd>
-        <dt>mcps</dt><dd>{bot.mcps.length} attached</dd>
-        <dt>manages</dt><dd>{bot.manages.length} project{bot.manages.length === 1 ? '' : 's'}</dd>
-        {bot.delegates && <><dt>delegates</dt><dd>{bot.delegates.length} bot{bot.delegates.length === 1 ? '' : 's'}</dd></>}
-      </dl>
-
-      <div>
-        <div className="tp-i-section">MCP sidecars · {bot.mcps.length}</div>
-        <div className="tp-i-mcp-list">
-          {bot.mcps.map(m => (
-            <div key={m.id} className="tp-i-mcp">
-              <div className="top">
-                <span className={'name' + (m.kind === 'remote' ? ' remote' : '')}>
-                  <span className="dot"></span>{m.label}
-                </span>
-                <span className="ver">v{m.ver} · {m.kind}</span>
-              </div>
-              <div className="d">{m.desc}</div>
+      <div className="inspector-section">
+        <div className="inspector-section-head">
+          MCP sidecars
+          <span className="ct" style={{ fontFamily: 'var(--font-mono)', fontSize: 10 }}>{bot.mcps.length}</span>
+        </div>
+        {bot.mcps.map(m => (
+          <div className="mcp-mini" key={m.id}>
+            <div className={`n ${m.kind === 'remote' ? 'remote' : ''}`}>
+              <span className="dot" />
+              {m.label}
             </div>
+            <div className="m">v{m.ver} · {m.kind}</div>
+            <div className="d">{m.desc}</div>
+          </div>
+        ))}
+      </div>
+      <div className="inspector-section">
+        <div className="inspector-section-head">
+          Managed projects
+          <span className="ct" style={{ fontFamily: 'var(--font-mono)', fontSize: 10 }}>{bot.manages.length}</span>
+        </div>
+        <div className="proj-pills">
+          {bot.manages.map((p, i) => (
+            <span key={i} className="proj-pill" data-host={p.host}>
+              <span className="dot" />
+              {p.name}
+              <span className="port">:{p.port}</span>
+            </span>
           ))}
         </div>
       </div>
-
-      {bot.manages.length > 0 && (
-        <div>
-          <div className="tp-i-section">Managed projects · {bot.manages.length}</div>
-          <div className="tp-project-list">
-            {bot.manages.map(p => (
-              <span key={p.name} className="tp-project" data-host={p.host}>
-                <span className="host-dot"></span>{p.name}
-                <span className="port">{p.host}:{p.port}</span>
-              </span>
-            ))}
+      {bot.delegates.length > 0 && (
+        <div className="inspector-section">
+          <div className="inspector-section-head">
+            Delegates to
+            <span className="ct" style={{ fontFamily: 'var(--font-mono)', fontSize: 10 }}>{bot.delegates.length}</span>
           </div>
-        </div>
-      )}
-
-      {bot.delegates && bot.delegates.length > 0 && (
-        <div>
-          <div className="tp-i-section">Delegates to · {bot.delegates.length}</div>
-          <div className="tp-project-list">
+          <div className="proj-pills">
             {bot.delegates.map(d => (
-              <span key={d} className="tp-project" style={{borderColor:'color-mix(in oklab, var(--accent-cyan) 35%, transparent)', background:'color-mix(in oklab, var(--accent-cyan) 10%, transparent)', color:'var(--accent-cyan-deep)'}}>
-                <span className="host-dot" style={{background:'var(--accent-cyan)'}}></span>{d}
+              <span key={d} className="proj-pill delegate">
+                <span className="dot" />
+                {d}
               </span>
             ))}
           </div>
@@ -251,70 +203,75 @@ function TpInspector({ bot }) {
       )}
     </div>
   );
-}
+};
 
-function TopologyView() {
-  const T = window.TOPOLOGY_DATA;
-  const [selectedId, setSelectedId] = useState_t('lab-bot');
-  const selected = T.bots.find(b => b.id === selectedId);
+const TopologyView = () => {
+  const [selected, setSelected] = React.useState('lab-bot');
+  const bots = TOPOLOGY_DATA.bots;
+  const selBot = bots.find(b => b.id === selected);
 
-  const botsByHost = T.hosts.reduce((acc, h) => {
-    acc[h] = T.bots.filter(b => b.host === h);
-    return acc;
-  }, {});
+  // Per-host bot count
+  const botCountByHost = bots.reduce((m, b) => { m[b.host] = (m[b.host] || 0) + 1; return m; }, {});
 
   return (
-    <div className="canvas-inner lab-canvas-inner">
-      <div className="page-head" style={{marginBottom:16, paddingBottom:14}}>
-        <div>
-          <div style={{display:'flex', alignItems:'center', gap:10, marginBottom:6}}>
-            <span className="chip violet"><span className="dot"></span>topology · {T.bots.length} bots</span>
-            <span className="muted mono" style={{fontSize:11}}>bots · sidecar mcp servers · managed projects</span>
-          </div>
-          <h1>Bot topology <span className="id-tag">/cluster/asgard/bots</span></h1>
-          <div className="subtitle">Where each bot runs, what MCP sidecars it brings, and which projects it manages. Curves show delegation between bots — the orchestrator fans out to specialists.</div>
-        </div>
-        <div className="page-actions">
-          <button className="btn btn-ghost"><Icon name="refresh" size={13}/> Refresh</button>
-          <button className="btn btn-ghost"><Icon name="ext" size={13}/> Export DOT</button>
-        </div>
-      </div>
-
-      <div className="tp-stage-wrap full">
-        <div className="tp-stage" style={{minHeight: TP_STAGE_H}}>
-          <div className="tp-grid"></div>
-
-          <div className="tp-server-row">
-            {T.hosts.map(h => (
-              <TpServerHeader key={h} id={h} isEmpty={botsByHost[h].length === 0} botCount={botsByHost[h].length} />
+    <>
+      <PageHead
+        eyebrow={<>
+          <Chip tone="violet">topology · 4 bots</Chip>
+          <span className="muted" style={{ fontFamily: 'var(--font-mono)', fontSize: 11.5 }}>
+            bots · sidecar mcp servers · managed projects
+          </span>
+        </>}
+        title="Bot topology"
+        idTag="/cluster/asgard/topology"
+        subtitle="Per-host agent layout, the MCP sidecars each bot exposes, and the project surface each one manages."
+        actions={<>
+          <Button variant="ghost" icon="refresh">Refresh</Button>
+          <Button variant="ghost" icon="download">Export DOT</Button>
+        </>}
+      />
+      <div className="topo-stage-wrap">
+        <div className="topo-stage">
+          <div className="topo-host-row">
+            {TOPOLOGY_DATA.hosts.map(h => (
+              <div className={`topo-host-col ${h === 'vega' ? 'empty' : ''}`} key={h}>
+                <RoleMark role={ROLE_NAME[h]} mark={ROLE_MARK[h]} />
+                <div className="info">
+                  <div className="n">{h}</div>
+                  <div className="s">{HOST_LABEL[h]}</div>
+                </div>
+                <span className="badge">
+                  {botCountByHost[h] ? `${botCountByHost[h]} bot${botCountByHost[h] > 1 ? 's' : ''}` : 'no bot'}
+                </span>
+              </div>
             ))}
           </div>
-
-          <TpEdges bots={T.bots} />
-
-          {T.bots.map(b => (
-            <TpBot key={b.id} bot={b} selected={selectedId === b.id} onSelect={setSelectedId} />
-          ))}
-
-          {/* empty vega placeholder */}
-          <div className="tp-empty" style={{left: TP_COL_X.vega, top: 88, width: TP_BOT_W}}>
-            <b>No bot on vega</b>
-            GPU workloads are launched here by <span style={{color:'var(--canvas-fg-1)'}}>ops-bot</span> via <code style={{fontFamily:'var(--mono)', fontSize:10, background:'var(--canvas-bg-2)', padding:'1px 4px', borderRadius:3}}>ssh-mcp</code>; no resident agent.
-          </div>
-
-          <div className="tp-legend">
-            <div className="row"><span className="ln dashed"></span>delegation (orchestrator → specialist)</div>
-            <div className="row"><span className="ln mcp" style={{height:6, borderRadius:2}}></span>MCP sidecar</div>
-            <div className="row"><span style={{width:8, height:8, borderRadius:999, background:'var(--accent-cyan)', display:'inline-block'}}></span>nyx · compute</div>
-            <div className="row"><span style={{width:8, height:8, borderRadius:999, background:'var(--accent-emerald)', display:'inline-block'}}></span>helios · storage</div>
-            <div className="row"><span style={{width:8, height:8, borderRadius:999, background:'var(--accent-violet)', display:'inline-block'}}></span>aether · k8s</div>
-            <div className="row"><span style={{width:8, height:8, borderRadius:999, background:'var(--accent-amber)', display:'inline-block'}}></span>vega · gpu</div>
+          <div className="topo-canvas">
+            <EdgeLayer />
+            {bots.map(b => (
+              <BotCard key={b.id} bot={b}
+                selected={selected === b.id}
+                onSelect={setSelected} />
+            ))}
+            <div className="topo-empty" style={{ left: 900, top: 16 }}>
+              <div className="l">No bot on vega</div>
+              <div className="d">GPU workloads are launched here by ops-bot via ssh-mcp; no resident agent.</div>
+            </div>
+            <div className="topo-legend">
+              <div className="row"><span className="seg-line" /><span>delegation</span></div>
+              <div className="row"><span className="seg-line mcp" /><span>MCP sidecar</span></div>
+              <div className="hr" style={{ width: '100%', background: 'rgba(166,177,189,0.20)' }} />
+              <div className="row"><span className="dot" style={{ background: 'var(--status-cyan)' }} /><span>nyx</span></div>
+              <div className="row"><span className="dot" style={{ background: 'var(--status-emerald)' }} /><span>helios</span></div>
+              <div className="row"><span className="dot" style={{ background: 'var(--status-violet)' }} /><span>aether</span></div>
+              <div className="row"><span className="dot" style={{ background: 'var(--status-amber)' }} /><span>vega</span></div>
+            </div>
           </div>
         </div>
-        <TpInspector bot={selected} />
+        <TopologyInspector bot={selBot} />
       </div>
-    </div>
+    </>
   );
-}
+};
 
 window.TopologyView = TopologyView;

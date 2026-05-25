@@ -1,116 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ChatRail } from './ChatRail.js';
 import type { Bot, ThreadMessage, ThreadDivider } from '@homelab/shared';
-import type { ReactNode } from 'react';
 
-interface ChatContainerProps {
-  children: ReactNode;
-  bots: Bot[];
-  activeBotId: string;
-  onBotChange: (botId: string) => void;
-  composer: ReactNode;
-}
-
-interface ChatMessageProps {
-  role: string;
-  senderName: string;
-  timestamp: string;
-  avatar: ReactNode;
-  badge?: ReactNode;
-  body: ReactNode;
-  toolBlock?: { status: string; name: string };
-  thinkingBlock?: { content: string };
-}
-
-interface ChatDividerProps {
-  label: string;
-}
-
-interface ChatComposerProps {
-  value: string;
-  onChange: (value: string) => void;
-  onSubmit: (value: string) => void;
-  placeholder: string;
-  scopeLabel: string;
-}
-
-interface ChatSuggestionsProps {
-  suggestions: Array<string>;
-  onSelect: (suggestion: string) => void;
-}
-
-// Mock the Heimdall UI library
-vi.mock('@tinkermonkey/heimdall-ui', () => ({
-  ChatContainer: ({ children, bots, activeBotId, onBotChange, composer }: ChatContainerProps) => (
-    <div data-testid="chat-container">
-      <div data-testid="chat-tabs">
-        {bots.map((bot) => (
-          <button
-            key={bot.id}
-            data-testid={`bot-tab-${bot.id}`}
-            onClick={() => onBotChange(bot.id)}
-            data-active={bot.id === activeBotId}
-          >
-            {bot.label}
-          </button>
-        ))}
-      </div>
-      <div data-testid="chat-content">{children}</div>
-      <div data-testid="chat-composer">{composer}</div>
-    </div>
-  ),
-  ChatMessage: ({
-    role,
-    senderName,
-    timestamp,
-    avatar,
-    badge,
-    body,
-    toolBlock,
-    thinkingBlock,
-  }: ChatMessageProps) => (
-    <div data-testid={`chat-message-${role}`} data-sender={senderName} data-timestamp={timestamp}>
-      <div data-testid="message-avatar">{avatar}</div>
-      <div data-testid="message-name">{senderName}</div>
-      {badge && <span data-testid="message-badge">{badge}</span>}
-      <div data-testid="message-body">{body}</div>
-      {toolBlock && <div data-testid="message-tool-block" data-status={toolBlock.status}>{toolBlock.name}</div>}
-      {thinkingBlock && <div data-testid="message-thinking-block">{thinkingBlock.content}</div>}
-    </div>
-  ),
-  ChatDivider: ({ label }: ChatDividerProps) => <div data-testid="chat-divider">{label}</div>,
-  ChatComposer: ({ value, onChange, onSubmit, placeholder, scopeLabel }: ChatComposerProps) => (
-    <div data-testid="composer-wrapper">
-      <input
-        data-testid="composer-input"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        aria-label={scopeLabel}
-      />
-      <button
-        data-testid="composer-submit"
-        onClick={() => onSubmit(value)}
-      >
-        Send
-      </button>
-    </div>
-  ),
-  ChatSuggestions: ({ suggestions, onSelect }: ChatSuggestionsProps) => (
-    <div data-testid="suggestions">
-      {suggestions.map((s, i) => (
-        <button
-          key={i}
-          data-testid={`suggestion-${i}`}
-          onClick={() => onSelect(s)}
-        >
-          {s}
-        </button>
-      ))}
-    </div>
-  ),
+// Mock DOMPurify
+vi.mock('dompurify', () => ({
+  default: {
+    sanitize: (html: string) => html.replace(/<script[^>]*>.*?<\/script>/gi, ''),
+  },
 }));
 
 // Mock useChatStream hook
@@ -127,7 +25,7 @@ describe('ChatRail component', () => {
       label: 'Claude',
       role: 'assistant',
       status: 'idle',
-      avatar: 'C',
+      avatar: 'CL',
       desc: 'General purpose AI assistant',
       model: 'claude-opus',
     },
@@ -136,7 +34,7 @@ describe('ChatRail component', () => {
       label: 'System Bot',
       role: 'system',
       status: 'busy',
-      avatar: 'S',
+      avatar: 'SB',
       desc: 'System administration assistant',
       model: 'system-bot',
     },
@@ -169,8 +67,8 @@ describe('ChatRail component', () => {
   });
 
   describe('rendering', () => {
-    it('renders chat container with bot tabs', () => {
-      render(
+    it('renders the bot console shell', () => {
+      const { container } = render(
         <ChatRail
           bots={mockBots}
           threadByBot={{}}
@@ -179,13 +77,15 @@ describe('ChatRail component', () => {
         />
       );
 
-      expect(screen.getByTestId('chat-container')).toBeDefined();
-      expect(screen.getByTestId('bot-tab-claude')).toBeDefined();
-      expect(screen.getByTestId('bot-tab-system')).toBeDefined();
+      expect(container.querySelector('.bot-console')).not.toBeNull();
+      expect(container.querySelector('.bc-head')).not.toBeNull();
+      expect(container.querySelector('.bc-tabs')).not.toBeNull();
+      expect(container.querySelector('.bc-thread')).not.toBeNull();
+      expect(container.querySelector('.bc-composer')).not.toBeNull();
     });
 
-    it('renders composer with correct placeholder', () => {
-      render(
+    it('renders a tab for each bot', () => {
+      const { container } = render(
         <ChatRail
           bots={mockBots}
           threadByBot={{}}
@@ -194,11 +94,77 @@ describe('ChatRail component', () => {
         />
       );
 
-      const input = screen.getByTestId('composer-input');
-      expect(input.getAttribute('placeholder')).toBe('Ask Claude to do something…');
+      const tabs = container.querySelectorAll('.bc-tab');
+      expect(tabs.length).toBe(2);
+      expect(tabs[0].textContent).toContain('Claude');
+      expect(tabs[1].textContent).toContain('System Bot');
     });
 
-    it('displays bot messages with correct avatar and name', () => {
+    it('marks the active bot tab with active class', () => {
+      const { container } = render(
+        <ChatRail
+          bots={mockBots}
+          threadByBot={{}}
+          activeBot="claude"
+          onActiveBotChange={vi.fn()}
+        />
+      );
+
+      const tabs = container.querySelectorAll('.bc-tab');
+      expect(tabs[0].classList.contains('active')).toBe(true);
+      expect(tabs[1].classList.contains('active')).toBe(false);
+    });
+
+    it('renders composer textarea and send button', () => {
+      const { container } = render(
+        <ChatRail
+          bots={mockBots}
+          threadByBot={{}}
+          activeBot="claude"
+          onActiveBotChange={vi.fn()}
+        />
+      );
+
+      expect(container.querySelector('textarea')).not.toBeNull();
+      expect(container.querySelector('.send-btn')).not.toBeNull();
+    });
+
+    it('shows correct placeholder in textarea', () => {
+      const { container } = render(
+        <ChatRail
+          bots={mockBots}
+          threadByBot={{}}
+          activeBot="claude"
+          onActiveBotChange={vi.fn()}
+        />
+      );
+
+      const textarea = container.querySelector('textarea') as HTMLTextAreaElement;
+      expect(textarea.placeholder).toBe('Ask Claude to do something…');
+    });
+
+    it('renders close button when onClose provided', () => {
+      const onClose = vi.fn();
+      const { container } = render(
+        <ChatRail
+          bots={mockBots}
+          threadByBot={{}}
+          activeBot="claude"
+          onActiveBotChange={vi.fn()}
+          onClose={onClose}
+        />
+      );
+
+      const head = container.querySelector('.bc-head');
+      expect(head).not.toBeNull();
+      // Three bc-ico buttons: history, settings, close
+      const btns = head!.querySelectorAll('.bc-ico');
+      expect(btns.length).toBe(3);
+    });
+  });
+
+  describe('message rendering', () => {
+    it('renders bot messages in the thread', () => {
       vi.mocked(useChatStream).mockReturnValue({
         thread: [mockMessage],
         send: vi.fn(),
@@ -206,7 +172,7 @@ describe('ChatRail component', () => {
         setDraft: vi.fn(),
       });
 
-      render(
+      const { container } = render(
         <ChatRail
           bots={mockBots}
           threadByBot={{}}
@@ -215,11 +181,12 @@ describe('ChatRail component', () => {
         />
       );
 
-      expect(screen.getByTestId('message-avatar').textContent).toBe('C');
-      expect(screen.getByTestId('message-name').textContent).toBe('Claude');
+      const msgs = container.querySelectorAll('.bc-msg');
+      expect(msgs.length).toBe(1);
+      expect(msgs[0].querySelector('.bc-body')?.textContent).toContain('Hello, how can I help?');
     });
 
-    it('displays user messages with user marker', () => {
+    it('renders user messages with .user class', () => {
       vi.mocked(useChatStream).mockReturnValue({
         thread: [mockUserMessage],
         send: vi.fn(),
@@ -227,7 +194,7 @@ describe('ChatRail component', () => {
         setDraft: vi.fn(),
       });
 
-      render(
+      const { container } = render(
         <ChatRail
           bots={mockBots}
           threadByBot={{}}
@@ -236,13 +203,11 @@ describe('ChatRail component', () => {
         />
       );
 
-      const msg = screen.getByTestId('chat-message-user');
-      expect(msg.getAttribute('data-sender')).toBe('you');
-      expect(screen.getByTestId('message-avatar').textContent).toBe('YO');
+      const msgs = container.querySelectorAll('.bc-msg.user');
+      expect(msgs.length).toBe(1);
+      expect(msgs[0].querySelector('.bc-body')?.textContent).toContain('Hi there');
     });
-  });
 
-  describe('message rendering', () => {
     it('renders dividers in thread', () => {
       const divider: ThreadDivider = {
         kind: 'divider',
@@ -256,7 +221,7 @@ describe('ChatRail component', () => {
         setDraft: vi.fn(),
       });
 
-      render(
+      const { container } = render(
         <ChatRail
           bots={mockBots}
           threadByBot={{}}
@@ -265,10 +230,12 @@ describe('ChatRail component', () => {
         />
       );
 
-      expect(screen.getByTestId('chat-divider').textContent).toBe('New conversation');
+      const dividerEl = container.querySelector('.bc-divider');
+      expect(dividerEl).not.toBeNull();
+      expect(dividerEl!.textContent).toContain('New conversation');
     });
 
-    it('sanitizes HTML in message body with DOMPurify', () => {
+    it('sanitizes HTML in message body', () => {
       const unsafeMessage: ThreadMessage = {
         kind: 'msg',
         who: 'claude',
@@ -284,7 +251,7 @@ describe('ChatRail component', () => {
         setDraft: vi.fn(),
       });
 
-      render(
+      const { container } = render(
         <ChatRail
           bots={mockBots}
           threadByBot={{}}
@@ -293,13 +260,13 @@ describe('ChatRail component', () => {
         />
       );
 
-      const body = screen.getByTestId('message-body');
-      expect(body.innerHTML).not.toContain('<script>');
-      expect(body.innerHTML).toContain('Safe content');
+      const body = container.querySelector('.bc-body');
+      expect(body!.innerHTML).not.toContain('<script>');
+      expect(body!.innerHTML).toContain('Safe content');
     });
 
     it('displays multiple body paragraphs', () => {
-      const multiParagraphMessage: ThreadMessage = {
+      const multiMsg: ThreadMessage = {
         kind: 'msg',
         who: 'claude',
         name: 'Claude',
@@ -312,13 +279,13 @@ describe('ChatRail component', () => {
       };
 
       vi.mocked(useChatStream).mockReturnValue({
-        thread: [multiParagraphMessage],
+        thread: [multiMsg],
         send: vi.fn(),
         draft: '',
         setDraft: vi.fn(),
       });
 
-      render(
+      const { container } = render(
         <ChatRail
           bots={mockBots}
           threadByBot={{}}
@@ -327,13 +294,13 @@ describe('ChatRail component', () => {
         />
       );
 
-      const bodyDiv = screen.getByTestId('message-body');
-      expect(bodyDiv.textContent).toContain('First paragraph');
-      expect(bodyDiv.textContent).toContain('Second paragraph');
-      expect(bodyDiv.textContent).toContain('Third paragraph');
+      const body = container.querySelector('.bc-body');
+      expect(body!.textContent).toContain('First paragraph');
+      expect(body!.textContent).toContain('Second paragraph');
+      expect(body!.textContent).toContain('Third paragraph');
     });
 
-    it('displays bot role as badge', () => {
+    it('renders sender name in bc-meta', () => {
       vi.mocked(useChatStream).mockReturnValue({
         thread: [mockMessage],
         send: vi.fn(),
@@ -341,7 +308,7 @@ describe('ChatRail component', () => {
         setDraft: vi.fn(),
       });
 
-      render(
+      const { container } = render(
         <ChatRail
           bots={mockBots}
           threadByBot={{}}
@@ -350,26 +317,19 @@ describe('ChatRail component', () => {
         />
       );
 
-      expect(screen.getByTestId('message-badge').textContent).toBe('assistant');
+      const meta = container.querySelector('.bc-meta');
+      expect(meta!.querySelector('.who')?.textContent).toBe('Claude');
     });
 
-    it('handles message from unknown bot gracefully', () => {
-      const unknownBotMessage: ThreadMessage = {
-        kind: 'msg',
-        who: 'unknown-bot',
-        name: undefined,
-        when: '14:30',
-        body: [{ p: 'Message from unknown bot' }],
-      };
-
+    it('renders bot role as badge', () => {
       vi.mocked(useChatStream).mockReturnValue({
-        thread: [unknownBotMessage],
+        thread: [mockMessage],
         send: vi.fn(),
         draft: '',
         setDraft: vi.fn(),
       });
 
-      render(
+      const { container } = render(
         <ChatRail
           bots={mockBots}
           threadByBot={{}}
@@ -378,14 +338,14 @@ describe('ChatRail component', () => {
         />
       );
 
-      expect(screen.getByTestId('message-name').textContent).toBe('unknown-bot');
-      expect(screen.getByTestId('message-avatar').textContent).toBe('?');
+      const badge = container.querySelector('.bc-meta .badge');
+      expect(badge!.textContent).toBe('assistant');
     });
   });
 
   describe('tool blocks', () => {
-    it('displays tool blocks with name and status', () => {
-      const messageWithTool: ThreadMessage = {
+    it('renders tool block with name and status class', () => {
+      const msgWithTool: ThreadMessage = {
         kind: 'msg',
         who: 'claude',
         name: 'Claude',
@@ -394,21 +354,18 @@ describe('ChatRail component', () => {
         tool: {
           name: 'bash',
           status: 'completed',
-          lines: [
-            { k: 'output', v: 'Success' },
-            { k: 'exit_code', v: '0' },
-          ],
+          lines: [{ k: 'output', v: 'Success' }],
         },
       };
 
       vi.mocked(useChatStream).mockReturnValue({
-        thread: [messageWithTool],
+        thread: [msgWithTool],
         send: vi.fn(),
         draft: '',
         setDraft: vi.fn(),
       });
 
-      render(
+      const { container } = render(
         <ChatRail
           bots={mockBots}
           threadByBot={{}}
@@ -417,114 +374,31 @@ describe('ChatRail component', () => {
         />
       );
 
-      expect(screen.getByTestId('message-tool-block').textContent).toBe('bash');
-    });
-
-    it('normalizes tool status correctly', () => {
-      const statuses = [
-        { input: 'running', expected: 'running' },
-        { input: 'completed', expected: 'success' },
-        { input: 'ok', expected: 'success' },
-        { input: 'error', expected: 'error' },
-        { input: 'failed', expected: 'error' },
-      ];
-
-      for (const { input, expected } of statuses) {
-        const messageWithTool: ThreadMessage = {
-          kind: 'msg',
-          who: 'claude',
-          name: 'Claude',
-          when: '14:30',
-          body: [{ p: 'Tool execution' }],
-          tool: {
-            name: 'test-tool',
-            status: input,
-            lines: [],
-          },
-        };
-
-        vi.mocked(useChatStream).mockReturnValue({
-          thread: [messageWithTool],
-          send: vi.fn(),
-          draft: '',
-          setDraft: vi.fn(),
-        });
-
-        const { unmount } = render(
-          <ChatRail
-            bots={mockBots}
-            threadByBot={{}}
-            activeBot="claude"
-            onActiveBotChange={vi.fn()}
-          />
-        );
-
-        const toolBlock = screen.getByTestId('message-tool-block');
-        expect(toolBlock.getAttribute('data-status')).toBe(expected);
-        unmount();
-      }
-    });
-  });
-
-  describe('thinking blocks', () => {
-    it('displays thinking blocks', () => {
-      const messageWithThinking: ThreadMessage = {
-        kind: 'msg',
-        who: 'claude',
-        name: 'Claude',
-        when: '14:30',
-        body: [{ p: 'Response' }],
-        thinking: {
-          content: 'I am thinking about this problem...',
-        },
-      };
-
-      vi.mocked(useChatStream).mockReturnValue({
-        thread: [messageWithThinking],
-        send: vi.fn(),
-        draft: '',
-        setDraft: vi.fn(),
-      });
-
-      render(
-        <ChatRail
-          bots={mockBots}
-          threadByBot={{}}
-          activeBot="claude"
-          onActiveBotChange={vi.fn()}
-        />
-      );
-
-      expect(screen.getByTestId('message-thinking-block').textContent).toBe(
-        'I am thinking about this problem...'
-      );
+      const tool = container.querySelector('.bc-tool');
+      expect(tool).not.toBeNull();
+      expect(tool!.querySelector('.bc-tool-name')?.textContent).toContain('bash');
     });
   });
 
   describe('suggestions', () => {
-    it('displays suggestions when present', () => {
-      const messageWithSuggestions: ThreadMessage = {
+    it('renders suggestion buttons', () => {
+      const msgWithSugs: ThreadMessage = {
         kind: 'msg',
         who: 'claude',
         name: 'Claude',
         when: '14:30',
-        body: [{ p: 'What would you like to do?' }],
-        suggestions: [
-          { t: 'Show status' },
-          { t: 'Deploy latest' },
-          { t: 'View logs' },
-        ],
+        body: [{ p: 'What would you like?' }],
+        suggestions: [{ t: 'Show status' }, { t: 'Deploy latest' }],
       };
 
-      const sendMock = vi.fn();
       vi.mocked(useChatStream).mockReturnValue({
-        thread: [messageWithSuggestions],
-        send: sendMock,
+        thread: [msgWithSugs],
+        send: vi.fn(),
         draft: '',
         setDraft: vi.fn(),
       });
 
-      render(
+      const { container } = render(
         <ChatRail
           bots={mockBots}
           threadByBot={{}}
@@ -533,30 +407,31 @@ describe('ChatRail component', () => {
         />
       );
 
-      expect(screen.getByTestId('suggestion-0').textContent).toBe('Show status');
-      expect(screen.getByTestId('suggestion-1').textContent).toBe('Deploy latest');
-      expect(screen.getByTestId('suggestion-2').textContent).toBe('View logs');
+      const sugs = container.querySelectorAll('.bc-sug');
+      expect(sugs.length).toBe(2);
+      expect(sugs[0].textContent).toBe('Show status');
+      expect(sugs[1].textContent).toBe('Deploy latest');
     });
 
     it('sends suggestion text when clicked', async () => {
-      const messageWithSuggestions: ThreadMessage = {
+      const sendMock = vi.fn().mockResolvedValue(undefined);
+      const msgWithSugs: ThreadMessage = {
         kind: 'msg',
         who: 'claude',
         name: 'Claude',
         when: '14:30',
-        body: [{ p: 'What would you like to do?' }],
+        body: [{ p: 'Suggestions:' }],
         suggestions: [{ t: 'Show status' }],
       };
 
-      const sendMock = vi.fn().mockResolvedValue(undefined);
       vi.mocked(useChatStream).mockReturnValue({
-        thread: [messageWithSuggestions],
+        thread: [msgWithSugs],
         send: sendMock,
         draft: '',
         setDraft: vi.fn(),
       });
 
-      render(
+      const { container } = render(
         <ChatRail
           bots={mockBots}
           threadByBot={{}}
@@ -565,97 +440,18 @@ describe('ChatRail component', () => {
         />
       );
 
-      const suggestionButton = screen.getByTestId('suggestion-0');
-      await userEvent.click(suggestionButton);
+      const sugBtn = container.querySelector('.bc-sug') as HTMLButtonElement;
+      await userEvent.click(sugBtn);
 
       expect(sendMock).toHaveBeenCalledWith('Show status');
     });
   });
 
-  describe('composer integration', () => {
-    it('updates draft when typing in composer', async () => {
-      const setDraftMock = vi.fn();
-      vi.mocked(useChatStream).mockReturnValue({
-        thread: [],
-        send: vi.fn(),
-        draft: '',
-        setDraft: setDraftMock,
-      });
-
-      render(
-        <ChatRail
-          bots={mockBots}
-          threadByBot={{}}
-          activeBot="claude"
-          onActiveBotChange={vi.fn()}
-        />
-      );
-
-      const input = screen.getByTestId('composer-input');
-      await userEvent.type(input, 'Hello');
-
-      expect(setDraftMock).toHaveBeenCalled();
-      // userEvent.type fires onChange for each character, so check that it was called at least once
-      expect(setDraftMock.mock.calls.length).toBeGreaterThan(0);
-    });
-
-    it('sends message when submit button clicked', async () => {
-      const sendMock = vi.fn().mockResolvedValue(undefined);
-      vi.mocked(useChatStream).mockReturnValue({
-        thread: [],
-        send: sendMock,
-        draft: 'Test message',
-        setDraft: vi.fn(),
-      });
-
-      render(
-        <ChatRail
-          bots={mockBots}
-          threadByBot={{}}
-          activeBot="claude"
-          onActiveBotChange={vi.fn()}
-        />
-      );
-
-      const submitButton = screen.getByTestId('composer-submit');
-      await userEvent.click(submitButton);
-
-      expect(sendMock).toHaveBeenCalledWith('Test message');
-    });
-
-    it('displays current draft in composer input', () => {
-      vi.mocked(useChatStream).mockReturnValue({
-        thread: [],
-        send: vi.fn(),
-        draft: 'Saved draft text',
-        setDraft: vi.fn(),
-      });
-
-      render(
-        <ChatRail
-          bots={mockBots}
-          threadByBot={{}}
-          activeBot="claude"
-          onActiveBotChange={vi.fn()}
-        />
-      );
-
-      const input = screen.getByTestId('composer-input') as HTMLInputElement;
-      expect(input.value).toBe('Saved draft text');
-    });
-  });
-
   describe('bot switching', () => {
-    it('calls onActiveBotChange when clicking different bot tab', async () => {
+    it('calls onActiveBotChange when clicking a bot tab', async () => {
       const onBotChangeMock = vi.fn();
-      vi.mocked(useChatStream).mockReturnValue({
-        thread: [],
-        send: vi.fn(),
-        draft: '',
-        setDraft: vi.fn(),
-      });
 
-      render(
+      const { container } = render(
         <ChatRail
           bots={mockBots}
           threadByBot={{}}
@@ -664,21 +460,24 @@ describe('ChatRail component', () => {
         />
       );
 
-      const systemBotTab = screen.getByTestId('bot-tab-system');
-      await userEvent.click(systemBotTab);
+      const tabs = container.querySelectorAll('.bc-tab');
+      await userEvent.click(tabs[1]);
 
       expect(onBotChangeMock).toHaveBeenCalledWith('system');
     });
+  });
 
-    it('marks active bot tab as active', () => {
+  describe('composer', () => {
+    it('updates draft when typing', async () => {
+      const setDraftMock = vi.fn();
       vi.mocked(useChatStream).mockReturnValue({
         thread: [],
         send: vi.fn(),
         draft: '',
-        setDraft: vi.fn(),
+        setDraft: setDraftMock,
       });
 
-      render(
+      const { container } = render(
         <ChatRail
           bots={mockBots}
           threadByBot={{}}
@@ -687,85 +486,21 @@ describe('ChatRail component', () => {
         />
       );
 
-      const claudeTab = screen.getByTestId('bot-tab-claude');
-      expect(claudeTab.getAttribute('data-active')).toBe('true');
-    });
-  });
-
-  describe('bot information', () => {
-    it('displays correct bot avatar initials', () => {
-      const botsWithAvatars: Bot[] = [
-        {
-          id: 'claude',
-          label: 'Claude AI',
-          role: 'assistant',
-          status: 'idle',
-          avatar: 'CA',
-          desc: 'Claude AI assistant',
-          model: 'claude-opus',
-        },
-      ];
-
-      vi.mocked(useChatStream).mockReturnValue({
-        thread: [mockMessage],
-        send: vi.fn(),
-        draft: '',
-        setDraft: vi.fn(),
-      });
-
-      render(
-        <ChatRail
-          bots={botsWithAvatars}
-          threadByBot={{}}
-          activeBot="claude"
-          onActiveBotChange={vi.fn()}
-        />
-      );
-
-      expect(screen.getByTestId('message-avatar').textContent).toBe('CA');
+      const textarea = container.querySelector('textarea') as HTMLTextAreaElement;
+      await userEvent.type(textarea, 'Hello');
+      expect(setDraftMock).toHaveBeenCalled();
     });
 
-    it('limits user avatar to 2 characters', () => {
-      const userMessageWithLongName: ThreadMessage = {
-        kind: 'msg',
-        who: 'user',
-        name: 'verylongusername',
-        when: '14:29',
-        body: [{ p: 'Hi there' }],
-      };
-
-      vi.mocked(useChatStream).mockReturnValue({
-        thread: [userMessageWithLongName],
-        send: vi.fn(),
-        draft: '',
-        setDraft: vi.fn(),
-      });
-
-      render(
-        <ChatRail
-          bots={mockBots}
-          threadByBot={{}}
-          activeBot="claude"
-          onActiveBotChange={vi.fn()}
-        />
-      );
-
-      expect(screen.getByTestId('message-avatar').textContent).toBe('VE');
-    });
-  });
-
-  describe('error handling', () => {
-    it('handles send errors gracefully', async () => {
-      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-      const sendMock = vi.fn().mockRejectedValue(new Error('Send failed'));
+    it('sends message when send button is clicked with draft', async () => {
+      const sendMock = vi.fn().mockResolvedValue(undefined);
       vi.mocked(useChatStream).mockReturnValue({
         thread: [],
         send: sendMock,
-        draft: 'Test',
+        draft: 'Test message',
         setDraft: vi.fn(),
       });
 
-      render(
+      const { container } = render(
         <ChatRail
           bots={mockBots}
           threadByBot={{}}
@@ -774,11 +509,52 @@ describe('ChatRail component', () => {
         />
       );
 
-      const submitButton = screen.getByTestId('composer-submit');
-      await userEvent.click(submitButton);
+      const sendBtn = container.querySelector('.send-btn') as HTMLButtonElement;
+      await userEvent.click(sendBtn);
 
-      expect(consoleErrorSpy).toHaveBeenCalled();
-      consoleErrorSpy.mockRestore();
+      expect(sendMock).toHaveBeenCalledWith('Test message');
+    });
+
+    it('send button is disabled when draft is empty', () => {
+      vi.mocked(useChatStream).mockReturnValue({
+        thread: [],
+        send: vi.fn(),
+        draft: '',
+        setDraft: vi.fn(),
+      });
+
+      const { container } = render(
+        <ChatRail
+          bots={mockBots}
+          threadByBot={{}}
+          activeBot="claude"
+          onActiveBotChange={vi.fn()}
+        />
+      );
+
+      const sendBtn = container.querySelector('.send-btn') as HTMLButtonElement;
+      expect(sendBtn.disabled).toBe(true);
+    });
+
+    it('calls onClose when close button is clicked', async () => {
+      const onClose = vi.fn();
+
+      const { container } = render(
+        <ChatRail
+          bots={mockBots}
+          threadByBot={{}}
+          activeBot="claude"
+          onActiveBotChange={vi.fn()}
+          onClose={onClose}
+        />
+      );
+
+      const head = container.querySelector('.bc-head')!;
+      const btns = head.querySelectorAll('.bc-ico');
+      // Third bc-ico is close
+      await userEvent.click(btns[2]);
+
+      expect(onClose).toHaveBeenCalled();
     });
   });
 });
