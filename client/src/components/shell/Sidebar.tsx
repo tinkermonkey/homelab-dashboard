@@ -1,61 +1,7 @@
 import React from 'react';
 import { Icon } from '../shared/Icon';
-import type { IconName } from '../../utils/icons';
-
-interface NavChild {
-  id: string;
-  label: string;
-  count?: string;
-}
-
-interface NavEntry {
-  id: string;
-  label: string;
-  icon: IconName;
-  count?: string;
-  children?: NavChild[];
-}
-
-// Static container sub-items (structure-only; live counts not available from current API)
-const CONTAINER_CHILDREN: NavChild[] = [
-  { id: 'containers/list',     label: 'Containers' },
-  { id: 'containers/networks', label: 'Networks' },
-  { id: 'containers/volumes',  label: 'Volumes' },
-];
-
-// Static base nav shape — counts and dynamic children are injected at render time
-// from live API data. No example values from design/ are hardcoded here.
-export const NAV_TREE: NavEntry[] = [
-  { id: 'overview',   label: 'Overview',      icon: 'dashboard' },
-  { id: 'servers',    label: 'Servers',        icon: 'cpu' },
-  { id: 'containers', label: 'Containers',     icon: 'layers',  children: CONTAINER_CHILDREN },
-  { id: 'network',    label: 'Network',        icon: 'network' },
-  { id: 'apps',       label: 'Applications',   icon: 'workflow' },
-  { id: 'storage',    label: 'Storage',        icon: 'database' },
-  { id: 'bots',       label: 'Bots',           icon: 'bot' },
-  { id: 'topology',   label: 'Topology',       icon: 'graph' },
-  { id: 'logs',       label: 'Logs',           icon: 'history' },
-  { id: 'settings',   label: 'Configuration',  icon: 'settings' },
-];
-
-// Map nav item id to route path
-export const NAV_ID_TO_PATH: Record<string, string> = {
-  overview:   '/cluster/overview',
-  servers:    '/cluster/servers',
-  containers: '/cluster/containers',
-  network:    '/cluster/network',
-  apps:       '/cluster/applications',
-  storage:    '/cluster/storage',
-  bots:       '/cluster/bots',
-  topology:   '/cluster/topology',
-  logs:       '/cluster/logs',
-  settings:   '/cluster/configuration',
-};
-
-// Map route path to nav item id
-export const PATH_TO_NAV_ID: Record<string, string> = Object.fromEntries(
-  Object.entries(NAV_ID_TO_PATH).map(([id, path]) => [path, id])
-);
+import { NAV_TREE, NAV_ID_TO_PATH } from './sidebarNav';
+import type { NavChild, NavEntry } from './sidebarNav';
 
 interface SidebarProps {
   activeId: string;        // current nav item id from PATH_TO_NAV_ID
