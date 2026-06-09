@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
-import './styles/heimdall.css';
+import '@tinkermonkey/heimdall-ui/fonts';
+import '@tinkermonkey/heimdall-ui/css';
+import './styles/lab.css';
 import './styles/globals.css';
 import { usePersistedState } from './utils/localStorage';
 import { useCluster } from './hooks/useAPI';

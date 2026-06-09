@@ -1,3 +1,5 @@
+import type { IconName } from '../../utils/icons';
+
 export interface NavChild {
   id: string;
   label: string;
@@ -7,7 +9,7 @@ export interface NavChild {
 export interface NavEntry {
   id: string;
   label: string;
-  icon: string;
+  icon: IconName;
   count?: string;
   children?: NavChild[];
 }
