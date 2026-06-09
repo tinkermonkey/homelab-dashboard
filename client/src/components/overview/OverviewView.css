@@ -1,4 +1,4 @@
-/* OverviewView layout — uses heimdall-components.css for all inner components */
+/* OverviewView layout — inner component styles are in lab.css */
 
 .overview-view {
   display: flex;

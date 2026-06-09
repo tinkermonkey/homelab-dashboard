@@ -216,11 +216,6 @@ button, input, textarea { font: inherit; }
 .rail-user-info .n { font-size: 12.5px; font-weight: 600; color: rgb(var(--shell-fg-1)); }
 .rail-user-info .e { font-family: var(--font-mono); font-size: 10.5px; color: rgb(var(--shell-fg-3)); }
 
-/* Sidebar footer identity (design ref name) */
-.rail-user__info { display: flex; flex-direction: column; min-width: 0; }
-.rail-user__info .n { font-size: 12.5px; font-weight: 600; color: rgb(var(--shell-fg-1)); }
-.rail-user__info .e { font-family: var(--font-mono); font-size: 10.5px; color: rgb(var(--shell-fg-3)); }
-
 /* Scrollbars */
 .shell-rail::-webkit-scrollbar, .nav-section::-webkit-scrollbar { width: 10px; height: 10px; }
 .shell-rail::-webkit-scrollbar-thumb, .nav-section::-webkit-scrollbar-thumb {
@@ -409,18 +404,6 @@ button, input, textarea { font: inherit; }
   100% { transform: scale(1.6); opacity: 0; }
 }
 
-/* PulseDot (design ref name) */
-.pulse-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; position: relative; display: inline-block; }
-.pulse-dot::before { content: ''; position: absolute; inset: 0; border-radius: 50%; background: inherit; animation: lab-pulse 1.6s ease-out infinite; }
-.pulse-dot--emerald { background: rgb(var(--status-emerald)); }
-.pulse-dot--amber   { background: rgb(var(--status-amber)); }
-.pulse-dot--rose    { background: rgb(var(--status-rose)); }
-.pulse-dot--cyan    { background: rgb(var(--status-cyan)); }
-.pulse-dot--neutral { background: rgb(var(--canvas-fg-4)); }
-.pulse-dot--neutral::before { display: none; }
-.pulse-dot--sm { width: 6px; height: 6px; }
-@keyframes lab-pulse { 0% { transform: scale(0.7); opacity: 0.55; } 100% { transform: scale(2.2); opacity: 0; } }
-
 /* =====================================================================
    Page primitives
    ===================================================================== */
@@ -469,7 +452,7 @@ button, input, textarea { font: inherit; }
 .panel-body { padding: 14px; }
 .panel-body.flush { padding: 0; }
 
-/* Stat sub-elements (package provides .stat and .stat-grid) */
+/* Stat sub-elements (package provides .stat-tile and .stat-grid) */
 .stat-spark { position: absolute; right: 12px; bottom: 12px; pointer-events: none; opacity: 0.85; }
 .delta-up   { color: rgb(var(--status-emerald)); font-weight: 500; }
 .delta-down { color: rgb(var(--status-rose)); font-weight: 500; }
@@ -487,7 +470,7 @@ button, input, textarea { font: inherit; }
   border: 1px solid rgb(var(--canvas-border));
 }
 
-/* Tabs (package provides .tab) */
+/* Tabs (.tab and .tabs are defined here; package provides .tab-bar__tab) */
 .tabs {
   display: flex; gap: 18px;
   border-bottom: 1px solid rgb(var(--canvas-border));
@@ -589,7 +572,6 @@ body.dark-canvas .sev-badge.info { color: rgb(var(--semantic-cyan-fg)); }
    Host metric card (Overview server cards)
    ===================================================================== */
 .server-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
-.srv-grid     { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 14px; }
 
 .server-card {
   background: rgb(var(--canvas-card));
@@ -598,25 +580,11 @@ body.dark-canvas .sev-badge.info { color: rgb(var(--semantic-cyan-fg)); }
   overflow: hidden;
   display: flex; flex-direction: column;
 }
-.server-head, .srv-head {
+.server-head {
   display: flex; align-items: center; gap: 12px;
   padding: 12px 14px;
   border-bottom: 1px solid rgb(var(--canvas-border));
 }
-.srv-head__main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-.srv-head__name { display: inline-flex; align-items: center; gap: 8px; font-family: var(--font-mono);
-  font-size: 14px; font-weight: 600; color: rgb(var(--canvas-fg-1)); letter-spacing: -0.01em; }
-.srv-head__sub { font-family: var(--font-mono); font-size: 11px; color: rgb(var(--canvas-fg-3)); }
-.srv-head__right { text-align: right; font-family: var(--font-mono); }
-.srv-head__right .k { display: block; font-size: 9.5px; letter-spacing: 0.1em; text-transform: uppercase; color: rgb(var(--canvas-fg-3)); }
-.srv-head__right .v { font-size: 11.5px; font-weight: 500; color: rgb(var(--canvas-fg-1)); }
-.srv-body { padding: 6px 14px; }
-.srv-foot { display: grid; grid-template-columns: repeat(4,1fr); gap: 1px; background: rgb(var(--canvas-border)); border-top: 1px solid rgb(var(--canvas-border)); }
-.srv-foot > div { background: rgb(var(--canvas-bg-2)); padding: 9px 12px; display: flex; flex-direction: column; gap: 2px; }
-.srv-foot .k { font-family: var(--font-mono); font-size: 9.5px; letter-spacing: 0.1em; text-transform: uppercase; color: rgb(var(--canvas-fg-3)); }
-.srv-foot .v { font-family: var(--font-mono); font-size: 11.5px; color: rgb(var(--canvas-fg-1)); }
-.srv-foot .v.warn { color: rgb(var(--status-warn-fg)); }
-body.dark-canvas .srv-foot .v.warn { color: rgb(var(--accent-primary)); }
 
 .role-mark {
   width: 30px; height: 30px;
@@ -790,36 +758,22 @@ body.dark-canvas .server-foot .v.warn { color: rgb(var(--accent-primary)); }
   color: rgb(var(--semantic-cyan-fg));
 }
 .gw-charts { display: grid; grid-template-columns: 1fr; gap: 14px; }
-.gw-charthead, .gw-chart-head {
-  display: flex; align-items: baseline; justify-content: space-between;
-  margin-bottom: 6px;
-}
-.gw-charthead .t, .gw-chart-head .t {
-  font-family: var(--font-mono);
-  font-size: 10px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase;
-  color: rgb(var(--canvas-fg-3));
-}
-.gw-charthead .v, .gw-chart-head .v {
-  font-family: var(--font-mono); font-size: 12px; color: rgb(var(--canvas-fg-1));
-}
-.gw-chart-head .v .down { color: rgb(var(--status-cyan)); }
-.gw-chart-head .v .up   { color: rgb(var(--status-violet)); }
 .gw-chart-svg { width: 100%; height: 72px; }
 .gw-axis { font-family: var(--font-mono); font-size: 8.5px; fill: rgb(var(--canvas-fg-4)); }
-.gw-strip, .gw-stat-strip {
+.gw-stat-strip {
   display: grid; grid-template-columns: repeat(4,1fr); gap: 1px;
   background: rgb(var(--canvas-border)); border-top: 1px solid rgb(var(--canvas-border));
 }
-.gw-strip > div, .gw-stat-strip > div {
+.gw-stat-strip > div {
   background: rgb(var(--canvas-bg-2)); padding: 11px 14px; display: flex; flex-direction: column; gap: 3px;
 }
-.gw-strip .k, .gw-stat-strip .k {
+.gw-stat-strip .k {
   font-family: var(--font-mono); font-size: 9.5px; letter-spacing: 0.1em; text-transform: uppercase; color: rgb(var(--canvas-fg-3));
 }
-.gw-strip .v, .gw-stat-strip .v {
+.gw-stat-strip .v {
   font-family: var(--font-mono); font-size: 15px; font-weight: 600; color: rgb(var(--canvas-fg-1)); font-variant-numeric: tabular-nums;
 }
-.gw-strip .m, .gw-stat-strip .m {
+.gw-stat-strip .m {
   font-family: var(--font-mono); font-size: 10.5px; color: rgb(var(--canvas-fg-3));
 }
 
@@ -1550,22 +1504,17 @@ body.dark-canvas .evt-row .sev.ok   { color: rgb(var(--semantic-emerald-fg)); }
 /* =====================================================================
    Tweaks panel
    ===================================================================== */
-.tweaks-panel, .tweaks {
+.tweaks-panel {
   position: fixed; bottom: 20px; right: 20px; width: 280px;
   background: rgb(var(--shell-bg-2)); border: 1px solid rgb(var(--shell-border-2));
   border-radius: var(--radius-lg); color: rgb(var(--shell-fg-1));
   box-shadow: var(--shadow-modal); z-index: 100; overflow: hidden;
 }
-.tweaks__head, .tweaks-head {
+.tweaks__head {
   display: flex; align-items: center; gap: 8px; padding: 11px 14px;
   border-bottom: 1px solid rgb(var(--shell-border)); font-size: 13px; font-weight: 600;
 }
 .tweaks__head .t { font-size: 13px; font-weight: 600; }
-.tweaks-head .close {
-  margin-left: auto; width: 22px; height: 22px;
-  background: transparent; border: 0; border-radius: 4px; color: rgb(var(--shell-fg-3)); cursor: pointer;
-}
-.tweaks-head .close:hover { background: rgb(var(--shell-surface)); color: rgb(var(--shell-fg-1)); }
 .tweaks__body, .tweaks-body { padding: 12px 14px; display: flex; flex-direction: column; gap: 12px; }
 .tweaks__body { max-height: 60vh; overflow: auto; }
 .tweaks__row { display: flex; flex-direction: column; gap: 7px; }
@@ -1628,6 +1577,5 @@ body.dark-canvas .evt-row .sev.ok   { color: rgb(var(--semantic-emerald-fg)); }
    Density compact overrides
    ===================================================================== */
 .density-compact .lab-page     { gap: 12px; padding: 16px 20px 28px; }
-.density-compact .srv-grid,
 .density-compact .grid-2       { gap: 10px; }
 .density-compact .canvas-inner { padding: 16px 20px 24px; gap: 12px; }
