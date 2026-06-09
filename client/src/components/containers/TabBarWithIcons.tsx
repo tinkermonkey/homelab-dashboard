@@ -1,6 +1,7 @@
 import React from 'react';
 import { Chip } from '@tinkermonkey/heimdall-ui';
 import { Icon } from '../shared/Icon';
+import type { IconName } from '../../utils/icons';
 import './TabBarWithIcons.css';
 
 export interface Tab {
@@ -33,7 +34,7 @@ export const TabBarWithIcons = React.forwardRef<HTMLDivElement, TabBarWithIconsP
             >
               {tab.icon && (
                 <span className="tab-bar-icons__icon">
-                  <Icon name={tab.icon} size={tab.iconSize ?? 24} />
+                  <Icon name={tab.icon as IconName} size={tab.iconSize ?? 24} />
                 </span>
               )}
               <span className="tab-bar-icons__label">{tab.label}</span>

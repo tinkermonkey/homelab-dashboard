@@ -36,7 +36,7 @@ export const ErrorView: React.FC<ErrorViewProps> = ({
         }}
       >
         <Icon
-          name={isDegraded ? 'alert-triangle' : 'x-circle'}
+          name={isDegraded ? 'alert' : 'x'}
           size={48}
           style={{
             color: isDegraded ? '#F59E0B' : '#F43F5E',

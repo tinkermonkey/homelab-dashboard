@@ -9,9 +9,9 @@ interface StatusbarProps {
 
 export const Statusbar: React.FC<StatusbarProps> = ({ clusterData }) => {
   const { data: statusData } = useStatus();
-  const [tick, setTick] = useState(0);
+  const [, setTick] = useState(0);
 
-  // ~2.2s liveness tick for live numbers
+  // ~2.2s liveness tick forces re-render for live numbers
   useEffect(() => {
     const id = setInterval(() => setTick(t => t + 1), 2200);
     return () => clearInterval(id);

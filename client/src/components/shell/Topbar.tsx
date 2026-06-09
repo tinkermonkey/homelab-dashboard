@@ -1,6 +1,5 @@
 import React from 'react';
 import { Icon } from '../shared/Icon';
-import type { IconName } from '../../utils/icons';
 
 // Build breadcrumb path from nav id
 // e.g., 'containers/networks' → ['/', 'cluster', 'asgard', 'containers', 'networks']

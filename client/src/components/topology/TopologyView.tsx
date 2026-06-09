@@ -38,7 +38,7 @@ export const TopologyView: React.FC = () => {
     return (
       <TopologyNode
         title={bot.label}
-        role={bot.role}
+        nodeRole={bot.role}
         status={statusMap[bot.status] || 'idle'}
       />
     );

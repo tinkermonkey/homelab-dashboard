@@ -33,7 +33,7 @@ export const HostContainersPanel: React.FC<HostContainersPanelProps> = ({ host, 
           className="host-panel-collapse-btn"
           onClick={() => setIsCollapsed(!isCollapsed)}
         >
-          <Icon name={isCollapsed ? 'chevron-right' : 'chevron-down'} size={16} />
+          <Icon name={isCollapsed ? 'chevRight' : 'chevDown'} size={16} />
         </button>
 
         <div className="host-panel-mark" data-role={ROLE_BY_HOST[host.id]}>

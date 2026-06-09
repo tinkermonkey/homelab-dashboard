@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Icon } from '../shared/Icon';
+import type { IconName } from '../../utils/icons';
 import './CommandPalette.css';
 
 interface CommandItem {
@@ -92,7 +93,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose,
                 }}
               >
                 <div className="command-palette__item-icon">
-                  <Icon name={cmd.icon} size={16} />
+                  <Icon name={cmd.icon as IconName} size={16} />
                 </div>
                 <div className="command-palette__item-content">
                   <div className="command-palette__item-label">{cmd.label}</div>

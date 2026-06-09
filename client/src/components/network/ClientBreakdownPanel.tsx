@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { PieChart, Table, type Column } from '@tinkermonkey/heimdall-ui';
+import { Donut, Table, type Column } from '@tinkermonkey/heimdall-ui';
 import type { NETWORK_DATA, NetworkClient } from '@homelab/shared';
 
 interface ClientBreakdownPanelProps {
@@ -67,8 +67,8 @@ export const ClientBreakdownPanel: React.FC<ClientBreakdownPanelProps> = ({ clie
   const [sortDir, setSortDir] = useState<'asc' | 'desc' | null>('asc');
 
   const segments = [
-    { name: 'Wired', value: clients.wired, color: 'rgb(var(--accent-cyan))' },
-    { name: 'Wireless', value: clients.wireless, color: 'rgb(var(--accent-violet))' },
+    { value: clients.wired, color: 'rgb(var(--accent-cyan))' },
+    { value: clients.wireless, color: 'rgb(var(--accent-violet))' },
   ].filter(s => s.value > 0);
 
   const allClients = [...clients.topTalkers].sort((a, b) => {
@@ -91,7 +91,7 @@ export const ClientBreakdownPanel: React.FC<ClientBreakdownPanelProps> = ({ clie
     <>
       <div className="client-breakdown__summary">
         <div className="client-breakdown__chart-wrap">
-          <PieChart segments={segments} width={120} height={120} legend={false} />
+          <Donut slices={segments} width={120} height={120} />
         </div>
         <div className="client-breakdown__kv">
           <div className="client-kv-row">

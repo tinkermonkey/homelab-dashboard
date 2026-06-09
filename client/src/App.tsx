@@ -35,7 +35,7 @@ const AppContent: React.FC = () => {
   const [activeBot, setActiveBot] = usePersistedState('activeBot', 'lab-bot');
   const [activeRoute, setActiveRoute] = usePersistedState('activeRoute', '/cluster/overview');
   const [density] = usePersistedState('density', 'regular');
-  const [showAlerts, setShowAlerts] = usePersistedState('showAlerts', true);
+  const [showAlerts] = usePersistedState('showAlerts', true);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
 
   const { data: clusterData, isLoading, error, refetch } = useCluster();
