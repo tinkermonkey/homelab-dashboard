@@ -33,7 +33,7 @@ const AppContent: React.FC = () => {
   const navigate = useNavigate();
 
   const [sidebarCollapsed, setSidebarCollapsed] = usePersistedState('sidebarCollapsed', false);
-  const [darkCanvas] = usePersistedState('darkCanvas', true);
+  const [darkCanvas] = usePersistedState('darkCanvas', false);
   const [chatVisible, setChatVisible] = usePersistedState('chatVisible', true);
   const [activeBot, setActiveBot] = usePersistedState('activeBot', 'lab-bot');
   const [activeRoute, setActiveRoute] = usePersistedState('activeRoute', '/cluster/overview');

@@ -15,7 +15,7 @@
   "dependencies": {
     "@homelab/shared": "file:../shared",
     "@tanstack/react-query": "^5.38.0",
-    "@tinkermonkey/heimdall-ui": "github:tinkermonkey/heimdall#df99cf9e799c01f85187dd02bfb349a4c7ab4680",
+    "@tinkermonkey/heimdall-ui": "file:tinkermonkey-heimdall-ui-0.3.0.tgz",
     "dompurify": "^3.4.4",
     "react": "^18.3.0",
     "react-dom": "^18.3.0",
