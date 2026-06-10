@@ -134,11 +134,6 @@ button, input, textarea { font: inherit; }
 .tb-ws:hover { background: rgb(var(--shell-surface-2)); }
 .tb-ws .dot { width: 6px; height: 6px; border-radius: 50%; background: rgb(var(--accent-primary)); }
 
-/* ---- Sidebar footer identity ---- */
-.rail-user__info { display: flex; flex-direction: column; min-width: 0; }
-.rail-user__info .n { font-size: 12.5px; font-weight: 600; color: rgb(var(--shell-fg-1)); }
-.rail-user__info .e { font-family: var(--font-mono); font-size: 10.5px; color: rgb(var(--shell-fg-3)); }
-
 /* ---- Bot rail (right dock) ---- */
 .lab-chat {
   width: 384px; flex-shrink: 0; display: flex; flex-direction: column; min-height: 0;
@@ -926,7 +921,7 @@ body.dark-canvas .evt-row .sev.ok   { color: rgb(var(--semantic-emerald-fg)); }
 .stub__sub { font-size: 13px; color: rgb(var(--canvas-fg-3)); max-width: 46ch; line-height: 1.6; }
 
 /* ---- Tweaks panel ---- */
-.tweaks, .tweaks-panel {
+.tweaks {
   position: fixed; right: 18px; bottom: 18px; z-index: 90; width: 300px;
   background: rgb(var(--shell-surface)); border: 1px solid rgb(var(--shell-border-2)); border-radius: var(--radius-lg);
   box-shadow: var(--shadow-modal); color: rgb(var(--shell-fg-1)); overflow: hidden;
@@ -936,7 +931,7 @@ body.dark-canvas .evt-row .sev.ok   { color: rgb(var(--semantic-emerald-fg)); }
   border-bottom: 1px solid rgb(var(--shell-border));
 }
 .tweaks__head .t { font-size: 13px; font-weight: 600; }
-.tweaks__body, .tweaks-body { padding: 12px 14px; display: flex; flex-direction: column; gap: 14px; }
+.tweaks__body { padding: 12px 14px; display: flex; flex-direction: column; gap: 14px; }
 .tweaks__body { max-height: 60vh; overflow: auto; }
 .tweaks__row { display: flex; flex-direction: column; gap: 7px; }
 .tweaks__row > .lbl { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: rgb(var(--shell-fg-3)); }
@@ -945,27 +940,6 @@ body.dark-canvas .evt-row .sev.ok   { color: rgb(var(--semantic-emerald-fg)); }
 .tw-swatches { display: flex; gap: 8px; }
 .tw-swatch { width: 26px; height: 26px; border-radius: 7px; cursor: pointer; border: 2px solid transparent; }
 .tw-swatch--on { border-color: rgb(var(--shell-fg-1)); }
-.tweak-row { display: flex; align-items: center; gap: 10px; font-size: 12px; color: rgb(var(--shell-fg-2)); }
-.tweak-row .lab { flex: 1; }
-.toggle {
-  width: 32px; height: 18px; background: rgb(var(--shell-border-2));
-  border-radius: 9999px; position: relative; cursor: pointer; transition: background 120ms ease; flex-shrink: 0;
-}
-.toggle::after {
-  content: ''; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px;
-  border-radius: 50%; background: rgb(var(--shell-fg-1)); transition: left 120ms ease;
-}
-.toggle.on { background: rgb(var(--accent-primary)); }
-.toggle.on::after { left: 16px; background: #29220A; }
-.tweak-seg {
-  display: inline-flex; background: rgb(var(--shell-bg));
-  border: 1px solid rgb(var(--shell-border-2)); border-radius: var(--radius-md); padding: 2px;
-}
-.tweak-seg button {
-  background: transparent; border: 0; font-family: var(--font-sans); font-size: 11px;
-  padding: 3px 9px; color: rgb(var(--shell-fg-3)); border-radius: 4px; cursor: pointer;
-}
-.tweak-seg button.on { background: rgb(var(--shell-surface-2)); color: rgb(var(--shell-fg-1)); box-shadow: inset 0 0 0 1px rgb(var(--shell-border-2)); }
 
 /* ---- Toast ---- */
 .lab-toast {
