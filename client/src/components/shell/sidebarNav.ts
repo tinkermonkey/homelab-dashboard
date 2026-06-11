@@ -3,14 +3,14 @@ import type { IconName } from '@tinkermonkey/heimdall-ui';
 export interface NavChild {
   id: string;
   label: string;
-  count?: string;
+  count?: number;
 }
 
 export interface NavEntry {
   id: string;
   label: string;
   icon: IconName;
-  count?: string;
+  count?: number;
   children?: NavChild[];
 }
 
