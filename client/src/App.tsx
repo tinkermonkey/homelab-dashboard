@@ -23,7 +23,7 @@ import { LogsView } from './components/logs/LogsView';
 import { SettingsView } from './components/settings/SettingsView';
 import { PlaceholderView } from './components/shared/PlaceholderView';
 import { ErrorView } from './components/shared/ErrorView';
-import { ChatRail } from './components/chat/ChatRail';
+import { BotConsole } from './components/chat/BotConsole';
 
 // Command palette commands derived from nav tree
 const PALETTE_COMMANDS = NAV_TREE.map(item => ({
@@ -151,7 +151,7 @@ const AppContent: React.FC = () => {
         </div>
 
         {chatVisible && (
-          <ChatRail
+          <BotConsole
             bots={clusterData?.bots ?? []}
             threadByBot={clusterData?.threadByBot ?? {}}
             activeBot={activeBot}

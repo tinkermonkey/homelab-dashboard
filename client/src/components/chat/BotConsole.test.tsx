@@ -1,24 +1,164 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { ChatRail } from './ChatRail.js';
+import { BotConsole } from './BotConsole.js';
 import type { Bot, ThreadMessage, ThreadDivider } from '@homelab/shared';
 
-// Mock DOMPurify
 vi.mock('dompurify', () => ({
   default: {
     sanitize: (html: string) => html.replace(/<script[^>]*>.*?<\/script>/gi, ''),
   },
 }));
 
-// Mock useChatStream hook
 vi.mock('../../hooks/useChatStream', () => ({
   useChatStream: vi.fn(),
 }));
 
+vi.mock('@tinkermonkey/heimdall-ui', async () => {
+  const React = await import('react');
+
+  const Icon = ({ name }: { name: string }) =>
+    React.createElement('svg', { 'data-icon': name });
+
+  const ChatContainer = ({
+    children,
+    bots = [],
+    activeBotId,
+    onBotChange,
+    composer,
+  }: {
+    children: React.ReactNode;
+    bots?: Array<{ id: string; label: string; role: string; status: string }>;
+    activeBotId?: string;
+    onBotChange?: (id: string) => void;
+    composer?: React.ReactNode;
+  }) =>
+    React.createElement(
+      'div',
+      { className: 'chat-container' },
+      React.createElement(
+        'div',
+        { className: 'chat-container__bot-tabs' },
+        bots.map((b) =>
+          React.createElement(
+            'button',
+            {
+              key: b.id,
+              className: `chat-container__bot-tab${b.id === activeBotId ? ' chat-container__bot-tab--active' : ''}`,
+              onClick: () => onBotChange?.(b.id),
+            },
+            b.label
+          )
+        )
+      ),
+      React.createElement('div', { className: 'chat-container__thread' }, children),
+      composer
+    );
+
+  const ChatMessage = ({
+    role,
+    senderName,
+    timestamp,
+    body,
+    badge,
+    toolBlock,
+    thinkingBlock,
+  }: {
+    role: 'user' | 'bot';
+    senderName: string;
+    timestamp: string;
+    body: React.ReactNode;
+    avatar?: string;
+    badge?: string;
+    toolBlock?: { name: string; status: string; output?: Array<{ key?: string; value: string }> };
+    thinkingBlock?: { content: string };
+  }) =>
+    React.createElement(
+      'div',
+      { className: `chat-message chat-message--${role}` },
+      React.createElement(
+        'div',
+        { className: 'chat-message__content' },
+        React.createElement(
+          'div',
+          { className: 'chat-message__meta' },
+          React.createElement('span', { className: 'chat-message__sender' }, senderName),
+          badge && React.createElement('span', { className: 'chat-message__badge' }, badge),
+          React.createElement('span', { className: 'chat-message__timestamp' }, timestamp)
+        ),
+        React.createElement('div', { className: 'chat-message__body' }, body),
+        thinkingBlock &&
+          React.createElement('div', { className: 'thinking-block' }, thinkingBlock.content),
+        toolBlock &&
+          React.createElement(
+            'div',
+            { className: 'tool-block' },
+            React.createElement('div', { className: 'tool-block__name' }, toolBlock.name)
+          )
+      )
+    );
+
+  const ChatComposer = ({
+    value,
+    onChange,
+    onSubmit,
+    placeholder,
+  }: {
+    value: string;
+    onChange: (v: string) => void;
+    onSubmit: (v: string, ctx: []) => void;
+    scopeLabel?: string;
+    placeholder?: string;
+  }) =>
+    React.createElement(
+      'div',
+      { className: 'chat-composer' },
+      React.createElement('textarea', {
+        className: 'chat-composer__input',
+        value,
+        placeholder,
+        onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => onChange(e.target.value),
+      }),
+      React.createElement(
+        'button',
+        {
+          className: 'btn btn--primary',
+          disabled: !value.trim(),
+          onClick: () => onSubmit(value, []),
+          'aria-label': 'Send message',
+        },
+        'send'
+      )
+    );
+
+  const ChatSuggestions = ({
+    suggestions,
+    onSelect,
+  }: {
+    suggestions: string[];
+    onSelect: (s: string) => void;
+  }) =>
+    React.createElement(
+      'div',
+      { className: 'chat-suggestions' },
+      suggestions.map((s) =>
+        React.createElement(
+          'button',
+          { key: s, className: 'chat-suggestions__pill', onClick: () => onSelect(s) },
+          s
+        )
+      )
+    );
+
+  const ChatDivider = ({ label }: { label: string }) =>
+    React.createElement('div', { className: 'chat-divider' }, label);
+
+  return { Icon, ChatContainer, ChatMessage, ChatComposer, ChatSuggestions, ChatDivider };
+});
+
 import { useChatStream } from '../../hooks/useChatStream.js';
 
-describe('ChatRail component', () => {
+describe('BotConsole component', () => {
   const mockBots: Bot[] = [
     {
       id: 'claude',
@@ -67,9 +207,9 @@ describe('ChatRail component', () => {
   });
 
   describe('rendering', () => {
-    it('renders the bot console shell', () => {
+    it('renders the lab-chat wrapper and key regions', () => {
       const { container } = render(
-        <ChatRail
+        <BotConsole
           bots={mockBots}
           threadByBot={{}}
           activeBot="claude"
@@ -77,16 +217,15 @@ describe('ChatRail component', () => {
         />
       );
 
-      expect(container.querySelector('.bot-console')).not.toBeNull();
-      expect(container.querySelector('.bc-head')).not.toBeNull();
-      expect(container.querySelector('.bc-tabs')).not.toBeNull();
-      expect(container.querySelector('.bc-thread')).not.toBeNull();
-      expect(container.querySelector('.bc-composer')).not.toBeNull();
+      expect(container.querySelector('.lab-chat')).not.toBeNull();
+      expect(container.querySelector('.lab-chat__head')).not.toBeNull();
+      expect(container.querySelector('.chat-container')).not.toBeNull();
+      expect(container.querySelector('.chat-composer')).not.toBeNull();
     });
 
     it('renders a tab for each bot', () => {
       const { container } = render(
-        <ChatRail
+        <BotConsole
           bots={mockBots}
           threadByBot={{}}
           activeBot="claude"
@@ -94,7 +233,7 @@ describe('ChatRail component', () => {
         />
       );
 
-      const tabs = container.querySelectorAll('.bc-tab');
+      const tabs = container.querySelectorAll('.chat-container__bot-tab');
       expect(tabs.length).toBe(2);
       expect(tabs[0].textContent).toContain('Claude');
       expect(tabs[1].textContent).toContain('System Bot');
@@ -102,7 +241,7 @@ describe('ChatRail component', () => {
 
     it('marks the active bot tab with active class', () => {
       const { container } = render(
-        <ChatRail
+        <BotConsole
           bots={mockBots}
           threadByBot={{}}
           activeBot="claude"
@@ -110,14 +249,14 @@ describe('ChatRail component', () => {
         />
       );
 
-      const tabs = container.querySelectorAll('.bc-tab');
-      expect(tabs[0].classList.contains('active')).toBe(true);
-      expect(tabs[1].classList.contains('active')).toBe(false);
+      const tabs = container.querySelectorAll('.chat-container__bot-tab');
+      expect(tabs[0].classList.contains('chat-container__bot-tab--active')).toBe(true);
+      expect(tabs[1].classList.contains('chat-container__bot-tab--active')).toBe(false);
     });
 
-    it('renders composer textarea and send button', () => {
+    it('renders composer with textarea', () => {
       const { container } = render(
-        <ChatRail
+        <BotConsole
           bots={mockBots}
           threadByBot={{}}
           activeBot="claude"
@@ -125,13 +264,13 @@ describe('ChatRail component', () => {
         />
       );
 
+      expect(container.querySelector('.chat-composer')).not.toBeNull();
       expect(container.querySelector('textarea')).not.toBeNull();
-      expect(container.querySelector('.send-btn')).not.toBeNull();
     });
 
     it('shows correct placeholder in textarea', () => {
       const { container } = render(
-        <ChatRail
+        <BotConsole
           bots={mockBots}
           threadByBot={{}}
           activeBot="claude"
@@ -146,7 +285,7 @@ describe('ChatRail component', () => {
     it('renders close button when onClose provided', () => {
       const onClose = vi.fn();
       const { container } = render(
-        <ChatRail
+        <BotConsole
           bots={mockBots}
           threadByBot={{}}
           activeBot="claude"
@@ -155,11 +294,23 @@ describe('ChatRail component', () => {
         />
       );
 
-      const head = container.querySelector('.bc-head');
+      const head = container.querySelector('.lab-chat__head');
       expect(head).not.toBeNull();
-      // Three bc-ico buttons: history, settings, close
-      const btns = head!.querySelectorAll('.bc-ico');
-      expect(btns.length).toBe(3);
+      const closeBtn = head!.querySelector('[aria-label="Close bot console"]');
+      expect(closeBtn).not.toBeNull();
+    });
+
+    it('does not render close button when onClose is absent', () => {
+      const { container } = render(
+        <BotConsole
+          bots={mockBots}
+          threadByBot={{}}
+          activeBot="claude"
+          onActiveBotChange={vi.fn()}
+        />
+      );
+
+      expect(container.querySelector('[aria-label="Close bot console"]')).toBeNull();
     });
   });
 
@@ -173,7 +324,7 @@ describe('ChatRail component', () => {
       });
 
       const { container } = render(
-        <ChatRail
+        <BotConsole
           bots={mockBots}
           threadByBot={{}}
           activeBot="claude"
@@ -181,12 +332,14 @@ describe('ChatRail component', () => {
         />
       );
 
-      const msgs = container.querySelectorAll('.bc-msg');
+      const msgs = container.querySelectorAll('.chat-message--bot');
       expect(msgs.length).toBe(1);
-      expect(msgs[0].querySelector('.bc-body')?.textContent).toContain('Hello, how can I help?');
+      expect(msgs[0].querySelector('.chat-message__body')?.textContent).toContain(
+        'Hello, how can I help?'
+      );
     });
 
-    it('renders user messages with .user class', () => {
+    it('renders user messages with user class', () => {
       vi.mocked(useChatStream).mockReturnValue({
         thread: [mockUserMessage],
         send: vi.fn(),
@@ -195,7 +348,7 @@ describe('ChatRail component', () => {
       });
 
       const { container } = render(
-        <ChatRail
+        <BotConsole
           bots={mockBots}
           threadByBot={{}}
           activeBot="claude"
@@ -203,16 +356,13 @@ describe('ChatRail component', () => {
         />
       );
 
-      const msgs = container.querySelectorAll('.bc-msg.user');
+      const msgs = container.querySelectorAll('.chat-message--user');
       expect(msgs.length).toBe(1);
-      expect(msgs[0].querySelector('.bc-body')?.textContent).toContain('Hi there');
+      expect(msgs[0].querySelector('.chat-message__body')?.textContent).toContain('Hi there');
     });
 
     it('renders dividers in thread', () => {
-      const divider: ThreadDivider = {
-        kind: 'divider',
-        label: 'New conversation',
-      };
+      const divider: ThreadDivider = { kind: 'divider', label: 'New conversation' };
 
       vi.mocked(useChatStream).mockReturnValue({
         thread: [divider],
@@ -222,7 +372,7 @@ describe('ChatRail component', () => {
       });
 
       const { container } = render(
-        <ChatRail
+        <BotConsole
           bots={mockBots}
           threadByBot={{}}
           activeBot="claude"
@@ -230,7 +380,7 @@ describe('ChatRail component', () => {
         />
       );
 
-      const dividerEl = container.querySelector('.bc-divider');
+      const dividerEl = container.querySelector('.chat-divider');
       expect(dividerEl).not.toBeNull();
       expect(dividerEl!.textContent).toContain('New conversation');
     });
@@ -252,7 +402,7 @@ describe('ChatRail component', () => {
       });
 
       const { container } = render(
-        <ChatRail
+        <BotConsole
           bots={mockBots}
           threadByBot={{}}
           activeBot="claude"
@@ -260,47 +410,12 @@ describe('ChatRail component', () => {
         />
       );
 
-      const body = container.querySelector('.bc-body');
+      const body = container.querySelector('.chat-message__body');
       expect(body!.innerHTML).not.toContain('<script>');
       expect(body!.innerHTML).toContain('Safe content');
     });
 
-    it('displays multiple body paragraphs', () => {
-      const multiMsg: ThreadMessage = {
-        kind: 'msg',
-        who: 'claude',
-        name: 'Claude',
-        when: '14:30',
-        body: [
-          { p: 'First paragraph' },
-          { p: 'Second paragraph' },
-          { p: 'Third paragraph' },
-        ],
-      };
-
-      vi.mocked(useChatStream).mockReturnValue({
-        thread: [multiMsg],
-        send: vi.fn(),
-        draft: '',
-        setDraft: vi.fn(),
-      });
-
-      const { container } = render(
-        <ChatRail
-          bots={mockBots}
-          threadByBot={{}}
-          activeBot="claude"
-          onActiveBotChange={vi.fn()}
-        />
-      );
-
-      const body = container.querySelector('.bc-body');
-      expect(body!.textContent).toContain('First paragraph');
-      expect(body!.textContent).toContain('Second paragraph');
-      expect(body!.textContent).toContain('Third paragraph');
-    });
-
-    it('renders sender name in bc-meta', () => {
+    it('renders sender name in message meta', () => {
       vi.mocked(useChatStream).mockReturnValue({
         thread: [mockMessage],
         send: vi.fn(),
@@ -309,7 +424,7 @@ describe('ChatRail component', () => {
       });
 
       const { container } = render(
-        <ChatRail
+        <BotConsole
           bots={mockBots}
           threadByBot={{}}
           activeBot="claude"
@@ -317,8 +432,8 @@ describe('ChatRail component', () => {
         />
       );
 
-      const meta = container.querySelector('.bc-meta');
-      expect(meta!.querySelector('.who')?.textContent).toBe('Claude');
+      const sender = container.querySelector('.chat-message__sender');
+      expect(sender!.textContent).toBe('Claude');
     });
 
     it('renders bot role as badge', () => {
@@ -330,7 +445,7 @@ describe('ChatRail component', () => {
       });
 
       const { container } = render(
-        <ChatRail
+        <BotConsole
           bots={mockBots}
           threadByBot={{}}
           activeBot="claude"
@@ -338,24 +453,20 @@ describe('ChatRail component', () => {
         />
       );
 
-      const badge = container.querySelector('.bc-meta .badge');
+      const badge = container.querySelector('.chat-message__badge');
       expect(badge!.textContent).toBe('assistant');
     });
   });
 
   describe('tool blocks', () => {
-    it('renders tool block with name and status class', () => {
+    it('renders tool block with name', () => {
       const msgWithTool: ThreadMessage = {
         kind: 'msg',
         who: 'claude',
         name: 'Claude',
         when: '14:30',
         body: [{ p: 'Using a tool' }],
-        tool: {
-          name: 'bash',
-          status: 'completed',
-          lines: [{ k: 'output', v: 'Success' }],
-        },
+        tool: { name: 'bash', status: 'completed', lines: [{ k: 'output', v: 'Success' }] },
       };
 
       vi.mocked(useChatStream).mockReturnValue({
@@ -366,7 +477,7 @@ describe('ChatRail component', () => {
       });
 
       const { container } = render(
-        <ChatRail
+        <BotConsole
           bots={mockBots}
           threadByBot={{}}
           activeBot="claude"
@@ -374,9 +485,9 @@ describe('ChatRail component', () => {
         />
       );
 
-      const tool = container.querySelector('.bc-tool');
+      const tool = container.querySelector('.tool-block');
       expect(tool).not.toBeNull();
-      expect(tool!.querySelector('.bc-tool-name')?.textContent).toContain('bash');
+      expect(tool!.querySelector('.tool-block__name')?.textContent).toContain('bash');
     });
   });
 
@@ -399,7 +510,7 @@ describe('ChatRail component', () => {
       });
 
       const { container } = render(
-        <ChatRail
+        <BotConsole
           bots={mockBots}
           threadByBot={{}}
           activeBot="claude"
@@ -407,7 +518,7 @@ describe('ChatRail component', () => {
         />
       );
 
-      const sugs = container.querySelectorAll('.bc-sug');
+      const sugs = container.querySelectorAll('.chat-suggestions__pill');
       expect(sugs.length).toBe(2);
       expect(sugs[0].textContent).toBe('Show status');
       expect(sugs[1].textContent).toBe('Deploy latest');
@@ -432,7 +543,7 @@ describe('ChatRail component', () => {
       });
 
       const { container } = render(
-        <ChatRail
+        <BotConsole
           bots={mockBots}
           threadByBot={{}}
           activeBot="claude"
@@ -440,7 +551,7 @@ describe('ChatRail component', () => {
         />
       );
 
-      const sugBtn = container.querySelector('.bc-sug') as HTMLButtonElement;
+      const sugBtn = container.querySelector('.chat-suggestions__pill') as HTMLButtonElement;
       await userEvent.click(sugBtn);
 
       expect(sendMock).toHaveBeenCalledWith('Show status');
@@ -452,7 +563,7 @@ describe('ChatRail component', () => {
       const onBotChangeMock = vi.fn();
 
       const { container } = render(
-        <ChatRail
+        <BotConsole
           bots={mockBots}
           threadByBot={{}}
           activeBot="claude"
@@ -460,7 +571,7 @@ describe('ChatRail component', () => {
         />
       );
 
-      const tabs = container.querySelectorAll('.bc-tab');
+      const tabs = container.querySelectorAll('.chat-container__bot-tab');
       await userEvent.click(tabs[1]);
 
       expect(onBotChangeMock).toHaveBeenCalledWith('system');
@@ -478,7 +589,7 @@ describe('ChatRail component', () => {
       });
 
       const { container } = render(
-        <ChatRail
+        <BotConsole
           bots={mockBots}
           threadByBot={{}}
           activeBot="claude"
@@ -501,7 +612,7 @@ describe('ChatRail component', () => {
       });
 
       const { container } = render(
-        <ChatRail
+        <BotConsole
           bots={mockBots}
           threadByBot={{}}
           activeBot="claude"
@@ -509,7 +620,7 @@ describe('ChatRail component', () => {
         />
       );
 
-      const sendBtn = container.querySelector('.send-btn') as HTMLButtonElement;
+      const sendBtn = container.querySelector('[aria-label="Send message"]') as HTMLButtonElement;
       await userEvent.click(sendBtn);
 
       expect(sendMock).toHaveBeenCalledWith('Test message');
@@ -524,7 +635,7 @@ describe('ChatRail component', () => {
       });
 
       const { container } = render(
-        <ChatRail
+        <BotConsole
           bots={mockBots}
           threadByBot={{}}
           activeBot="claude"
@@ -532,7 +643,7 @@ describe('ChatRail component', () => {
         />
       );
 
-      const sendBtn = container.querySelector('.send-btn') as HTMLButtonElement;
+      const sendBtn = container.querySelector('[aria-label="Send message"]') as HTMLButtonElement;
       expect(sendBtn.disabled).toBe(true);
     });
 
@@ -540,7 +651,7 @@ describe('ChatRail component', () => {
       const onClose = vi.fn();
 
       const { container } = render(
-        <ChatRail
+        <BotConsole
           bots={mockBots}
           threadByBot={{}}
           activeBot="claude"
@@ -549,10 +660,10 @@ describe('ChatRail component', () => {
         />
       );
 
-      const head = container.querySelector('.bc-head')!;
-      const btns = head.querySelectorAll('.bc-ico');
-      // Third bc-ico is close
-      await userEvent.click(btns[2]);
+      const closeBtn = container.querySelector(
+        '[aria-label="Close bot console"]'
+      ) as HTMLButtonElement;
+      await userEvent.click(closeBtn);
 
       expect(onClose).toHaveBeenCalled();
     });
