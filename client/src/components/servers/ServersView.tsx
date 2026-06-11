@@ -1,12 +1,11 @@
 import React from 'react';
 import type { Server } from '@homelab/shared';
 import {
-  PageHeader, Panel, Table, ProgressBar, Chip, RowMenu, Button,
+  PageHeader, Panel, Table, ProgressBar, Chip, RowMenu, Button, AlertStrip,
 } from '@tinkermonkey/heimdall-ui';
 import type { Column, RowMenuAction, StatusColor } from '@tinkermonkey/heimdall-ui';
 import { useCluster } from '../../hooks/useAPI';
 import { Icon } from '../shared/Icon';
-import { DegradationBanner } from '../shared/DegradationBanner';
 
 const ROLE_COLOR: Record<Server['role'], StatusColor> = {
   compute: 'cyan',
@@ -128,7 +127,12 @@ export const ServersView: React.FC = () => {
           </Button>
         }
       />
-      <DegradationBanner degraded={data?.degraded} />
+      {data?.degraded && data.degraded.length > 0 && (
+        <AlertStrip
+          alerts={[{ id: 'degradation', severity: 'warn', message: `Partial Data: ${data.degraded.join(', ')} are temporarily unavailable. Showing cached data.` }]}
+          style={{ marginBottom: '24px' }}
+        />
+      )}
       <Panel className="panel-flush">
         <Table columns={COLUMNS} data={servers} rowKey="id" />
       </Panel>

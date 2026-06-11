@@ -27,13 +27,63 @@ Three views are fully designed: **Overview** (`/cluster/overview`), **Containers
 ```
 Browser SPA
   ├── App shell: titlebar / sidebar (256px) / topbar / statusbar
-  ├── Canvas area: routed views (Overview, Containers, Topology, stubs)
+  ├── Canvas area: routed views (Overview, Containers, Topology, + 7 more)
   └── Bot console rail (380px, collapsible) — chat with homelab agents
 
 Server (thin, to be built)
   └── Proxies data from MCP servers in ../phone-home and ../homelab
       via the MCP HTTP endpoint: http://agent:3210/mcp/
 ```
+
+## CSS Architecture (three-layer stack)
+
+```
+Layer 1 — Package:   @tinkermonkey/heimdall-ui/css (loaded in App.tsx)
+                     Provides design tokens, component base styles, and layout utilities.
+                     This is the source of truth for all token values.
+
+Layer 2 — Globals:   client/src/styles/globals.css
+                     Supplemental tokens not in the package (alpha-variant accent colours,
+                     shadow-toast, h1 type scale) and real host-ID → tint colour mappings.
+
+Layer 3 — Lab:       client/src/styles/lab.css
+                     Project-specific chrome: shell frame classes (.desktop, .app-shell,
+                     .workspace, .canvas-area), boot splash, statusbar/topbar widgets,
+                     and all bespoke composite layouts (see allowlist below).
+```
+
+### Bespoke Composite Allowlist
+
+These components are built locally using `lab.css` classes rather than package components,
+because the package has no equivalent or the design requires a custom layout:
+
+| Composite | CSS classes | Location |
+|---|---|---|
+| Host metric card | `.srv-grid`, `.srv-head`, `.srv-body`, `.srv-foot`, `.role-mark` | `overview/HostCard.tsx` |
+| Gateway panel | `.gw-split`, `.gw-left`, `.gw-right`, `.gw-strip`, `.kv` | `overview/GatewayPanel.tsx` |
+| Apps grid | `.cat-chips`, `.cat-chip`, `.apps-grid`, `.app-cell`, `.state-pill` | `overview/AppsPanel.tsx` |
+| Network subsys strip | `.subsys-strip`, `.subsys` | `network/NetworkView.tsx` |
+| Top talkers list | `.talker-row`, `.talker-bar` | `network/NetworkView.tsx` |
+| Network events list | `.evt-row` | `network/NetworkView.tsx` |
+| Topology stage | `.topo-stage`, `.topo-canvas`, `.topo-host-row` | `topology/TopologyView.tsx` |
+| Bot card (topology) | `.bot-card`, `.mcp-pill`, `.proj-pill` | `topology/TopologyView.tsx` |
+| Inspector panel | `.inspector`, `.inspector-head`, `.inspector-section` | `topology/TopologyView.tsx` |
+| Bot console | `.bot-console`, `.bc-*` classes | `chat/BotConsole.tsx` |
+| Server list | `.server-list-card`, `.server-row` | `servers/ServersView.tsx` |
+| Tabs | `.tabs`, `.tab` | shared via `lab.css` |
+
+### Package Component Integration Pattern
+
+View files import package components directly from `@tinkermonkey/heimdall-ui`:
+
+```tsx
+import { PageHeader, Panel, Table, Chip, Button, AlertStrip } from '@tinkermonkey/heimdall-ui';
+```
+
+- **Do not** copy component source from `design/src/components/` into `client/src/`
+- **Do not** create local wrappers around package components; import them directly
+- Package components self-style via the package CSS layer; no extra wrapper CSS needed
+- For layouts the package doesn't cover, use `lab.css` bespoke composite classes (see allowlist)
 
 ## Visual Language (non-negotiable from design)
 
@@ -94,14 +144,14 @@ When using browser automation (Playwright MCP or similar), save all screenshots 
 ## Routes
 
 ```
-overview      /cluster/overview       — implemented in design
-containers    /cluster/containers     — implemented in design
-topology      /cluster/topology       — implemented in design
-servers       placeholder
-network       placeholder
-apps          placeholder
-storage       placeholder
-bots          placeholder
-logs          placeholder
-settings      placeholder
+overview      /cluster/overview       — OverviewView (hosts, gateway, apps)
+containers    /cluster/containers     — ContainersView (docker inventory, networks, volumes)
+topology      /cluster/topology       — TopologyView (agent mesh, inspector)
+servers       /cluster/servers        — ServersView (host table with metrics)
+network       /cluster/network        — NetworkView (WAN, DNS, VPN, published services)
+apps          /cluster/applications   — ApplicationsView (service list with category filter)
+storage       /cluster/storage        — StorageView (volumes, pools, quick-access)
+bots          /cluster/bots           — BotsView (agent cards with MCP/project details)
+logs          /cluster/logs           — LogsView (log stream with host/level filter)
+settings      /cluster/configuration  — SettingsView (dashboard preferences)
 ```

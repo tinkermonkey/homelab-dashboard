@@ -924,6 +924,14 @@ body.dark-canvas .evt-row .sev.ok   { color: rgb(var(--semantic-emerald-fg)); }
   background: var(--status-cyan-bg-alpha-md); border: 1px solid rgb(var(--semantic-cyan-border)); color: rgb(var(--semantic-cyan-fg));
 }
 
+/* ---- Overview view layout ---- */
+.overview-view {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+body.density-compact .overview-view { gap: 12px; }
+
 /* ---- Density compact overrides ---- */
 .density-compact .lab-page     { gap: 12px; padding: 16px 20px 28px; }
 .density-compact .grid-2       { gap: 10px; }

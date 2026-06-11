@@ -4,10 +4,8 @@ import { AlertStrip, PageHeader, StatGrid, StatTile, Chip, Button } from '@tinke
 import { Icon } from '../shared/Icon';
 import { useAlerts } from '../../hooks/useAPI';
 import { HostCard } from './HostCard';
-import { DegradationBanner } from '../shared/DegradationBanner';
 import { GatewayPanel } from './GatewayPanel';
 import { AppsPanel } from './AppsPanel';
-import './OverviewView.css';
 
 interface OverviewViewProps {
   data: LAB_DATA & { degraded?: string[] };
@@ -63,7 +61,12 @@ export const OverviewView: React.FC<OverviewViewProps> = ({ data, showAlerts = t
         }
       />
 
-      <DegradationBanner degraded={data.degraded} />
+      {data.degraded && data.degraded.length > 0 && (
+        <AlertStrip
+          alerts={[{ id: 'degradation', severity: 'warn', message: `Partial Data: ${data.degraded.join(', ')} are temporarily unavailable. Showing cached data.` }]}
+          style={{ marginBottom: '24px' }}
+        />
+      )}
 
       {showAlerts && (
         <>

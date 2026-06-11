@@ -21,7 +21,6 @@ import { StorageView } from './components/storage/StorageView';
 import { BotsView } from './components/bots/BotsView';
 import { LogsView } from './components/logs/LogsView';
 import { SettingsView } from './components/settings/SettingsView';
-import { PlaceholderView } from './components/shared/PlaceholderView';
 import { ErrorView } from './components/shared/ErrorView';
 import { BotConsole } from './components/chat/BotConsole';
 
@@ -78,9 +77,7 @@ const AppContent: React.FC = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [commandPaletteOpen]);
 
-  const overviewContent = isLoading ? (
-    <PlaceholderView routeName="Overview" />
-  ) : error ? (
+  const overviewContent = isLoading ? null : error ? (
     <ErrorView
       title="Failed to Load Overview"
       message="Could not fetch cluster data. Please try again in a moment."

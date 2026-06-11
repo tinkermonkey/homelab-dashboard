@@ -1,10 +1,9 @@
 import React, { useMemo } from 'react';
 import type { TopologyBot } from '@homelab/shared';
-import { PageHeader, Chip, Button } from '@tinkermonkey/heimdall-ui';
+import { PageHeader, Chip, Button, AlertStrip } from '@tinkermonkey/heimdall-ui';
 import { useNavigate } from 'react-router-dom';
 import { useCluster, useTopology } from '../../hooks/useAPI';
 import { Icon } from '../shared/Icon';
-import { DegradationBanner } from '../shared/DegradationBanner';
 import { BotCard } from './BotCard';
 
 export const BotsView: React.FC = () => {
@@ -42,7 +41,12 @@ export const BotsView: React.FC = () => {
           </Button>
         }
       />
-      <DegradationBanner degraded={data?.degraded} />
+      {data?.degraded && data.degraded.length > 0 && (
+        <AlertStrip
+          alerts={[{ id: 'degradation', severity: 'warn', message: `Partial Data: ${data.degraded.join(', ')} are temporarily unavailable. Showing cached data.` }]}
+          style={{ marginBottom: '24px' }}
+        />
+      )}
       <div className="grid-2">
         {bots.map(b => (
           <BotCard key={b.id} bot={b} topologyBot={topologyBotMap[b.id]} />

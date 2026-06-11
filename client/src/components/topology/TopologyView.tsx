@@ -1,12 +1,11 @@
 import React, { useCallback, useMemo } from 'react';
 import {
-  GraphCanvas, GraphInspector, TopologyNode, PageHeader, Chip, Button,
+  GraphCanvas, GraphInspector, TopologyNode, PageHeader, Chip, Button, AlertStrip,
   type GraphNodeData, type GraphEdgeData,
 } from '@tinkermonkey/heimdall-ui';
 import { usePersistedState } from '../../utils/localStorage';
 import { useTopology, useCluster } from '../../hooks/useAPI';
 import { Icon } from '../shared/Icon';
-import { DegradationBanner } from '../shared/DegradationBanner';
 import './TopologyView.css';
 
 const ROLE_COLOR: Record<string, string> = {
@@ -259,7 +258,12 @@ export const TopologyView: React.FC = () => {
         }
       />
 
-      <DegradationBanner degraded={degraded} dataSource={dataSource} />
+      {degraded && degraded.length > 0 && (
+        <AlertStrip
+          alerts={[{ id: 'degradation', severity: 'warn', message: `Partial Data: ${degraded.join(', ')} are temporarily unavailable. Showing ${dataSource === 'mock' ? 'fabricated sample data' : 'cached data'}.` }]}
+          style={{ marginBottom: '24px' }}
+        />
+      )}
 
       <div className="topology-container">
         <GraphCanvas

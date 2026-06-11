@@ -1,12 +1,11 @@
 import React, { useMemo } from 'react';
 import type { Volume } from '@homelab/shared';
 import {
-  PageHeader, StatGrid, StatTile, Panel, QuickAccessGrid, Table, Chip, Button,
+  PageHeader, StatGrid, StatTile, Panel, QuickAccessGrid, Table, Chip, Button, AlertStrip,
 } from '@tinkermonkey/heimdall-ui';
 import type { Column, QuickAccessGridItem } from '@tinkermonkey/heimdall-ui';
 import { useDocker } from '../../hooks/useAPI';
 import { Icon } from '../shared/Icon';
-import { DegradationBanner } from '../shared/DegradationBanner';
 
 interface VolumeRow extends Volume {
   host: string;
@@ -91,7 +90,12 @@ export const StorageView: React.FC = () => {
           </Button>
         }
       />
-      <DegradationBanner degraded={data?.degraded} />
+      {data?.degraded && data.degraded.length > 0 && (
+        <AlertStrip
+          alerts={[{ id: 'degradation', severity: 'warn', message: `Partial Data: ${data.degraded.join(', ')} are temporarily unavailable. Showing cached data.` }]}
+          style={{ marginBottom: '24px' }}
+        />
+      )}
       <StatGrid columns={4}>
         <StatTile color="emerald" label="Capacity used" value="53.3 TB" meta="of 92 TB" metaIcon="pie-chart" />
         <StatTile color="cyan" label="Volumes" value={volumes.length} meta="docker · local" metaIcon="copy" />
