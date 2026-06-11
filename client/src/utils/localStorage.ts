@@ -28,9 +28,9 @@ export const usePersistedState = <T,>(
   }, [key]);
 
   const setPersisted = (value: T) => {
-    setState(value);
     try {
       window.localStorage.setItem(key, JSON.stringify(value));
+      setState(value);
       window.dispatchEvent(
         new CustomEvent(STORAGE_CHANGE_EVENT, { detail: { key, value } })
       );
