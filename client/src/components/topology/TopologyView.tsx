@@ -81,7 +81,6 @@ export const TopologyView: React.FC = () => {
           sourceId: `bot:${b.id}`,
           targetId: `bot:${d}`,
           label: 'delegates',
-          variant: 'hot' as const,
         });
       });
 
@@ -100,7 +99,7 @@ export const TopologyView: React.FC = () => {
     return result;
   }, [topologyData]);
 
-  const renderNode = useCallback((node: GraphNodeData, selected: boolean) => {
+  const renderNode = useCallback((node: GraphNodeData) => {
     if (!topologyData) return null;
 
     if (node.kind === 'host') {

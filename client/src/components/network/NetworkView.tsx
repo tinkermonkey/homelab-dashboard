@@ -178,7 +178,7 @@ export const NetworkView: React.FC = () => {
           label="DNS blocked"
           value={`${gw.blockedPct}%`}
           meta={`${gw.dnsBlocked} of ${gw.dnsResolved.toLocaleString()}`}
-          metaIcon="shield"
+          metaIcon="lock"
         />
         <StatTile
           color="emerald"

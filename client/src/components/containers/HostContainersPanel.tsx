@@ -26,8 +26,8 @@ const CSTATE_COLOR: Record<string, 'emerald' | 'cyan' | 'neutral'> = {
 };
 
 const CTN_ACTIONS: RowMenuAction[] = [
-  { id: 'restart', label: 'Restart', icon: 'refresh' },
-  { id: 'logs', label: 'View logs', icon: 'file' },
+  { id: 'restart', label: 'Restart', icon: 'reload' },
+  { id: 'logs', label: 'View logs', icon: 'eye' },
   { id: 'stop', label: 'Stop', icon: 'x' },
   { type: 'separator' },
   { id: 'remove', label: 'Remove', icon: 'trash', danger: true },

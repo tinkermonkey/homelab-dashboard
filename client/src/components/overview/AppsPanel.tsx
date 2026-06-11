@@ -33,7 +33,7 @@ const COLUMNS: Column<AppRow>[] = [
     key: 'id',
     label: 'Service',
     width: '32%',
-    render: (v, row) => (
+    render: (_v, row) => (
       <div>
         <div className="cell-name">{row.id}</div>
         <div className="cell-sub">{row.meta}</div>

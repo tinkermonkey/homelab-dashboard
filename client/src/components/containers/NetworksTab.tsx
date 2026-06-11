@@ -9,20 +9,12 @@ interface NetworksTabProps {
 
 type NetworkRow = Network & { host: string; _key: string };
 
-const NET_DOT_COLOR: Record<string, string> = {
-  amber: 'var(--status-amber)',
-  violet: 'var(--status-violet)',
-  cyan: 'var(--status-cyan)',
-  emerald: 'var(--status-emerald)',
-  rose: 'var(--status-rose)',
-};
-
 const COLUMNS: Column<NetworkRow>[] = [
   {
     key: 'name',
     label: 'Network',
     width: '20%',
-    render: (v, row) => (
+    render: (_v, row) => (
       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
         <span style={{
           width: 8, height: 8, borderRadius: '50%', flexShrink: 0,
