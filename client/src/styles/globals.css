@@ -1,3 +1,19 @@
+/* Supplemental tokens not included in the package dist/style.css.
+   These match the values from design/styles/heimdall.css and fill gaps
+   in the package's v2 token set used by project-chrome classes in lab.css. */
+:root {
+  --accent-primary-bg-alpha-xs:     rgba(251, 191, 36, 0.05);
+  --accent-primary-bg-alpha-sm:     rgba(251, 191, 36, 0.10);
+  --accent-primary-bg-alpha-md:     rgba(251, 191, 36, 0.12);
+  --accent-primary-border-alpha-sm: rgba(251, 191, 36, 0.20);
+  --accent-primary-border-alpha-md: rgba(251, 191, 36, 0.22);
+  --accent-primary-border-alpha-lg: rgba(251, 191, 36, 0.28);
+  --status-cyan-bg-alpha-md:        rgba(34, 211, 238, 0.16);
+  --shadow-toast:                   0 14px 40px -16px rgba(0, 0, 0, 0.5);
+  --type-h1-size:                   24px;
+  --type-h1-weight:                 var(--font-weight-bold, 700);
+}
+
 /* Per-host color tints mapped to actual server host IDs from the API */
 :root {
   --host-t5610-tint:            var(--status-cyan);
