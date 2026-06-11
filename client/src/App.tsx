@@ -83,7 +83,6 @@ const AppContent: React.FC = () => {
 
   const clusterName = clusterData?.cluster?.name ?? 'homelab';
   const activeNavId = PATH_TO_NAV_ID[location.pathname] ?? 'overview';
-  const alertsCount = clusterData?.cluster?.activeAlerts ?? 0;
 
   const navSections = useMemo(
     () => buildNavSections(clusterData?.servers, clusterData?.apps, clusterData?.bots),
@@ -225,10 +224,10 @@ const AppContent: React.FC = () => {
             <button
               className="topbar-ico"
               title="Alerts"
-              aria-label={alertsCount > 0 ? `${alertsCount} alerts` : 'No alerts'}
+              aria-label={alertCount > 0 ? `${alertCount} alerts` : 'No alerts'}
             >
               <Icon name="bell" size={15} />
-              {alertsCount > 0 && <span className="ind" />}
+              {alertCount > 0 && <span className="ind" />}
             </button>
             <button
               className="topbar-ico"
