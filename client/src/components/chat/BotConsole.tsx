@@ -42,17 +42,17 @@ export const BotConsole: React.FC<BotConsoleProps> = ({
   const baseThread = threadByBot[activeBot] || [];
   const { thread, send, draft, setDraft } = useChatStream({ baseThread, activeBot });
   const activeBotObj = bots.find(b => b.id === activeBot);
-  const [sendError, setSendError] = React.useState<string | null>(null);
-
-  React.useEffect(() => {
-    setSendError(null);
-  }, [activeBot]);
+  const [sendError, setSendError] = React.useState<{ botId: string; message: string } | null>(null);
+  const displayedError = sendError?.botId === activeBot ? sendError.message : null;
 
   const handleSend = (value: string) => {
     setSendError(null);
     send(value).catch((err: unknown) => {
       console.error('BotConsole send failed:', err);
-      setSendError(err instanceof Error ? err.message : 'Failed to send message.');
+      setSendError({
+        botId: activeBot,
+        message: err instanceof Error ? err.message : 'Failed to send message.',
+      });
     });
   };
 
@@ -65,9 +65,9 @@ export const BotConsole: React.FC<BotConsoleProps> = ({
 
   const composer = (
     <>
-      {sendError && (
+      {displayedError && (
         <div style={{ padding: '6px 12px', fontSize: 12, color: '#F43F5E', background: 'rgba(244,63,94,0.1)', borderTop: '1px solid rgba(244,63,94,0.25)' }}>
-          {sendError}
+          {displayedError}
         </div>
       )}
       <ChatComposer
