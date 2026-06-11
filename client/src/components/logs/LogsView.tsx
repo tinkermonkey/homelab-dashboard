@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { PageHeader, Panel, Chip, Select } from '@tinkermonkey/heimdall-ui';
+import { PageHeader, Panel, Chip, Select, AlertStrip } from '@tinkermonkey/heimdall-ui';
 import { asEyebrow } from '../../utils/pageHeader';
 import type { StatusColor } from '@tinkermonkey/heimdall-ui';
 
@@ -117,6 +117,10 @@ export const LogsView: React.FC = () => {
             </Select>
           </div>
         }
+      />
+      <AlertStrip
+        alerts={[{ id: 'sample-data', severity: 'warn', message: 'Sample Data: Log service unavailable. Showing fabricated sample entries — these do not reflect real cluster activity.' }]}
+        style={{ marginBottom: '24px' }}
       />
       <Panel title="Live stream" subtitle={`${entries.length} lines`} className="panel-flush">
         <LogStream entries={entries} />
