@@ -42,6 +42,14 @@ export const BotConsole: React.FC<BotConsoleProps> = ({
   const baseThread = threadByBot[activeBot] || [];
   const { thread, send, draft, setDraft } = useChatStream({ baseThread, activeBot });
   const activeBotObj = bots.find(b => b.id === activeBot);
+  const [sendError, setSendError] = React.useState<string | null>(null);
+
+  const handleSend = (value: string) => {
+    setSendError(null);
+    send(value).catch((err: unknown) => {
+      setSendError(err instanceof Error ? err.message : 'Failed to send message.');
+    });
+  };
 
   const botTabs: BotTab[] = bots.map(b => ({
     id: b.id,
@@ -51,13 +59,20 @@ export const BotConsole: React.FC<BotConsoleProps> = ({
   }));
 
   const composer = (
-    <ChatComposer
-      value={draft}
-      onChange={setDraft}
-      onSubmit={(value) => { send(value).catch(console.error); }}
-      scopeLabel={activeBotObj?.label ?? activeBot}
-      placeholder={`Ask ${activeBotObj?.label ?? 'bot'} to do something…`}
-    />
+    <>
+      {sendError && (
+        <div style={{ padding: '6px 12px', fontSize: 12, color: '#F43F5E', background: 'rgba(244,63,94,0.1)', borderTop: '1px solid rgba(244,63,94,0.25)' }}>
+          {sendError}
+        </div>
+      )}
+      <ChatComposer
+        value={draft}
+        onChange={setDraft}
+        onSubmit={handleSend}
+        scopeLabel={activeBotObj?.label ?? activeBot}
+        placeholder={`Ask ${activeBotObj?.label ?? 'bot'} to do something…`}
+      />
+    </>
   );
 
   return (
@@ -113,7 +128,7 @@ export const BotConsole: React.FC<BotConsoleProps> = ({
               {item.suggestions && item.suggestions.length > 0 && (
                 <ChatSuggestions
                   suggestions={item.suggestions.map(s => s.t)}
-                  onSelect={(text) => { send(text).catch(console.error); }}
+                  onSelect={handleSend}
                 />
               )}
             </React.Fragment>

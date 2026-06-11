@@ -6,6 +6,7 @@ import {
 import type { Column, RowMenuAction, StatusColor } from '@tinkermonkey/heimdall-ui';
 import { useCluster } from '../../hooks/useAPI';
 import { Icon } from '../shared/Icon';
+import { ErrorView } from '../shared/ErrorView';
 
 const ROLE_COLOR: Record<Server['role'], StatusColor> = {
   compute: 'cyan',
@@ -103,7 +104,12 @@ export const ServersView: React.FC = () => {
   const { data, isLoading, error } = useCluster();
 
   if (isLoading) return <div style={{ padding: 24 }}>Loading…</div>;
-  if (error || !data) return <div style={{ padding: 24 }}>Error loading server data</div>;
+  if (error || !data) return (
+    <ErrorView
+      title="Failed to Load Server Data"
+      message={error instanceof Error ? error.message : 'Could not fetch cluster data. Please try again in a moment.'}
+    />
+  );
 
   const servers = data.servers ?? [];
   const reachable = servers.filter(s => s.status !== 'err').length;

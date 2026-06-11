@@ -2,13 +2,19 @@ import React from 'react';
 import { PageHeader, Chip, Button, AlertStrip } from '@tinkermonkey/heimdall-ui';
 import { useCluster } from '../../hooks/useAPI';
 import { Icon } from '../shared/Icon';
+import { ErrorView } from '../shared/ErrorView';
 import { AppsPanel } from '../overview/AppsPanel';
 
 export const ApplicationsView: React.FC = () => {
   const { data, isLoading, error } = useCluster();
 
   if (isLoading) return <div style={{ padding: 24 }}>Loading…</div>;
-  if (error || !data) return <div style={{ padding: 24 }}>Error loading application data</div>;
+  if (error || !data) return (
+    <ErrorView
+      title="Failed to Load Application Data"
+      message={error instanceof Error ? error.message : 'Could not fetch cluster data. Please try again in a moment.'}
+    />
+  );
 
   const apps = data.apps ?? [];
 

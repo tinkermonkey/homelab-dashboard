@@ -2,6 +2,7 @@ import React, { useState, useMemo } from "react";
 import { PageHeader, TabBar, FilterBar, Chip, Button, AlertStrip } from "@tinkermonkey/heimdall-ui";
 import { useDocker } from "../../hooks/useAPI";
 import { Icon } from "../shared/Icon";
+import { ErrorView } from "../shared/ErrorView";
 import { ContainersTab } from "./ContainersTab";
 import { NetworksTab } from "./NetworksTab";
 import { VolumesTab } from "./VolumesTab";
@@ -51,7 +52,12 @@ export const ContainersView: React.FC = () => {
   }
 
   if (error || !data) {
-    return <div style={{ padding: 24 }}>Error loading Docker data</div>;
+    return (
+      <ErrorView
+        title="Failed to Load Container Data"
+        message={error instanceof Error ? error.message : 'Could not fetch Docker data. Please try again in a moment.'}
+      />
+    );
   }
 
   const degraded = data.degraded;

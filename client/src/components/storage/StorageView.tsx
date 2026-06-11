@@ -6,6 +6,7 @@ import {
 import type { Column, QuickAccessGridItem } from '@tinkermonkey/heimdall-ui';
 import { useDocker } from '../../hooks/useAPI';
 import { Icon } from '../shared/Icon';
+import { ErrorView } from '../shared/ErrorView';
 
 interface VolumeRow extends Volume {
   host: string;
@@ -69,7 +70,12 @@ export const StorageView: React.FC = () => {
   }, [data]);
 
   if (isLoading) return <div style={{ padding: 24 }}>Loading…</div>;
-  if (error || !data) return <div style={{ padding: 24 }}>Error loading storage data</div>;
+  if (error || !data) return (
+    <ErrorView
+      title="Failed to Load Storage Data"
+      message={error instanceof Error ? error.message : 'Could not fetch Docker data. Please try again in a moment.'}
+    />
+  );
 
   return (
     <>

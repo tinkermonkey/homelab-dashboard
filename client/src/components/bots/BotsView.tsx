@@ -4,6 +4,7 @@ import { PageHeader, Chip, Button, AlertStrip } from '@tinkermonkey/heimdall-ui'
 import { useNavigate } from 'react-router-dom';
 import { useCluster, useTopology } from '../../hooks/useAPI';
 import { Icon } from '../shared/Icon';
+import { ErrorView } from '../shared/ErrorView';
 import { BotCard } from './BotCard';
 
 export const BotsView: React.FC = () => {
@@ -18,7 +19,12 @@ export const BotsView: React.FC = () => {
   }, [topologyData]);
 
   if (isLoading) return <div style={{ padding: 24 }}>Loading…</div>;
-  if (error || !data) return <div style={{ padding: 24 }}>Error loading bots data</div>;
+  if (error || !data) return (
+    <ErrorView
+      title="Failed to Load Bots Data"
+      message={error instanceof Error ? error.message : 'Could not fetch cluster data. Please try again in a moment.'}
+    />
+  );
 
   const bots = data.bots ?? [];
 
