@@ -1,10 +1,20 @@
 import React, { useCallback, useMemo } from 'react';
-import { GraphCanvas, GraphInspector, TopologyNode, PageHeader, type GraphNodeData, type GraphEdgeData } from '@tinkermonkey/heimdall-ui';
+import {
+  GraphCanvas, GraphInspector, TopologyNode, PageHeader, Chip, Button,
+  type GraphNodeData, type GraphEdgeData,
+} from '@tinkermonkey/heimdall-ui';
 import { usePersistedState } from '../../utils/localStorage';
-import { useTopology } from '../../hooks/useAPI';
+import { useTopology, useCluster } from '../../hooks/useAPI';
 import { Icon } from '../shared/Icon';
 import { DegradationBanner } from '../shared/DegradationBanner';
 import './TopologyView.css';
+
+const ROLE_COLOR: Record<string, string> = {
+  compute: 'cyan',
+  storage: 'emerald',
+  k8s: 'violet',
+  gpu: 'amber',
+};
 
 const TP_BOT_LAYOUT: Record<string, { x: number; y: number }> = {
   'lab-bot': { x: 150, y: 200 },
@@ -13,72 +23,202 @@ const TP_BOT_LAYOUT: Record<string, { x: number; y: number }> = {
   'watch-bot': { x: 750, y: 200 },
 };
 
-const HOST_TINT: Record<string, string> = {
-  't5610': 'cyan',
-  'petit-cochon': 'emerald',
-  'hp7052': 'violet',
+const HOST_LAYOUT: Record<string, { x: number; y: number }> = {
+  nyx: { x: 600, y: 400 },
+  helios: { x: 750, y: 400 },
+  aether: { x: 900, y: 400 },
+  vega: { x: 1050, y: 400 },
 };
 
 export const TopologyView: React.FC = () => {
-  const [selectedBotId, setSelectedBotId] = usePersistedState<string>('selectedTopologyBot', 'lab-bot');
+  const [selectedId, setSelectedId] = usePersistedState<string>('selectedTopologyBot', 'bot:lab-bot');
   const { data: topologyData, isLoading, error } = useTopology();
+  const { data: clusterData } = useCluster();
 
-  // Render TopologyNode for each node
-  const renderNode = useCallback((node: GraphNodeData) => {
+  const serverMap = useMemo(() => {
+    const m: Record<string, { role: string }> = {};
+    clusterData?.servers.forEach(s => { m[s.id] = { role: s.role }; });
+    return m;
+  }, [clusterData?.servers]);
+
+  const nodes = useMemo((): GraphNodeData[] => {
+    if (!topologyData) return [];
+    const result: GraphNodeData[] = [];
+
+    topologyData.hosts.forEach(hid => {
+      result.push({
+        id: `host:${hid}`,
+        label: hid,
+        kind: 'host',
+        domainColor: ROLE_COLOR[serverMap[hid]?.role ?? 'compute'] ?? 'cyan',
+        x: HOST_LAYOUT[hid]?.x,
+        y: HOST_LAYOUT[hid]?.y,
+      });
+    });
+
+    topologyData.bots.forEach(b => {
+      result.push({
+        id: `bot:${b.id}`,
+        label: b.label,
+        kind: 'bot',
+        domainColor: 'amber',
+        x: TP_BOT_LAYOUT[b.id]?.x,
+        y: TP_BOT_LAYOUT[b.id]?.y,
+      });
+    });
+
+    return result;
+  }, [topologyData, serverMap]);
+
+  const edges = useMemo((): GraphEdgeData[] => {
+    if (!topologyData) return [];
+    const result: GraphEdgeData[] = [];
+
+    topologyData.bots.forEach(b => {
+      (b.delegates ?? []).forEach(d => {
+        result.push({
+          id: `del:${b.id}:${d}`,
+          sourceId: `bot:${b.id}`,
+          targetId: `bot:${d}`,
+          label: 'delegates',
+          variant: 'hot' as const,
+        });
+      });
+
+      const byHost: Record<string, number> = {};
+      (b.manages ?? []).forEach(m => { byHost[m.host] = (byHost[m.host] ?? 0) + 1; });
+      Object.keys(byHost).forEach(h => {
+        result.push({
+          id: `mng:${b.id}:${h}`,
+          sourceId: `bot:${b.id}`,
+          targetId: `host:${h}`,
+          label: String(byHost[h]),
+        });
+      });
+    });
+
+    return result;
+  }, [topologyData]);
+
+  const renderNode = useCallback((node: GraphNodeData, selected: boolean) => {
     if (!topologyData) return null;
-    const bot = topologyData.bots.find(b => b.id === node.id);
-    if (!bot) return null;
+
+    if (node.kind === 'host') {
+      const hid = node.label;
+      const s = serverMap[hid];
+      return (
+        <TopologyNode
+          title={hid}
+          role={s?.role ?? 'host'}
+          status="ok"
+          onSelect={() => setSelectedId(node.id)}
+        />
+      );
+    }
+
+    const b = topologyData.bots.find(x => `bot:${x.id}` === node.id);
+    if (!b) return null;
 
     const statusMap: Record<string, 'ok' | 'warning' | 'error' | 'idle'> = {
-      ok: 'ok',
-      busy: 'warning',
-      idle: 'idle',
+      ok: 'ok', busy: 'warning', idle: 'idle',
     };
 
     return (
       <TopologyNode
-        title={bot.label}
-        role={bot.role}
-        status={statusMap[bot.status] || 'idle'}
+        title={b.label}
+        role={`${b.role} · ${b.model.replace('claude-', '')}`}
+        status={statusMap[b.status] ?? 'idle'}
+        onSelect={() => setSelectedId(node.id)}
       />
     );
-  }, [topologyData]);
+  }, [topologyData, serverMap, setSelectedId]);
 
-  // Convert TopologyBot[] to GraphNodeData[]
-  const nodes = useMemo((): GraphNodeData[] => {
-    if (!topologyData) return [];
-    return topologyData.bots.map(bot => ({
-      id: bot.id,
-      label: bot.label,
-      kind: bot.role,
-      domainColor: HOST_TINT[bot.host],
-      x: TP_BOT_LAYOUT[bot.id]?.x,
-      y: TP_BOT_LAYOUT[bot.id]?.y,
-    }));
-  }, [topologyData]);
+  const inspectorNode = useMemo(() => {
+    if (!topologyData || !selectedId) return null;
 
-  // Create edges for delegation relationships
-  const edges = useMemo((): GraphEdgeData[] => {
-    if (!topologyData) return [];
-    const result: GraphEdgeData[] = [];
-    const labBot = topologyData.bots.find(b => b.id === 'lab-bot');
-    if (labBot?.delegates) {
-      labBot.delegates.forEach(delegateId => {
-        result.push({
-          id: `${labBot.id}->${delegateId}`,
-          sourceId: labBot.id,
-          targetId: delegateId,
-          label: 'delegates',
-        });
-      });
+    if (selectedId.startsWith('bot:')) {
+      const b = topologyData.bots.find(x => `bot:${x.id}` === selectedId);
+      if (!b) return null;
+      return {
+        id: b.id,
+        title: b.label,
+        kind: 'agent' as const,
+        domain: 'software',
+        description: b.desc,
+        metadata: {
+          model: b.model,
+          host: `${b.host}.lab.local`,
+          status: b.status,
+          mcp_servers: `${b.mcps.length} attached`,
+          manages: `${b.manages.length} project${b.manages.length === 1 ? '' : 's'}`,
+          ...(b.delegates.length > 0 && { delegates: `${b.delegates.length} bot${b.delegates.length === 1 ? '' : 's'}` }),
+        },
+      };
     }
-    return result;
-  }, [topologyData]);
+
+    const hid = selectedId.slice(5);
+    const s = serverMap[hid];
+    return {
+      id: `${hid}.lab.local`,
+      title: hid,
+      kind: 'host' as const,
+      domain: ROLE_COLOR[s?.role ?? 'compute'] ?? 'default',
+      description: `${s?.role ?? 'host'} node`,
+      metadata: { role: s?.role ?? '—' },
+    };
+  }, [topologyData, selectedId, serverMap]);
+
+  const relationships = useMemo(() => {
+    if (!topologyData || !selectedId) return [];
+
+    if (selectedId.startsWith('bot:')) {
+      const b = topologyData.bots.find(x => `bot:${x.id}` === selectedId);
+      if (!b) return [];
+      return [
+        ...b.mcps.map(mcp => ({
+          id: `mcp-${mcp.id}`,
+          target: mcp.id,
+          targetTitle: mcp.label,
+          targetDomain: 'mcp' as const,
+          predicate: `sidecar (${mcp.kind})`,
+          direction: 'out' as const,
+        })),
+        ...b.manages.map(proj => ({
+          id: `manage-${proj.name}`,
+          target: `host:${proj.host}`,
+          targetTitle: `${proj.name} (${proj.host})`,
+          targetDomain: proj.host,
+          predicate: `manages · ${proj.port}`,
+          direction: 'out' as const,
+        })),
+        ...b.delegates.map(delegateId => ({
+          id: `delegate-${delegateId}`,
+          target: `bot:${delegateId}`,
+          targetTitle: delegateId,
+          targetDomain: 'orchestrator',
+          predicate: 'delegates to',
+          direction: 'out' as const,
+        })),
+      ];
+    }
+
+    const hid = selectedId.slice(5);
+    return topologyData.bots
+      .filter(b => b.manages.some(m => m.host === hid))
+      .map(b => ({
+        id: `rb-${b.id}`,
+        target: `bot:${b.id}`,
+        targetTitle: b.label,
+        targetDomain: 'software',
+        predicate: 'managed by',
+        direction: 'in' as const,
+      }));
+  }, [topologyData, selectedId]);
 
   if (isLoading) {
     return (
       <div className="topology-view">
-        <PageHeader eyebrow="" title="Loading topology..." />
+        <PageHeader eyebrow="" title="Loading topology…" />
       </div>
     );
   }
@@ -89,82 +229,34 @@ export const TopologyView: React.FC = () => {
         <PageHeader
           eyebrow=""
           title="Failed to load topology"
-          subtitle={error?.message || 'Unknown error'}
+          subtitle={error?.message ?? 'Unknown error'}
         />
       </div>
     );
   }
 
-  const selectedBot = topologyData.bots.find(b => b.id === selectedBotId) || topologyData.bots[0];
   const degraded = topologyData.degraded;
   const dataSource = topologyData.source;
-
-
-  // Prepare GraphInspector data
-  const inspectorNode = selectedBot ? {
-    id: selectedBot.id,
-    title: selectedBot.label,
-    kind: selectedBot.role,
-    domain: HOST_TINT[selectedBot.host],
-    description: selectedBot.desc,
-    metadata: {
-      model: selectedBot.model,
-      host: `${selectedBot.host}.lab.local`,
-      status: selectedBot.status,
-      mcps: `${selectedBot.mcps.length} attached`,
-      manages: `${selectedBot.manages.length} project${selectedBot.manages.length === 1 ? '' : 's'}`,
-      ...(selectedBot.delegates.length > 0 && {
-        delegates: `${selectedBot.delegates.length} bot${selectedBot.delegates.length === 1 ? '' : 's'}`,
-      }),
-    },
-  } : null;
-
-  // Build relationship links for inspector
-  const relationships = selectedBot ? [
-    ...selectedBot.mcps.map(mcp => ({
-      id: `mcp-${mcp.id}`,
-      target: mcp.id,
-      targetTitle: mcp.label,
-      targetDomain: 'mcp' as const,
-      predicate: `sidecar (${mcp.kind})`,
-      direction: 'out' as const,
-    })),
-    ...selectedBot.manages.map(proj => ({
-      id: `manage-${proj.name}`,
-      target: proj.name,
-      targetTitle: proj.name,
-      targetDomain: proj.host,
-      predicate: `manages (${proj.host}:${proj.port})`,
-      direction: 'out' as const,
-    })),
-    ...selectedBot.delegates.map(delegateId => ({
-      id: `delegate-${delegateId}`,
-      target: delegateId,
-      targetTitle: delegateId,
-      targetDomain: 'orchestrator',
-      predicate: 'delegates to',
-      direction: 'out' as const,
-    })),
-  ] : [];
 
   return (
     <div className="topology-view">
       <PageHeader
-        eyebrow="bots · sidecar mcp servers · managed projects"
-        idChip={`${topologyData.bots.length} bots`}
-        title="Bot topology"
-        subtitle="Where each bot runs, what MCP sidecars it brings, and which projects it manages. Curves show delegation between bots — the orchestrator fans out to specialists."
+        eyebrow={
+          (<span className="eyebrow-row">
+            <Chip variant="violet">topology · agents</Chip>
+            <span className="mono-meta">
+              {topologyData.bots.length} bots · {topologyData.hosts.length} hosts
+            </span>
+          </span>) as unknown as string
+        }
+        idChip="/cluster/asgard/topology"
+        title="Topology"
+        subtitle="Agent mesh and the hosts they operate. Drag to pan, scroll to zoom, click a node to inspect."
         actions={
-          <div style={{ display: 'flex', gap: '8px' }}>
-            <button className="btn btn--sm btn--ghost" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <Icon name="refresh" size={13} />
-              Refresh
-            </button>
-            <button className="btn btn--sm btn--ghost" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <Icon name="ext" size={13} />
-              Export DOT
-            </button>
-          </div>
+          <Button variant="secondary" size="sm">
+            <Icon name="refresh" size={13} />
+            Re-layout
+          </Button>
         }
       />
 
@@ -174,8 +266,8 @@ export const TopologyView: React.FC = () => {
         <GraphCanvas
           nodes={nodes}
           edges={edges}
-          selectedNodeId={selectedBotId}
-          onNodeSelect={setSelectedBotId}
+          selectedNodeId={selectedId}
+          onNodeSelect={setSelectedId}
           renderNode={renderNode}
           layout="manual"
           className="graph-canvas-topology"
@@ -183,7 +275,7 @@ export const TopologyView: React.FC = () => {
         <GraphInspector
           node={inspectorNode}
           relationships={relationships}
-          onNodeSelect={setSelectedBotId}
+          onNodeSelect={setSelectedId}
           className="graph-inspector-topology"
         />
       </div>
