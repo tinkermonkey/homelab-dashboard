@@ -79,8 +79,34 @@ export const NetworkView: React.FC = () => {
     docker.hosts.forEach(h =>
       h.containers.forEach(c =>
         (c.ports ?? []).forEach(p => {
-          const [pub, rest = ''] = p.split(':');
-          const [target, proto = 'tcp'] = rest.split('/');
+          // Docker port strings come in several formats:
+          //   "0.0.0.0:8080:80/tcp"  (ip:hostPort:containerPort/proto)
+          //   "8080:80/tcp"          (hostPort:containerPort/proto)
+          //   "8080->80/tcp"         (arrow notation)
+          //   "80/tcp"               (container-only, not published externally)
+          let pub = '';
+          let target = '';
+          let proto = 'tcp';
+
+          const arrow = p.match(/^(\d+)->(\d+)\/(\w+)$/);
+          if (arrow) {
+            [, pub, target, proto] = arrow;
+          } else {
+            const [portPart, protoPart = 'tcp'] = p.split('/');
+            proto = protoPart;
+            const segments = portPart.split(':');
+            if (segments.length >= 3) {
+              // ip:hostPort:containerPort — take last two
+              pub = segments[segments.length - 2];
+              target = segments[segments.length - 1];
+            } else if (segments.length === 2) {
+              [pub, target] = segments;
+            } else {
+              // no host binding — not published
+              return;
+            }
+          }
+
           rows.push({
             _key: `${c.id}-${p}`,
             service: c.name,
