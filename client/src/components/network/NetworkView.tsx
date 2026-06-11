@@ -79,9 +79,9 @@ export const NetworkView: React.FC = () => {
     docker.hosts.forEach(h =>
       h.containers.forEach(c =>
         (c.ports ?? []).forEach(p => {
-          let pub = '';
-          let target = '';
-          let proto = 'tcp';
+          let pub: string;
+          let target: string;
+          let proto: string;
 
           const arrow = p.match(/^(\d+)->(\d+)\/(\w+)$/);
           if (arrow) {
