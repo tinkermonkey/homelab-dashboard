@@ -7,6 +7,7 @@ import { HostCard } from './HostCard';
 import { GatewayPanel } from './GatewayPanel';
 import { AppsPanel } from './AppsPanel';
 import { asEyebrow } from '../../utils/pageHeader';
+import { DegradationBanner } from '../shared/DegradationBanner';
 
 interface OverviewViewProps {
   data: LAB_DATA & { degraded?: string[] };
@@ -62,12 +63,7 @@ export const OverviewView: React.FC<OverviewViewProps> = ({ data, showAlerts = t
         }
       />
 
-      {data.degraded && data.degraded.length > 0 && (
-        <AlertStrip
-          alerts={[{ id: 'degradation', severity: 'warn', message: `Partial Data: ${data.degraded.join(', ')} are temporarily unavailable. Showing cached data.` }]}
-          style={{ marginBottom: '24px' }}
-        />
-      )}
+      <DegradationBanner degraded={data.degraded} />
 
       {showAlerts && (
         <>

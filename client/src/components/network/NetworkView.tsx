@@ -1,12 +1,13 @@
 import React, { useMemo } from 'react';
 import {
-  PageHeader, StatGrid, StatTile, Panel, LineChart, KVGrid, Table, Chip, Button, AlertStrip,
+  PageHeader, StatGrid, StatTile, Panel, LineChart, KVGrid, Table, Chip, Button,
 } from '@tinkermonkey/heimdall-ui';
 import type { Column } from '@tinkermonkey/heimdall-ui';
 import { useCluster, useDocker } from '../../hooks/useAPI';
 import { Icon } from '@tinkermonkey/heimdall-ui';
 import { ErrorView } from '../shared/ErrorView';
 import { asEyebrow } from '../../utils/pageHeader';
+import { DegradationBanner } from '../shared/DegradationBanner';
 
 interface VpnPeer {
   _key: string;
@@ -182,12 +183,7 @@ export const NetworkView: React.FC = () => {
         }
       />
 
-      {degraded && degraded.length > 0 && (
-        <AlertStrip
-          alerts={[{ id: 'degradation', severity: 'warn', message: `Partial Data: ${degraded.join(', ')} are temporarily unavailable. Showing cached data.` }]}
-          style={{ marginBottom: '24px' }}
-        />
-      )}
+      <DegradationBanner degraded={degraded} />
 
       <StatGrid columns={4}>
         <StatTile

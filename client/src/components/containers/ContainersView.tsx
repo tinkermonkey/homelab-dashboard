@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from "react";
-import { PageHeader, TabBar, FilterBar, Chip, Button, AlertStrip } from "@tinkermonkey/heimdall-ui";
+import { PageHeader, TabBar, FilterBar, Chip, Button } from "@tinkermonkey/heimdall-ui";
 import { useDocker } from "../../hooks/useAPI";
 import { Icon } from "@tinkermonkey/heimdall-ui";
 import { ErrorView } from "../shared/ErrorView";
@@ -7,6 +7,7 @@ import { ContainersTab } from "./ContainersTab";
 import { NetworksTab } from "./NetworksTab";
 import { VolumesTab } from "./VolumesTab";
 import { asEyebrow } from "../../utils/pageHeader";
+import { DegradationBanner } from "../shared/DegradationBanner";
 
 type ActiveTab = "containers" | "networks" | "volumes";
 
@@ -90,12 +91,7 @@ export const ContainersView: React.FC = () => {
         }
       />
 
-      {degraded && degraded.length > 0 && (
-        <AlertStrip
-          alerts={[{ id: 'degradation', severity: 'warn', message: `Partial Data: ${degraded.join(', ')} are temporarily unavailable. Showing ${dataSource === 'mock' ? 'fabricated sample data' : 'cached data'}.` }]}
-          style={{ marginBottom: '24px' }}
-        />
-      )}
+      <DegradationBanner degraded={degraded} dataSource={dataSource} />
 
       <TabBar
         tabs={tabs}

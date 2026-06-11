@@ -7,14 +7,9 @@ import { usePersistedState } from '../../utils/localStorage';
 import { asEyebrow } from '../../utils/pageHeader';
 import { useTopology, useCluster } from '../../hooks/useAPI';
 import { Icon } from '@tinkermonkey/heimdall-ui';
+import { getRoleColor } from '../../utils/hostUtils';
+import { DegradationBanner } from '../shared/DegradationBanner';
 import './TopologyView.css';
-
-const ROLE_COLOR: Record<string, string> = {
-  compute: 'cyan',
-  storage: 'emerald',
-  k8s: 'violet',
-  gpu: 'amber',
-};
 
 const TP_BOT_LAYOUT: Record<string, { x: number; y: number }> = {
   'lab-bot': { x: 150, y: 200 },
@@ -50,7 +45,7 @@ export const TopologyView: React.FC = () => {
         id: `host:${hid}`,
         label: hid,
         kind: 'host',
-        domainColor: ROLE_COLOR[serverMap[hid]?.role ?? 'compute'] ?? 'cyan',
+        domainColor: getRoleColor(serverMap[hid]?.role ?? 'compute'),
         x: HOST_LAYOUT[hid]?.x,
         y: HOST_LAYOUT[hid]?.y,
       });
@@ -259,12 +254,7 @@ export const TopologyView: React.FC = () => {
         }
       />
 
-      {degraded && degraded.length > 0 && (
-        <AlertStrip
-          alerts={[{ id: 'degradation', severity: 'warn', message: `Partial Data: ${degraded.join(', ')} are temporarily unavailable. Showing ${dataSource === 'mock' ? 'fabricated sample data' : 'cached data'}.` }]}
-          style={{ marginBottom: '24px' }}
-        />
-      )}
+      <DegradationBanner degraded={degraded} dataSource={dataSource} />
 
       <div className="topology-container">
         <GraphCanvas

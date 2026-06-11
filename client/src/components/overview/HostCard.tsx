@@ -1,25 +1,10 @@
 import React from 'react';
 import type { Server } from '@homelab/shared';
 import { Panel, MetricRow } from '@tinkermonkey/heimdall-ui';
-import type { StatusColor } from '@tinkermonkey/heimdall-ui';
+import { ROLE_COLOR, getInitials, cpuTone, memTone, diskTone } from '../../utils/hostUtils';
 
 interface HostCardProps {
   server: Server;
-}
-
-const ROLE_COLOR: Record<Server['role'], StatusColor> = {
-  compute: 'cyan',
-  storage: 'emerald',
-  k8s: 'violet',
-  gpu: 'amber',
-};
-
-function cpuTone(v: number): StatusColor { return v >= 85 ? 'rose' : v >= 75 ? 'amber' : 'cyan'; }
-function memTone(v: number): StatusColor { return v >= 90 ? 'rose' : v >= 78 ? 'amber' : 'violet'; }
-function diskTone(v: number): StatusColor { return v >= 92 ? 'rose' : v >= 85 ? 'amber' : 'emerald'; }
-
-function getInitials(id: string): string {
-  return id.split('-').map(w => w[0]).join('').substring(0, 2).toUpperCase();
 }
 
 export const HostCard: React.FC<HostCardProps> = ({ server }) => {

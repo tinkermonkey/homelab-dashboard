@@ -1,20 +1,15 @@
 import React, { useMemo, useState, useCallback } from 'react';
 import type { Server } from '@homelab/shared';
 import {
-  PageHeader, Panel, Table, ProgressBar, Chip, RowMenu, Button, AlertStrip, ConfirmDialog, Toast,
+  PageHeader, Panel, Table, ProgressBar, Chip, RowMenu, Button, ConfirmDialog, Toast,
 } from '@tinkermonkey/heimdall-ui';
 import type { Column, RowMenuAction, StatusColor, ToastVariant } from '@tinkermonkey/heimdall-ui';
 import { useCluster } from '../../hooks/useAPI';
 import { Icon } from '@tinkermonkey/heimdall-ui';
 import { ErrorView } from '../shared/ErrorView';
 import { asEyebrow } from '../../utils/pageHeader';
-
-const ROLE_COLOR: Record<Server['role'], StatusColor> = {
-  compute: 'cyan',
-  storage: 'emerald',
-  k8s: 'violet',
-  gpu: 'amber',
-};
+import { ROLE_COLOR, getInitials, cpuTone, memTone, diskTone } from '../../utils/hostUtils';
+import { DegradationBanner } from '../shared/DegradationBanner';
 
 const SRV_ACTIONS: RowMenuAction[] = [
   { id: 'ssh', label: 'Open SSH' },
@@ -49,14 +44,6 @@ const CONFIRM_CONFIG: Record<PendingAction['actionId'], { title: string; message
     variant: 'danger',
   },
 };
-
-function getInitials(id: string): string {
-  return id.split('-').map(w => w[0]).join('').substring(0, 2).toUpperCase();
-}
-
-function cpuTone(v: number): StatusColor { return v >= 75 ? 'amber' : 'cyan'; }
-function memTone(v: number): StatusColor { return v >= 80 ? 'amber' : 'violet'; }
-function diskTone(v: number): StatusColor { return v >= 85 ? 'amber' : 'emerald'; }
 
 function MetricBar({ percent, color }: { percent: number; color: StatusColor }) {
   return (
@@ -177,12 +164,7 @@ export const ServersView: React.FC = () => {
           </Button>
         }
       />
-      {data?.degraded && data.degraded.length > 0 && (
-        <AlertStrip
-          alerts={[{ id: 'degradation', severity: 'warn', message: `Partial Data: ${data.degraded.join(', ')} are temporarily unavailable. Showing cached data.` }]}
-          style={{ marginBottom: '24px' }}
-        />
-      )}
+      <DegradationBanner degraded={data?.degraded} />
       <Panel className="panel-flush">
         <Table columns={columns} data={servers} rowKey="id" />
       </Panel>
