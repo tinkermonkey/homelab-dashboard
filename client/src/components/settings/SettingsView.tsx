@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import {
-  PageHeader, Panel, Chip, ConfigTile, Field, TextInput, Select, TriState, Button, Toast,
+  PageHeader, Panel, Chip, ConfigTile, Field, TextInput, Select, SegmentedControl, TriState, Button, Toast,
 } from '@tinkermonkey/heimdall-ui';
 import { usePersistedState } from '../../utils/localStorage';
 import { asEyebrow } from '../../utils/pageHeader';
@@ -14,7 +14,8 @@ const SECTIONS = [
 
 export const SettingsView: React.FC = () => {
   const [clusterName, setClusterName] = usePersistedState('settings.clusterName', 'asgard');
-  const [darkCanvas, setDarkCanvas] = usePersistedState('darkCanvas', true);
+  const [darkCanvas, setDarkCanvas] = usePersistedState('darkCanvas', false);
+  const [density, setDensity] = usePersistedState<string>('density', 'regular');
   const [telemetry, setTelemetry] = usePersistedState('settings.telemetry', true);
   const [pollInterval, setPollInterval] = usePersistedState('settings.pollInterval', '15');
   const [toastTitle, setToastTitle] = useState<string | null>(null);
@@ -76,6 +77,16 @@ export const SettingsView: React.FC = () => {
               <option value="light">Light canvas</option>
             </Select>
           </Field>
+          <Field label="Density">
+            <SegmentedControl
+              value={density}
+              onChange={v => setDensity(v as string)}
+              options={[
+                { value: 'regular', label: 'Regular' },
+                { value: 'compact', label: 'Compact' },
+              ]}
+            />
+          </Field>
           <Field label="Telemetry">
             <label className="row" style={{ gap: 8, fontSize: 13, color: 'rgb(var(--canvas-fg-2))' }}>
               <TriState
@@ -91,7 +102,8 @@ export const SettingsView: React.FC = () => {
               size="sm"
               onClick={() => {
                 setClusterName('asgard');
-                setDarkCanvas(true);
+                setDarkCanvas(false);
+                setDensity('regular');
                 setTelemetry(true);
                 setPollInterval('15');
               }}
