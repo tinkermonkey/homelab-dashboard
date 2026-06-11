@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Icon } from '../shared/Icon';
-import type { IconName } from '../../utils/icons';
+import { Icon, type IconName } from '@tinkermonkey/heimdall-ui';
 import './CommandPalette.css';
 
 interface CommandItem {

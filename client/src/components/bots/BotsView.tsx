@@ -3,7 +3,7 @@ import type { TopologyBot } from '@homelab/shared';
 import { PageHeader, Chip, Button, AlertStrip } from '@tinkermonkey/heimdall-ui';
 import { useNavigate } from 'react-router-dom';
 import { useCluster, useTopology } from '../../hooks/useAPI';
-import { Icon } from '../shared/Icon';
+import { Icon } from '@tinkermonkey/heimdall-ui';
 import { ErrorView } from '../shared/ErrorView';
 import { BotCard } from './BotCard';
 import { asEyebrow } from '../../utils/pageHeader';

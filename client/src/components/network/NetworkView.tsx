@@ -4,7 +4,7 @@ import {
 } from '@tinkermonkey/heimdall-ui';
 import type { Column } from '@tinkermonkey/heimdall-ui';
 import { useCluster, useDocker } from '../../hooks/useAPI';
-import { Icon } from '../shared/Icon';
+import { Icon } from '@tinkermonkey/heimdall-ui';
 import { asEyebrow } from '../../utils/pageHeader';
 
 interface VpnPeer {
@@ -167,7 +167,7 @@ export const NetworkView: React.FC = () => {
         subtitle="WAN link, DNS, VPN and the services published across the cluster."
         actions={
           <Button variant="primary" size="sm">
-            <Icon name="zap" size={13} />
+            <Icon name="arrowRight" size={13} />
             Run speedtest
           </Button>
         }

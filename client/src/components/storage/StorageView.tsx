@@ -5,7 +5,7 @@ import {
 } from '@tinkermonkey/heimdall-ui';
 import type { Column, QuickAccessGridItem, ToastVariant } from '@tinkermonkey/heimdall-ui';
 import { useDocker } from '../../hooks/useAPI';
-import { Icon } from '../shared/Icon';
+import { Icon } from '@tinkermonkey/heimdall-ui';
 import { ErrorView } from '../shared/ErrorView';
 import { asEyebrow } from '../../utils/pageHeader';
 

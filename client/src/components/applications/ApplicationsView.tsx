@@ -1,7 +1,7 @@
 import React from 'react';
 import { PageHeader, Chip, Button, AlertStrip } from '@tinkermonkey/heimdall-ui';
 import { useCluster } from '../../hooks/useAPI';
-import { Icon } from '../shared/Icon';
+import { Icon } from '@tinkermonkey/heimdall-ui';
 import { ErrorView } from '../shared/ErrorView';
 import { AppsPanel } from '../overview/AppsPanel';
 import { asEyebrow } from '../../utils/pageHeader';

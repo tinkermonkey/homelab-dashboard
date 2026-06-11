@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import type { LAB_DATA, AlertSeverity } from '@homelab/shared';
 import { AlertStrip, PageHeader, StatGrid, StatTile, Chip, Button } from '@tinkermonkey/heimdall-ui';
-import { Icon } from '../shared/Icon';
+import { Icon } from '@tinkermonkey/heimdall-ui';
 import { useAlerts } from '../../hooks/useAPI';
 import { HostCard } from './HostCard';
 import { GatewayPanel } from './GatewayPanel';
@@ -51,7 +51,7 @@ export const OverviewView: React.FC<OverviewViewProps> = ({ data, showAlerts = t
         actions={
           <div style={{ display: 'flex', gap: 8 }}>
             <Button variant="secondary" size="sm">
-              <Icon name="refresh" size={13} />
+              <Icon name="reload" size={13} />
               Refresh
             </Button>
             <Button variant="primary" size="sm">

@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from "react";
 import { PageHeader, TabBar, FilterBar, Chip, Button, AlertStrip } from "@tinkermonkey/heimdall-ui";
 import { useDocker } from "../../hooks/useAPI";
-import { Icon } from "../shared/Icon";
+import { Icon } from "@tinkermonkey/heimdall-ui";
 import { ErrorView } from "../shared/ErrorView";
 import { ContainersTab } from "./ContainersTab";
 import { NetworksTab } from "./NetworksTab";
@@ -79,7 +79,7 @@ export const ContainersView: React.FC = () => {
         actions={
           <div style={{ display: "flex", gap: 8 }}>
             <Button variant="secondary" size="sm">
-              <Icon name="refresh" size={13} />
+              <Icon name="reload" size={13} />
               Prune
             </Button>
             <Button variant="primary" size="sm">

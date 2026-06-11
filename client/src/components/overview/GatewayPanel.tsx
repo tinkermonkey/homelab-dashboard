@@ -1,7 +1,7 @@
 import React from 'react';
 import type { Gateway } from '@homelab/shared';
 import { Panel, KVGrid, LineChart, Chip, Button } from '@tinkermonkey/heimdall-ui';
-import { Icon } from '../shared/Icon';
+import { Icon } from '@tinkermonkey/heimdall-ui';
 
 interface GatewayPanelProps {
   gateway: Gateway;
@@ -31,7 +31,7 @@ export const GatewayPanel: React.FC<GatewayPanelProps> = ({ gateway }) => {
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <Chip variant={statusTone}>{gateway.status}</Chip>
           <Button variant="ghost" size="sm">
-            <Icon name="zap" size={13} />
+            <Icon name="arrowRight" size={13} />
             Run speedtest
           </Button>
         </div>

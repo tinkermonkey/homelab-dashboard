@@ -117,6 +117,12 @@ button, input, textarea { font: inherit; }
   overflow: hidden;
 }
 .shell-rail.collapsed { --rail-w: 64px; }
+/* Package Sidebar nested inside shell-rail: strip duplicate border/background/width */
+.shell-rail .sidebar {
+  background: transparent;
+  border-right: none;
+  width: auto;
+}
 .brand-row {
   display: flex; align-items: center; gap: 10px;
   padding: 12px 14px 14px;
@@ -279,6 +285,9 @@ button, input, textarea { font: inherit; }
   border-bottom: 1px solid rgb(var(--shell-border));
   color: rgb(var(--shell-fg-2));
 }
+/* Package Topbar internals: hide empty breadcrumbs slot, make actions fill topbar */
+.topbar__breadcrumbs:empty { display: none; }
+.topbar__actions { flex: 1; justify-content: flex-start; gap: 12px; }
 .ws-chip {
   display: inline-flex; align-items: center; gap: 7px;
   padding: 5px 10px;

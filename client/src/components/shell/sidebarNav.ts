@@ -1,4 +1,4 @@
-import type { IconName } from '../../utils/icons';
+import type { IconName } from '@tinkermonkey/heimdall-ui';
 
 export interface NavChild {
   id: string;
@@ -16,18 +16,18 @@ export interface NavEntry {
 
 export const NAV_TREE: NavEntry[] = [
   { id: 'overview',   label: 'Overview',      icon: 'dashboard' },
-  { id: 'servers',    label: 'Servers',        icon: 'cpu' },
-  { id: 'containers', label: 'Containers',     icon: 'layers',   children: [
+  { id: 'servers',    label: 'Servers',        icon: 'component' },
+  { id: 'containers', label: 'Containers',     icon: 'layout',   children: [
     { id: 'containers/list',     label: 'Containers' },
     { id: 'containers/networks', label: 'Networks' },
     { id: 'containers/volumes',  label: 'Volumes' },
   ]},
-  { id: 'network',    label: 'Network',        icon: 'network' },
-  { id: 'apps',       label: 'Applications',   icon: 'workflow' },
-  { id: 'storage',    label: 'Storage',        icon: 'database' },
+  { id: 'network',    label: 'Network',        icon: 'link' },
+  { id: 'apps',       label: 'Applications',   icon: 'pipeline' },
+  { id: 'storage',    label: 'Storage',        icon: 'data' },
   { id: 'bots',       label: 'Bots',           icon: 'bot' },
   { id: 'topology',   label: 'Topology',       icon: 'graph' },
-  { id: 'logs',       label: 'Logs',           icon: 'history' },
+  { id: 'logs',       label: 'Logs',           icon: 'clock' },
   { id: 'settings',   label: 'Configuration',  icon: 'settings' },
 ];
 

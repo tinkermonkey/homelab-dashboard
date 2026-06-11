@@ -6,7 +6,7 @@ import {
 import { usePersistedState } from '../../utils/localStorage';
 import { asEyebrow } from '../../utils/pageHeader';
 import { useTopology, useCluster } from '../../hooks/useAPI';
-import { Icon } from '../shared/Icon';
+import { Icon } from '@tinkermonkey/heimdall-ui';
 import './TopologyView.css';
 
 const ROLE_COLOR: Record<string, string> = {
@@ -253,7 +253,7 @@ export const TopologyView: React.FC = () => {
         subtitle="Agent mesh and the hosts they operate. Drag to pan, scroll to zoom, click a node to inspect."
         actions={
           <Button variant="secondary" size="sm">
-            <Icon name="refresh" size={13} />
+            <Icon name="reload" size={13} />
             Re-layout
           </Button>
         }

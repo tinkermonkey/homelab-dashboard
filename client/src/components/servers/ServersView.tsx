@@ -5,7 +5,7 @@ import {
 } from '@tinkermonkey/heimdall-ui';
 import type { Column, RowMenuAction, StatusColor, ToastVariant } from '@tinkermonkey/heimdall-ui';
 import { useCluster } from '../../hooks/useAPI';
-import { Icon } from '../shared/Icon';
+import { Icon } from '@tinkermonkey/heimdall-ui';
 import { ErrorView } from '../shared/ErrorView';
 import { asEyebrow } from '../../utils/pageHeader';
 
