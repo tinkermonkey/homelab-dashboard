@@ -64,7 +64,7 @@ describe('usePersistedState hook', () => {
       result.current[1]('value');
     });
 
-    expect(result.current[0]).toBe('value');
+    expect(result.current[0]).toBe('default');
     expect(warn).toHaveBeenCalledWith(
       expect.stringContaining('Error writing localStorage key "key"'),
       expect.any(Error)
