@@ -1,7 +1,7 @@
 import React, { useMemo, useState, useCallback } from 'react';
 import type { Server } from '@homelab/shared';
 import {
-  PageHeader, Panel, Table, ProgressBar, Chip, RowMenu, Button, ConfirmDialog, Toast,
+  PageHeader, Panel, Table, ProgressBar, Chip, RowMenu, Button, ConfirmDialog, Toast, AlertStrip,
 } from '@tinkermonkey/heimdall-ui';
 import type { Column, RowMenuAction, StatusColor, ToastVariant } from '@tinkermonkey/heimdall-ui';
 import { useCluster } from '../../hooks/useAPI';
@@ -9,7 +9,6 @@ import { Icon } from '@tinkermonkey/heimdall-ui';
 import { ErrorView } from '../shared/ErrorView';
 import { asEyebrow } from '../../utils/pageHeader';
 import { ROLE_COLOR, getInitials, cpuTone, memTone, diskTone } from '../../utils/hostUtils';
-import { DegradationBanner } from '../shared/DegradationBanner';
 
 const SRV_ACTIONS: RowMenuAction[] = [
   { id: 'ssh', label: 'Open SSH' },
@@ -164,7 +163,12 @@ export const ServersView: React.FC = () => {
           </Button>
         }
       />
-      <DegradationBanner degraded={data?.degraded} />
+      {data?.degraded && data.degraded.length > 0 && (
+        <AlertStrip
+          alerts={[{ id: 'degradation', severity: 'warn', message: `Partial Data: ${data.degraded.join(', ')} are temporarily unavailable. Showing cached data.` }]}
+          style={{ marginBottom: '24px' }}
+        />
+      )}
       <Panel className="panel-flush">
         <Table columns={columns} data={servers} rowKey="id" />
       </Panel>

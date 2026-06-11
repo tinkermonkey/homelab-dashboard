@@ -1,11 +1,10 @@
 import React from 'react';
-import { PageHeader, Chip, Button } from '@tinkermonkey/heimdall-ui';
+import { PageHeader, Chip, Button, AlertStrip } from '@tinkermonkey/heimdall-ui';
 import { useCluster } from '../../hooks/useAPI';
 import { Icon } from '@tinkermonkey/heimdall-ui';
 import { ErrorView } from '../shared/ErrorView';
 import { AppsPanel } from '../overview/AppsPanel';
 import { asEyebrow } from '../../utils/pageHeader';
-import { DegradationBanner } from '../shared/DegradationBanner';
 
 export const ApplicationsView: React.FC = () => {
   const { data, isLoading, error } = useCluster();
@@ -39,7 +38,12 @@ export const ApplicationsView: React.FC = () => {
           </Button>
         }
       />
-      <DegradationBanner degraded={data?.degraded} />
+      {data?.degraded && data.degraded.length > 0 && (
+        <AlertStrip
+          alerts={[{ id: 'degradation', severity: 'warn', message: `Partial Data: ${data?.degraded.join(', ')} are temporarily unavailable. Showing cached data.` }]}
+          style={{ marginBottom: '24px' }}
+        />
+      )}
       <AppsPanel apps={apps} />
     </>
   );

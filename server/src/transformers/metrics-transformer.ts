@@ -235,6 +235,7 @@ export async function transformMetrics(
     result.cluster = { ...result.cluster, activeAlerts: alerts.length };
   } catch (error) {
     logger.error({ err: error }, 'Error fetching alerts for cluster stats');
+    degraded.push('signoz-alerts');
   }
 
   // Derive current values from histograms and compute status/containers

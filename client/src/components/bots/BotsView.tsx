@@ -7,7 +7,7 @@ import { Icon } from '@tinkermonkey/heimdall-ui';
 import { ErrorView } from '../shared/ErrorView';
 import { BotCard } from './BotCard';
 import { asEyebrow } from '../../utils/pageHeader';
-import { DegradationBanner } from '../shared/DegradationBanner';
+
 
 export const BotsView: React.FC = () => {
   const navigate = useNavigate();
@@ -49,7 +49,12 @@ export const BotsView: React.FC = () => {
           </Button>
         }
       />
-      <DegradationBanner degraded={data?.degraded} />
+      {data?.degraded && data.degraded.length > 0 && (
+        <AlertStrip
+          alerts={[{ id: 'degradation', severity: 'warn', message: `Partial Data: ${data.degraded.join(', ')} are temporarily unavailable. Showing cached data.` }]}
+          style={{ marginBottom: '24px' }}
+        />
+      )}
       {topologyError && (
         <AlertStrip
           alerts={[{ id: 'topology-error', severity: 'warn', message: 'Agent topology data unavailable. MCP server counts may be incomplete.' }]}
