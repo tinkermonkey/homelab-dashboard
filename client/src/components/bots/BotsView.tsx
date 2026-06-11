@@ -11,7 +11,7 @@ import { asEyebrow } from '../../utils/pageHeader';
 export const BotsView: React.FC = () => {
   const navigate = useNavigate();
   const { data, isLoading, error } = useCluster();
-  const { data: topologyData } = useTopology();
+  const { data: topologyData, error: topologyError } = useTopology();
 
   const topologyBotMap = useMemo(() => {
     const m: Record<string, TopologyBot> = {};
@@ -51,6 +51,12 @@ export const BotsView: React.FC = () => {
       {data?.degraded && data.degraded.length > 0 && (
         <AlertStrip
           alerts={[{ id: 'degradation', severity: 'warn', message: `Partial Data: ${data.degraded.join(', ')} are temporarily unavailable. Showing cached data.` }]}
+          style={{ marginBottom: '24px' }}
+        />
+      )}
+      {topologyError && (
+        <AlertStrip
+          alerts={[{ id: 'topology-error', severity: 'warn', message: 'Agent topology data unavailable. MCP server counts may be incomplete.' }]}
           style={{ marginBottom: '24px' }}
         />
       )}

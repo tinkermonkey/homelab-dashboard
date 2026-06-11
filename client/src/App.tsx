@@ -79,7 +79,7 @@ const AppContent: React.FC = () => {
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
 
   const { data: clusterData, isLoading, error, refetch } = useCluster();
-  const { data: statusData } = useStatus();
+  const { data: statusData, error: statusError } = useStatus();
 
   const clusterName = clusterData?.cluster?.name ?? 'homelab';
   const activeNavId = PATH_TO_NAV_ID[location.pathname] ?? 'overview';
@@ -320,14 +320,26 @@ const AppContent: React.FC = () => {
         }
         right={
           <div className="statusbar-group">
-            <div className="sb-item">ping&ensp;<strong className="strong">{ping} ms</strong></div>
-            <span className="sb-divider" />
-            <div className="sb-item">
-              ↓&ensp;<strong className="strong">{downMbps}</strong>&ensp;↑&ensp;<strong className="strong">{upMbps}</strong>&ensp;Mbps
-            </div>
-            <span className="sb-divider" />
-            <div className="sb-item">cluster cpu&ensp;<strong className="strong">{cpu}%</strong></div>
-            <span className="sb-divider" />
+            {statusError ? (
+              <>
+                <div className="sb-item">
+                  <span className="pulse amber xs" />
+                  status unavailable
+                </div>
+                <span className="sb-divider" />
+              </>
+            ) : (
+              <>
+                <div className="sb-item">ping&ensp;<strong className="strong">{ping} ms</strong></div>
+                <span className="sb-divider" />
+                <div className="sb-item">
+                  ↓&ensp;<strong className="strong">{downMbps}</strong>&ensp;↑&ensp;<strong className="strong">{upMbps}</strong>&ensp;Mbps
+                </div>
+                <span className="sb-divider" />
+                <div className="sb-item">cluster cpu&ensp;<strong className="strong">{cpu}%</strong></div>
+                <span className="sb-divider" />
+              </>
+            )}
             <div className="sb-item">
               <Icon name="check" size={10} />
               &ensp;synced&ensp;<strong className="strong">{clusterData?.cluster?.lastSync ?? '—'}</strong>

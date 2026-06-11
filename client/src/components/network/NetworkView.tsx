@@ -5,6 +5,7 @@ import {
 import type { Column } from '@tinkermonkey/heimdall-ui';
 import { useCluster, useDocker } from '../../hooks/useAPI';
 import { Icon } from '@tinkermonkey/heimdall-ui';
+import { ErrorView } from '../shared/ErrorView';
 import { asEyebrow } from '../../utils/pageHeader';
 
 interface VpnPeer {
@@ -68,7 +69,7 @@ const PUB_COLS: Column<PublishedService>[] = [
 ];
 
 export const NetworkView: React.FC = () => {
-  const { data: cluster, isLoading } = useCluster();
+  const { data: cluster, isLoading, error: clusterError } = useCluster();
   const { data: docker } = useDocker();
 
   const gw = cluster?.gateway;
@@ -127,6 +128,14 @@ export const NetworkView: React.FC = () => {
   }
 
   if (!gw) {
+    if (clusterError) {
+      return (
+        <ErrorView
+          title="Failed to Load Network Data"
+          message={clusterError instanceof Error ? clusterError.message : 'Could not fetch network data. Please try again in a moment.'}
+        />
+      );
+    }
     return (
       <PageHeader
         eyebrow="network"

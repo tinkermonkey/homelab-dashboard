@@ -41,7 +41,8 @@ export async function registerRoutes(app: FastifyInstance) {
           const stats = await ntopngClient.getWanInterfaceStats();
           downMbps = stats.downMbps;
           upMbps = stats.upMbps;
-        } catch {
+        } catch (err) {
+          app.log.error(`ntopng stats unavailable: ${err instanceof Error ? err.message : String(err)}`);
           degraded.push('ntopng');
         }
 
@@ -49,7 +50,8 @@ export async function registerRoutes(app: FastifyInstance) {
           const alerts = await signozClient.getActiveAlerts();
           alertCount = alerts.length;
           alertPrimary = alerts[0]?.name ?? '';
-        } catch {
+        } catch (err) {
+          app.log.error(`signoz alerts unavailable: ${err instanceof Error ? err.message : String(err)}`);
           degraded.push('signoz');
         }
 
@@ -61,7 +63,8 @@ export async function registerRoutes(app: FastifyInstance) {
           };
           const wan = (raw?.result ?? []).find(s => s.subsystem === 'wan');
           ping = wan?.uptime_stats?.WAN?.latency_average ?? 0;
-        } catch {
+        } catch (err) {
+          app.log.error(`udm network health unavailable: ${err instanceof Error ? err.message : String(err)}`);
           degraded.push('udm');
         }
 

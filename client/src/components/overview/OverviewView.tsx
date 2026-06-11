@@ -23,7 +23,7 @@ function mapSeverity(severity: AlertSeverity): 'error' | 'warn' | 'info' | 'succ
 }
 
 export const OverviewView: React.FC<OverviewViewProps> = ({ data, showAlerts = true }) => {
-  const { data: alertsData } = useAlerts();
+  const { data: alertsData, error: alertsError } = useAlerts();
   const alerts = alertsData?.alerts ?? [];
   const alertsSource = alertsData?.source;
   const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set());
@@ -71,7 +71,7 @@ export const OverviewView: React.FC<OverviewViewProps> = ({ data, showAlerts = t
 
       {showAlerts && (
         <>
-          {(alertsSource === 'mock' || alertsSource === 'unavailable') && (
+          {(alertsError || alertsSource === 'mock' || alertsSource === 'unavailable') && (
             <AlertStrip
               alerts={[{ id: 'alerts-unavailable', severity: 'warn', message: 'Alert service unavailable.' }]}
               style={{ marginBottom: '12px' }}
