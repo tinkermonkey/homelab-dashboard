@@ -58,7 +58,7 @@ const COLUMNS: Column<VolumeRow>[] = [
 ];
 
 export const StorageView: React.FC = () => {
-  const { data } = useDocker();
+  const { data, isLoading, error } = useDocker();
 
   const volumes = useMemo((): VolumeRow[] => {
     if (!data) return [];
@@ -68,6 +68,9 @@ export const StorageView: React.FC = () => {
     );
     return rows;
   }, [data]);
+
+  if (isLoading) return <div style={{ padding: 24 }}>Loading…</div>;
+  if (error || !data) return <div style={{ padding: 24 }}>Error loading storage data</div>;
 
   return (
     <>

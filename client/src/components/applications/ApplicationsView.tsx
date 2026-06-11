@@ -6,10 +6,12 @@ import { DegradationBanner } from '../shared/DegradationBanner';
 import { AppsPanel } from '../overview/AppsPanel';
 
 export const ApplicationsView: React.FC = () => {
-  const { data } = useCluster();
+  const { data, isLoading, error } = useCluster();
 
-  const apps = data?.apps ?? [];
-  const clusterName = data?.cluster?.name ?? 'asgard';
+  if (isLoading) return <div style={{ padding: 24 }}>Loading…</div>;
+  if (error || !data) return <div style={{ padding: 24 }}>Error loading application data</div>;
+
+  const apps = data.apps ?? [];
 
   return (
     <>
@@ -20,7 +22,7 @@ export const ApplicationsView: React.FC = () => {
             <span className="mono-meta">scraped every 15 s</span>
           </span>) as unknown as string
         }
-        idChip={`/cluster/${clusterName.toLowerCase()}/apps`}
+        idChip="/cluster/asgard/apps"
         title="Applications"
         subtitle="Every service deployed across the cluster, by category."
         actions={

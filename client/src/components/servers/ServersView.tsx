@@ -101,10 +101,12 @@ const COLUMNS: Column<Server>[] = [
 ];
 
 export const ServersView: React.FC = () => {
-  const { data } = useCluster();
+  const { data, isLoading, error } = useCluster();
 
-  const servers = data?.servers ?? [];
-  const clusterName = data?.cluster?.name ?? 'asgard';
+  if (isLoading) return <div style={{ padding: 24 }}>Loading…</div>;
+  if (error || !data) return <div style={{ padding: 24 }}>Error loading server data</div>;
+
+  const servers = data.servers ?? [];
   const reachable = servers.filter(s => s.status !== 'err').length;
 
   return (
@@ -116,7 +118,7 @@ export const ServersView: React.FC = () => {
             <span className="mono-meta">{reachable} reachable · polled 15 s</span>
           </span>) as unknown as string
         }
-        idChip={`/cluster/${clusterName.toLowerCase()}/servers`}
+        idChip="/cluster/asgard/servers"
         title="Servers"
         subtitle="Physical and virtual hosts in the asgard cluster."
         actions={
