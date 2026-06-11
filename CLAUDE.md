@@ -20,7 +20,7 @@ The design reference is the canonical source of truth for:
 - Data shapes for every entity (see `design/README.md` → "Data Shape" section)
 - Interaction behaviour (persisted UI state, polling cadences, etc.)
 
-Three views are fully designed: **Overview** (`/cluster/overview`), **Containers** (`/cluster/containers`), **Topology** (`/cluster/topology`). Seven other sidebar routes are placeholder stubs.
+All ten sidebar routes are fully implemented. The design reference (`design/app/`) covers Overview, Containers, Topology, and a combined view-other file for the remaining seven.
 
 ## Architecture Intent
 
@@ -61,14 +61,7 @@ because the package has no equivalent or the design requires a custom layout:
 |---|---|---|
 | Host metric card | `.srv-grid`, `.srv-head`, `.srv-body`, `.srv-foot`, `.role-mark` | `overview/HostCard.tsx` |
 | Gateway panel | `.gw-split`, `.gw-left`, `.gw-right`, `.gw-strip` | `overview/GatewayPanel.tsx` |
-| Network subsys strip | `.subsys-strip`, `.subsys` | `network/NetworkView.tsx` |
-| Top talkers list | `.talker-row`, `.talker-bar` | `network/NetworkView.tsx` |
-| Network events list | `.evt-row` | `network/NetworkView.tsx` |
-| Topology stage | `.topo-stage`, `.topo-canvas`, `.topo-host-row` | `topology/TopologyView.tsx` |
-| Bot card (topology) | `.bot-card`, `.mcp-pill`, `.proj-pill` | `topology/TopologyView.tsx` |
-| Inspector panel | `.inspector`, `.inspector-head`, `.inspector-section` | `topology/TopologyView.tsx` |
-| Bot console | `.bot-console`, `.bc-*` classes | `chat/BotConsole.tsx` |
-| Server list | `.server-list-card`, `.server-row` | `servers/ServersView.tsx` |
+| Bot console | `.lab-chat`, `.lab-chat__head`, `.bc-ico` | `chat/BotConsole.tsx` |
 
 ### Package Component Integration Pattern
 
@@ -89,13 +82,13 @@ The dashboard is a **two-surface** layout:
 1. **Shell** — always dark (`#0B0F14` family): titlebar, sidebar, topbar, statusbar, bot console
 2. **Canvas** — dark by default (`#14191F` family), light mode available. The 8px top-left radius seam where canvas meets shell is a visual signature.
 
-Accent: cyan (`#22D3EE`). Used only for: active nav indicator, focus rings, primary CTAs, status pulses, env badges.
+Accent: amber (`#FBBF24`). Used for: active nav indicator, brand mark, primary CTAs, and all `--accent-primary` token references. Cyan (`#22D3EE`) is a semantic/status color only (updating, info, compute).
 
 Fonts: **Inter** (UI/body) and **JetBrains Mono** (all identifiers, eyebrow labels, table headers, stat numbers, kbd glyphs). Both from Google Fonts.
 
-Icons: Lucide-style outline, 24×24 viewBox, **1.75 stroke**, `currentColor`, round caps+joins. Names mapped in `design/icons.jsx`. No emoji anywhere, ever.
+Icons: Lucide-style outline, 24×24 viewBox, **1.75 stroke**, `currentColor`, round caps+joins. Names mapped in `design/app/lab-icons.jsx`. No emoji anywhere, ever.
 
-All CSS tokens are in `design/styles/tokens.css` (palette/type) and `design/styles/studio.css` (shell/canvas/components). These are the source of truth — do not derive values; use or migrate the tokens directly.
+All CSS tokens are in `design/styles/heimdall.css` (palette/type) and `design/styles/lab.css` (shell/canvas/components). These are the source of truth — do not derive values; use or migrate the tokens directly.
 
 ## Key Design Tokens
 
@@ -114,7 +107,7 @@ Status:     ok/running=emerald  warn/degraded=amber  err/failed=rose  updating=c
 These must survive page reloads (localStorage or equivalent):
 - `sidebarCollapsed: boolean`
 - `chatVisible: boolean`
-- `darkCanvas: boolean` (default `true`)
+- `darkCanvas: boolean` (default `false`)
 - `density: "compact" | "regular"`
 - `showAlerts: boolean`
 - Active route
