@@ -7,6 +7,7 @@ import type { Column, RowMenuAction, StatusColor, ToastVariant } from '@tinkermo
 import { useCluster } from '../../hooks/useAPI';
 import { Icon } from '../shared/Icon';
 import { ErrorView } from '../shared/ErrorView';
+import { asEyebrow } from '../../utils/pageHeader';
 
 const ROLE_COLOR: Record<Server['role'], StatusColor> = {
   compute: 'cyan',
@@ -160,12 +161,12 @@ export const ServersView: React.FC = () => {
   return (
     <>
       <PageHeader
-        eyebrow={
-          (<span className="eyebrow-row">
+        eyebrow={asEyebrow(
+          <span className="eyebrow-row">
             <Chip variant="cyan">hosts · {servers.length}</Chip>
             <span className="mono-meta">{reachable} reachable · polled 15 s</span>
-          </span>) as unknown as string
-        }
+          </span>
+        )}
         idChip="/cluster/asgard/servers"
         title="Servers"
         subtitle="Physical and virtual hosts in the asgard cluster."

@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { PageHeader, Panel, Chip, Select } from '@tinkermonkey/heimdall-ui';
+import { asEyebrow } from '../../utils/pageHeader';
 import type { StatusColor } from '@tinkermonkey/heimdall-ui';
 
 type LogLevel = 'INFO' | 'WARN' | 'ERROR' | 'DEBUG';
@@ -92,12 +93,12 @@ export const LogsView: React.FC = () => {
   return (
     <>
       <PageHeader
-        eyebrow={
-          (<span className="eyebrow-row">
+        eyebrow={asEyebrow(
+          <span className="eyebrow-row">
             <Chip variant="cyan">logs · loki</Chip>
             <span className="mono-meta">ingest 412 lps · retain 30d</span>
-          </span>) as unknown as string
-        }
+          </span>
+        )}
         idChip="/cluster/asgard/logs"
         title="Logs"
         subtitle="Unified operational log stream across hosts and agents."

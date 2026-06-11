@@ -6,6 +6,7 @@ import { useCluster, useTopology } from '../../hooks/useAPI';
 import { Icon } from '../shared/Icon';
 import { ErrorView } from '../shared/ErrorView';
 import { BotCard } from './BotCard';
+import { asEyebrow } from '../../utils/pageHeader';
 
 export const BotsView: React.FC = () => {
   const navigate = useNavigate();
@@ -31,12 +32,12 @@ export const BotsView: React.FC = () => {
   return (
     <>
       <PageHeader
-        eyebrow={
-          (<span className="eyebrow-row">
+        eyebrow={asEyebrow(
+          <span className="eyebrow-row">
             <Chip variant="amber">agents · {bots.length}</Chip>
             <span className="mono-meta">claude · sonnet + haiku</span>
-          </span>) as unknown as string
-        }
+          </span>
+        )}
         idChip="/cluster/asgard/bots"
         title="Bots"
         subtitle="The agent mesh that operates the homelab. Open topology to see how they relate."

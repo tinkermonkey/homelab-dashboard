@@ -6,6 +6,7 @@ import { useAlerts } from '../../hooks/useAPI';
 import { HostCard } from './HostCard';
 import { GatewayPanel } from './GatewayPanel';
 import { AppsPanel } from './AppsPanel';
+import { asEyebrow } from '../../utils/pageHeader';
 
 interface OverviewViewProps {
   data: LAB_DATA & { degraded?: string[] };
@@ -38,12 +39,12 @@ export const OverviewView: React.FC<OverviewViewProps> = ({ data, showAlerts = t
   return (
     <div className="overview-view">
       <PageHeader
-        eyebrow={
-          (<span className="eyebrow-row">
+        eyebrow={asEyebrow(
+          <span className="eyebrow-row">
             <Chip variant="amber">cluster · {data.cluster.name}</Chip>
             <span className="mono-meta">{data.cluster.location} · last sync {data.cluster.lastSync}</span>
-          </span>) as unknown as string
-        }
+          </span>
+        )}
         idChip={`/cluster/${data.cluster.name.toLowerCase()}`}
         title="Overview"
         subtitle="Resource state across hosts, gateway health, and deployed services. All systems polled every 15 s."

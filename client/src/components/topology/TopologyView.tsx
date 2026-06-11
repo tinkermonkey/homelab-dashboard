@@ -4,6 +4,7 @@ import {
   type GraphNodeData, type GraphEdgeData,
 } from '@tinkermonkey/heimdall-ui';
 import { usePersistedState } from '../../utils/localStorage';
+import { asEyebrow } from '../../utils/pageHeader';
 import { useTopology, useCluster } from '../../hooks/useAPI';
 import { Icon } from '../shared/Icon';
 import './TopologyView.css';
@@ -240,12 +241,12 @@ export const TopologyView: React.FC = () => {
     <div className="topology-view">
       <PageHeader
         eyebrow={
-          (<span className="eyebrow-row">
+          asEyebrow(<span className="eyebrow-row">
             <Chip variant="violet">topology · agents</Chip>
             <span className="mono-meta">
               {topologyData.bots.length} bots · {topologyData.hosts.length} hosts
             </span>
-          </span>) as unknown as string
+          </span>)
         }
         idChip="/cluster/asgard/topology"
         title="Topology"

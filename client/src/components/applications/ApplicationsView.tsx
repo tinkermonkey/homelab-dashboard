@@ -4,6 +4,7 @@ import { useCluster } from '../../hooks/useAPI';
 import { Icon } from '../shared/Icon';
 import { ErrorView } from '../shared/ErrorView';
 import { AppsPanel } from '../overview/AppsPanel';
+import { asEyebrow } from '../../utils/pageHeader';
 
 export const ApplicationsView: React.FC = () => {
   const { data, isLoading, error } = useCluster();
@@ -21,12 +22,12 @@ export const ApplicationsView: React.FC = () => {
   return (
     <>
       <PageHeader
-        eyebrow={
-          (<span className="eyebrow-row">
+        eyebrow={asEyebrow(
+          <span className="eyebrow-row">
             <Chip variant="cyan">services · {apps.length}</Chip>
             <span className="mono-meta">scraped every 15 s</span>
-          </span>) as unknown as string
-        }
+          </span>
+        )}
         idChip="/cluster/asgard/apps"
         title="Applications"
         subtitle="Every service deployed across the cluster, by category."

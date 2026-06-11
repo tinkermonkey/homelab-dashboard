@@ -7,6 +7,7 @@ import type { Column, QuickAccessGridItem, ToastVariant } from '@tinkermonkey/he
 import { useDocker } from '../../hooks/useAPI';
 import { Icon } from '../shared/Icon';
 import { ErrorView } from '../shared/ErrorView';
+import { asEyebrow } from '../../utils/pageHeader';
 
 interface VolumeRow extends Volume {
   host: string;
@@ -87,12 +88,12 @@ export const StorageView: React.FC = () => {
   return (
     <>
       <PageHeader
-        eyebrow={
-          (<span className="eyebrow-row">
+        eyebrow={asEyebrow(
+          <span className="eyebrow-row">
             <Chip variant="emerald">storage · helios</Chip>
             <span className="mono-meta">TrueNAS Core · ZFS</span>
-          </span>) as unknown as string
-        }
+          </span>
+        )}
         idChip="/cluster/asgard/storage"
         title="Storage"
         subtitle="Pools, datasets and Docker volumes across the cluster."

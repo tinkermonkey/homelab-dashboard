@@ -6,6 +6,7 @@ import { ErrorView } from "../shared/ErrorView";
 import { ContainersTab } from "./ContainersTab";
 import { NetworksTab } from "./NetworksTab";
 import { VolumesTab } from "./VolumesTab";
+import { asEyebrow } from "../../utils/pageHeader";
 
 type ActiveTab = "containers" | "networks" | "volumes";
 
@@ -66,12 +67,12 @@ export const ContainersView: React.FC = () => {
   return (
     <>
       <PageHeader
-        eyebrow={
-          (<span className="eyebrow-row">
+        eyebrow={asEyebrow(
+          <span className="eyebrow-row">
             <Chip variant="cyan">docker · {data.hosts.length} engines</Chip>
             <span className="mono-meta">{totalContainers} containers · {runningContainers} running</span>
-          </span>) as unknown as string
-        }
+          </span>
+        )}
         idChip="/cluster/asgard/docker"
         title="Containers"
         subtitle="Docker inventory aggregated across every host engine — state, health, ports, and mounts."

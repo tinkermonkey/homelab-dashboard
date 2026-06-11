@@ -5,6 +5,7 @@ import {
 import type { Column } from '@tinkermonkey/heimdall-ui';
 import { useCluster, useDocker } from '../../hooks/useAPI';
 import { Icon } from '../shared/Icon';
+import { asEyebrow } from '../../utils/pageHeader';
 
 interface VpnPeer {
   _key: string;
@@ -118,7 +119,7 @@ export const NetworkView: React.FC = () => {
   if (isLoading && !cluster) {
     return (
       <PageHeader
-        eyebrow={(<span className="eyebrow-row"><Chip variant="emerald">network · online</Chip></span>) as unknown as string}
+        eyebrow={asEyebrow(<span className="eyebrow-row"><Chip variant="emerald">network · online</Chip></span>)}
         title="Network"
         subtitle="Loading network data…"
       />
@@ -155,12 +156,12 @@ export const NetworkView: React.FC = () => {
   return (
     <>
       <PageHeader
-        eyebrow={
-          (<span className="eyebrow-row">
+        eyebrow={asEyebrow(
+          <span className="eyebrow-row">
             <Chip variant="emerald">network · online</Chip>
             <span className="mono-meta">{gw.hostname} · uptime {gw.statusFor}</span>
-          </span>) as unknown as string
-        }
+          </span>
+        )}
         idChip="/cluster/asgard/network"
         title="Network"
         subtitle="WAN link, DNS, VPN and the services published across the cluster."

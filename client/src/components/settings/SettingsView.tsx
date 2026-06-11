@@ -3,6 +3,7 @@ import {
   PageHeader, Panel, Chip, ConfigTile, Field, TextInput, Select, TriState, Button, Toast,
 } from '@tinkermonkey/heimdall-ui';
 import { usePersistedState } from '../../utils/localStorage';
+import { asEyebrow } from '../../utils/pageHeader';
 
 const SECTIONS = [
   { id: 'cluster', icon: 'settings' as const, title: 'Cluster', description: 'Name, domain, polling cadence', summary: [] },
@@ -21,11 +22,11 @@ export const SettingsView: React.FC = () => {
   return (
     <>
       <PageHeader
-        eyebrow={
-          (<span className="eyebrow-row">
+        eyebrow={asEyebrow(
+          <span className="eyebrow-row">
             <Chip variant="neutral">settings</Chip>
-          </span>) as unknown as string
-        }
+          </span>
+        )}
         idChip="/cluster/asgard/settings"
         title="Configuration"
         subtitle="Cluster-wide preferences for the Heimdall control plane."
