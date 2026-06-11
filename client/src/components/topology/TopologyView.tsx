@@ -1,6 +1,6 @@
 import React, { useCallback, useMemo } from 'react';
 import {
-  GraphCanvas, GraphInspector, TopologyNode, PageHeader, Chip, Button, AlertStrip,
+  GraphCanvas, GraphInspector, TopologyNode, PageHeader, Chip, Button,
   type GraphNodeData, type GraphEdgeData,
 } from '@tinkermonkey/heimdall-ui';
 import { usePersistedState } from '../../utils/localStorage';
@@ -156,7 +156,7 @@ export const TopologyView: React.FC = () => {
       id: `${hid}.lab.local`,
       title: hid,
       kind: 'host' as const,
-      domain: ROLE_COLOR[s?.role ?? 'compute'] ?? 'default',
+      domain: getRoleColor(s?.role ?? 'compute'),
       description: `${s?.role ?? 'host'} node`,
       metadata: { role: s?.role ?? '—' },
     };
