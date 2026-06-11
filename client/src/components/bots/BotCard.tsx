@@ -1,6 +1,6 @@
 import React from 'react';
 import type { Bot, TopologyBot } from '@homelab/shared';
-import { Panel, KVGrid, Chip } from '@tinkermonkey/heimdall-ui';
+import { Panel, KVGrid, Chip, Avatar } from '@tinkermonkey/heimdall-ui';
 import type { KVGridRow } from '@tinkermonkey/heimdall-ui';
 
 interface BotCardProps {
@@ -36,13 +36,7 @@ export const BotCard: React.FC<BotCardProps> = ({ bot, topologyBot }) => {
         <span className="cell-mono muted" style={{ fontSize: 11 }}>{bot.status}</span>
       </div>
       <div className="row" style={{ gap: 12, marginBottom: 12 }}>
-        <div
-          className="bot-avatar"
-          data-id={bot.id}
-          style={{ width: 40, height: 40, flexShrink: 0 }}
-        >
-          {bot.avatar.slice(0, 2).toUpperCase()}
-        </div>
+        <Avatar name={bot.label} color={tone} size="lg" shape="rounded" decorative />
         <p style={{ margin: 0, fontSize: 12.5, lineHeight: 1.55, color: 'rgb(var(--canvas-fg-2))' }}>
           {bot.desc}
         </p>

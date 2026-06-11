@@ -1,14 +1,14 @@
 import React, { useMemo, useState, useCallback } from 'react';
 import type { Server } from '@homelab/shared';
 import {
-  PageHeader, Panel, Table, ProgressBar, Chip, RowMenu, Button, ConfirmDialog, Toast, AlertStrip,
+  PageHeader, Panel, Table, ProgressBar, Chip, RowMenu, Button, ConfirmDialog, Toast, AlertStrip, Avatar,
 } from '@tinkermonkey/heimdall-ui';
 import type { Column, RowMenuAction, StatusColor, ToastVariant } from '@tinkermonkey/heimdall-ui';
 import { useCluster } from '../../hooks/useAPI';
 import { Icon } from '@tinkermonkey/heimdall-ui';
 import { ErrorView } from '../shared/ErrorView';
 import { asEyebrow } from '../../utils/pageHeader';
-import { ROLE_COLOR, getInitials, cpuTone, memTone, diskTone } from '../../utils/hostUtils';
+import { ROLE_COLOR, cpuTone, memTone, diskTone } from '../../utils/hostUtils';
 
 const SRV_ACTIONS: RowMenuAction[] = [
   { id: 'ssh', label: 'Open SSH' },
@@ -62,7 +62,7 @@ const STATIC_COLUMNS: Column<Server>[] = [
     width: '22%',
     render: (_v, row) => (
       <div className="row" style={{ gap: 10 }}>
-        <div className="role-mark" data-role={row.role}>{getInitials(row.id)}</div>
+        <Avatar name={row.id} color={ROLE_COLOR[row.role]} size="sm" shape="rounded" decorative />
         <div>
           <div className="cell-name">{row.id}</div>
           <div className="cell-sub">{row.ip}</div>
