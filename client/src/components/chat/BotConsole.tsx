@@ -44,9 +44,14 @@ export const BotConsole: React.FC<BotConsoleProps> = ({
   const activeBotObj = bots.find(b => b.id === activeBot);
   const [sendError, setSendError] = React.useState<string | null>(null);
 
+  React.useEffect(() => {
+    setSendError(null);
+  }, [activeBot]);
+
   const handleSend = (value: string) => {
     setSendError(null);
     send(value).catch((err: unknown) => {
+      console.error('BotConsole send failed:', err);
       setSendError(err instanceof Error ? err.message : 'Failed to send message.');
     });
   };
