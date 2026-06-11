@@ -22,11 +22,6 @@
   --host-austins-mac-mini-tint: var(--status-amber);
 }
 
-.app-cell[data-host="t5610"]            { border-left-color: rgb(var(--status-cyan)); }
-.app-cell[data-host="petit-cochon"]     { border-left-color: rgb(var(--status-emerald)); }
-.app-cell[data-host="hp7052"]           { border-left-color: rgb(var(--status-violet)); }
-.app-cell[data-host="austins-mac-mini"] { border-left-color: rgb(var(--status-amber)); }
-
 code, pre, .monospace {
   font-family: var(--font-mono);
 }
