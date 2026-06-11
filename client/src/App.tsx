@@ -15,6 +15,9 @@ import { OverviewView } from './components/overview/OverviewView';
 import { ContainersView } from './components/containers/ContainersView';
 import { TopologyView } from './components/topology/TopologyView';
 import { NetworkView } from './components/network/NetworkView';
+import { ServersView } from './components/servers/ServersView';
+import { ApplicationsView } from './components/applications/ApplicationsView';
+import { StorageView } from './components/storage/StorageView';
 import { PlaceholderView } from './components/shared/PlaceholderView';
 import { ErrorView } from './components/shared/ErrorView';
 import { ChatRail } from './components/chat/ChatRail';
@@ -130,10 +133,10 @@ const AppContent: React.FC = () => {
                 <Route path="/cluster/overview" element={overviewContent} />
                 <Route path="/cluster/containers" element={<ContainersView />} />
                 <Route path="/cluster/topology" element={<TopologyView />} />
-                <Route path="/cluster/servers" element={<PlaceholderView routeName="Servers" />} />
+                <Route path="/cluster/servers" element={<ServersView />} />
                 <Route path="/cluster/network" element={<NetworkView />} />
-                <Route path="/cluster/applications" element={<PlaceholderView routeName="Applications" />} />
-                <Route path="/cluster/storage" element={<PlaceholderView routeName="Storage" />} />
+                <Route path="/cluster/applications" element={<ApplicationsView />} />
+                <Route path="/cluster/storage" element={<StorageView />} />
                 <Route path="/cluster/bots" element={<PlaceholderView routeName="Bots" />} />
                 <Route path="/cluster/logs" element={<PlaceholderView routeName="Logs" />} />
                 <Route path="/cluster/configuration" element={<PlaceholderView routeName="Configuration" />} />
