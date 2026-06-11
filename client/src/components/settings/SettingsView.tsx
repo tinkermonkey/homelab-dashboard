@@ -13,7 +13,7 @@ const SECTIONS = [
 
 export const SettingsView: React.FC = () => {
   const [clusterName, setClusterName] = usePersistedState('settings.clusterName', 'asgard');
-  const [theme, setTheme] = usePersistedState('settings.theme', 'dark');
+  const [darkCanvas, setDarkCanvas] = usePersistedState('darkCanvas', true);
   const [telemetry, setTelemetry] = usePersistedState('settings.telemetry', true);
   const [pollInterval, setPollInterval] = usePersistedState('settings.pollInterval', '15');
 
@@ -66,8 +66,8 @@ export const SettingsView: React.FC = () => {
           </Field>
           <Field label="Default theme">
             <Select
-              value={theme}
-              onChange={e => setTheme((e.target as HTMLSelectElement).value)}
+              value={darkCanvas ? 'dark' : 'light'}
+              onChange={e => setDarkCanvas((e.target as HTMLSelectElement).value === 'dark')}
               aria-label="Theme"
             >
               <option value="dark">Dark canvas</option>
@@ -84,18 +84,17 @@ export const SettingsView: React.FC = () => {
             </label>
           </Field>
           <div className="row" style={{ gap: 8 }}>
-            <Button variant="primary" size="sm">Save changes</Button>
             <Button
               variant="ghost"
               size="sm"
               onClick={() => {
                 setClusterName('asgard');
-                setTheme('dark');
+                setDarkCanvas(true);
                 setTelemetry(true);
                 setPollInterval('15');
               }}
             >
-              Reset
+              Reset to defaults
             </Button>
           </div>
         </div>
