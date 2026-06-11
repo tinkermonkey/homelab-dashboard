@@ -93,7 +93,7 @@ export class ElastiFlowClient {
         });
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
-      throw new Error(`ElastiFlow query failed: ${message}`);
+      throw new Error(`ElastiFlow query failed: ${message}`, { cause: error });
     }
   }
 }

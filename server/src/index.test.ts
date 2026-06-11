@@ -2,11 +2,8 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import type { LAB_DATA, DOCKER_DATA, TOPOLOGY_DATA, STATUS_DATA, Alert } from '@homelab/shared';
-import { registerRoutes, isValidBotId } from './index.js';
+import { registerRoutes } from './index.js';
 import { getCachedData, clearCache } from './cache.js';
-import { transformMetrics } from './transformers/metrics-transformer.js';
-import { transformDockerData, transformTopologyData } from './transformers/mcp-transformer.js';
-import { signozClient } from './clients/signoz-client.js';
 import { fetchWithTimeout } from './utils/fetch-with-timeout.js';
 
 // Mock modules
@@ -420,7 +417,7 @@ describe('Server Routes', () => {
           }),
         },
       };
-      vi.mocked(fetchWithTimeout).mockResolvedValue(mockResponse as any);
+      vi.mocked(fetchWithTimeout).mockResolvedValue(mockResponse as unknown as Response);
 
       const response = await fastify.inject({
         method: 'POST',
@@ -442,7 +439,7 @@ describe('Server Routes', () => {
           }),
         },
       };
-      vi.mocked(fetchWithTimeout).mockResolvedValue(mockResponse as any);
+      vi.mocked(fetchWithTimeout).mockResolvedValue(mockResponse as unknown as Response);
 
       await fastify.inject({
         method: 'POST',
@@ -465,7 +462,7 @@ describe('Server Routes', () => {
           }),
         },
       };
-      vi.mocked(fetchWithTimeout).mockResolvedValue(mockResponse as any);
+      vi.mocked(fetchWithTimeout).mockResolvedValue(mockResponse as unknown as Response);
 
       await fastify.inject({
         method: 'POST',
@@ -489,7 +486,7 @@ describe('Server Routes', () => {
           }),
         },
       };
-      vi.mocked(fetchWithTimeout).mockResolvedValue(mockResponse as any);
+      vi.mocked(fetchWithTimeout).mockResolvedValue(mockResponse as unknown as Response);
 
       await fastify.inject({
         method: 'POST',
@@ -505,8 +502,9 @@ describe('Server Routes', () => {
     it('omits Authorization header when token is not configured', async () => {
       // Override config to have empty token for this specific test
       const configModule = await import('./config.js');
-      const originalToken = (configModule.config as any).phoneHomeChatToken;
-      (configModule.config as any).phoneHomeChatToken = '';
+      const mutableConfig = configModule.config as unknown as Record<string, string>;
+      const originalToken = mutableConfig.phoneHomeChatToken;
+      mutableConfig.phoneHomeChatToken = '';
 
       try {
         const mockResponse = {
@@ -518,7 +516,7 @@ describe('Server Routes', () => {
             }),
           },
         };
-        vi.mocked(fetchWithTimeout).mockResolvedValue(mockResponse as any);
+        vi.mocked(fetchWithTimeout).mockResolvedValue(mockResponse as unknown as Response);
 
         await fastify.inject({
           method: 'POST',
@@ -531,7 +529,7 @@ describe('Server Routes', () => {
         const headers = call[1]?.headers as Record<string, string> | undefined;
         expect(headers?.Authorization).toBeUndefined();
       } finally {
-        (configModule.config as any).phoneHomeChatToken = originalToken;
+        mutableConfig.phoneHomeChatToken = originalToken;
       }
     });
 
@@ -541,7 +539,7 @@ describe('Server Routes', () => {
         status: 200,
         body: null,
       };
-      vi.mocked(fetchWithTimeout).mockResolvedValue(mockResponse as any);
+      vi.mocked(fetchWithTimeout).mockResolvedValue(mockResponse as unknown as Response);
 
       const response = await fastify.inject({
         method: 'POST',
@@ -576,11 +574,11 @@ describe('Server Routes', () => {
           }),
         },
       };
-      vi.mocked(fetchWithTimeout).mockResolvedValue(mockResponse as any);
+      vi.mocked(fetchWithTimeout).mockResolvedValue(mockResponse as unknown as Response);
 
       for (const botId of validIds) {
         vi.clearAllMocks();
-        vi.mocked(fetchWithTimeout).mockResolvedValue(mockResponse as any);
+        vi.mocked(fetchWithTimeout).mockResolvedValue(mockResponse as unknown as Response);
 
         const response = await fastify.inject({
           method: 'POST',
