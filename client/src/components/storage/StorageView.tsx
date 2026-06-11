@@ -1,9 +1,9 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import type { Volume } from '@homelab/shared';
 import {
-  PageHeader, StatGrid, StatTile, Panel, QuickAccessGrid, Table, Chip, Button, AlertStrip,
+  PageHeader, StatGrid, StatTile, Panel, QuickAccessGrid, Table, Chip, Button, AlertStrip, Toast,
 } from '@tinkermonkey/heimdall-ui';
-import type { Column, QuickAccessGridItem } from '@tinkermonkey/heimdall-ui';
+import type { Column, QuickAccessGridItem, ToastVariant } from '@tinkermonkey/heimdall-ui';
 import { useDocker } from '../../hooks/useAPI';
 import { Icon } from '../shared/Icon';
 import { ErrorView } from '../shared/ErrorView';
@@ -57,8 +57,15 @@ const COLUMNS: Column<VolumeRow>[] = [
   },
 ];
 
+interface ToastState {
+  title: string;
+  subtitle?: string;
+  variant: ToastVariant;
+}
+
 export const StorageView: React.FC = () => {
   const { data, isLoading, error } = useDocker();
+  const [toast, setToast] = useState<ToastState | null>(null);
 
   const volumes = useMemo((): VolumeRow[] => {
     if (!data) return [];
@@ -109,11 +116,25 @@ export const StorageView: React.FC = () => {
         <StatTile color="amber" label="Last backup" value="04:00" meta="restic → B2" metaIcon="lock" />
       </StatGrid>
       <Panel title="Pools & jobs" subtitle="ZFS pools and backup targets">
-        <QuickAccessGrid columns={4} tiles={STORAGE_POOLS} onAction={() => {}} />
+        <QuickAccessGrid
+          columns={4}
+          tiles={STORAGE_POOLS}
+          onAction={() => setToast({ title: 'Pool management not yet available', subtitle: 'Storage pool details will be available once the backend is connected.', variant: 'info' })}
+        />
       </Panel>
       <Panel className="panel-flush" title="Docker volumes" subtitle={`${volumes.length} volumes`}>
         <Table columns={COLUMNS} data={volumes} rowKey="_key" />
       </Panel>
+      {toast && (
+        <Toast
+          isOpen
+          onClose={() => setToast(null)}
+          title={toast.title}
+          subtitle={toast.subtitle}
+          variant={toast.variant}
+          duration={4000}
+        />
+      )}
     </>
   );
 };

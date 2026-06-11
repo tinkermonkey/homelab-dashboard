@@ -1,9 +1,9 @@
-import React from 'react';
+import React, { useMemo, useState, useCallback } from 'react';
 import type { Server } from '@homelab/shared';
 import {
-  PageHeader, Panel, Table, ProgressBar, Chip, RowMenu, Button, AlertStrip,
+  PageHeader, Panel, Table, ProgressBar, Chip, RowMenu, Button, AlertStrip, ConfirmDialog, Toast,
 } from '@tinkermonkey/heimdall-ui';
-import type { Column, RowMenuAction, StatusColor } from '@tinkermonkey/heimdall-ui';
+import type { Column, RowMenuAction, StatusColor, ToastVariant } from '@tinkermonkey/heimdall-ui';
 import { useCluster } from '../../hooks/useAPI';
 import { Icon } from '../shared/Icon';
 import { ErrorView } from '../shared/ErrorView';
@@ -22,6 +22,32 @@ const SRV_ACTIONS: RowMenuAction[] = [
   { type: 'separator' },
   { id: 'drain', label: 'Drain & cordon', icon: 'slash', danger: true },
 ];
+
+interface PendingAction {
+  actionId: 'reboot' | 'drain';
+  serverId: string;
+}
+
+interface ToastState {
+  title: string;
+  subtitle?: string;
+  variant: ToastVariant;
+}
+
+const CONFIRM_CONFIG: Record<PendingAction['actionId'], { title: string; message: (id: string) => string; confirmLabel: string; variant: 'primary' | 'danger' }> = {
+  reboot: {
+    title: 'Reboot server',
+    message: (id) => `Reboot "${id}"? All running containers on this host will be interrupted.`,
+    confirmLabel: 'Reboot',
+    variant: 'primary',
+  },
+  drain: {
+    title: 'Drain & cordon',
+    message: (id) => `Drain and cordon "${id}"? The host will be made unavailable for scheduling.`,
+    confirmLabel: 'Drain',
+    variant: 'danger',
+  },
+};
 
 function getInitials(id: string): string {
   return id.split('-').map(w => w[0]).join('').substring(0, 2).toUpperCase();
@@ -42,7 +68,7 @@ function MetricBar({ percent, color }: { percent: number; color: StatusColor }) 
   );
 }
 
-const COLUMNS: Column<Server>[] = [
+const STATIC_COLUMNS: Column<Server>[] = [
   {
     key: 'id',
     label: 'Host',
@@ -87,21 +113,37 @@ const COLUMNS: Column<Server>[] = [
     width: '12%',
     render: (v) => <span className="cell-mono">{String(v)}</span>,
   },
-  {
-    key: 'containers',
-    label: '',
-    width: '6%',
-    render: (v) => (
-      <div className="row" style={{ justifyContent: 'flex-end', gap: 8 }}>
-        <span className="tag-pill">{String(v)} ctr</span>
-        <RowMenu actions={SRV_ACTIONS} onAction={() => {}} />
-      </div>
-    ),
-  },
 ];
 
 export const ServersView: React.FC = () => {
   const { data, isLoading, error } = useCluster();
+  const [pendingAction, setPendingAction] = useState<PendingAction | null>(null);
+  const [toast, setToast] = useState<ToastState | null>(null);
+
+  const handleAction = useCallback((actionId: string, serverId: string) => {
+    if (actionId === 'reboot' || actionId === 'drain') {
+      setPendingAction({ actionId, serverId });
+    } else if (actionId === 'ssh') {
+      setToast({ title: 'SSH access not yet available', subtitle: 'Terminal access will be available once the backend is connected.', variant: 'info' });
+    } else if (actionId === 'metrics') {
+      setToast({ title: 'Grafana metrics not yet available', subtitle: 'Metrics dashboard integration not yet configured.', variant: 'info' });
+    }
+  }, []);
+
+  const columns = useMemo((): Column<Server>[] => [
+    ...STATIC_COLUMNS,
+    {
+      key: 'containers',
+      label: '',
+      width: '6%',
+      render: (v, row) => (
+        <div className="row" style={{ justifyContent: 'flex-end', gap: 8 }}>
+          <span className="tag-pill">{String(v)} ctr</span>
+          <RowMenu actions={SRV_ACTIONS} onAction={(actionId) => handleAction(actionId, row.id)} />
+        </div>
+      ),
+    },
+  ], [handleAction]);
 
   if (isLoading) return <div style={{ padding: 24 }}>Loading…</div>;
   if (error || !data) return (
@@ -113,6 +155,7 @@ export const ServersView: React.FC = () => {
 
   const servers = data.servers ?? [];
   const reachable = servers.filter(s => s.status !== 'err').length;
+  const confirm = pendingAction ? CONFIRM_CONFIG[pendingAction.actionId] : null;
 
   return (
     <>
@@ -140,8 +183,32 @@ export const ServersView: React.FC = () => {
         />
       )}
       <Panel className="panel-flush">
-        <Table columns={COLUMNS} data={servers} rowKey="id" />
+        <Table columns={columns} data={servers} rowKey="id" />
       </Panel>
+      {confirm && pendingAction && (
+        <ConfirmDialog
+          isOpen
+          onClose={() => setPendingAction(null)}
+          onConfirm={() => {
+            setPendingAction(null);
+            setToast({ title: 'Backend not connected', subtitle: 'Server actions require the backend API to be running.', variant: 'warning' });
+          }}
+          title={confirm.title}
+          message={confirm.message(pendingAction.serverId)}
+          confirmLabel={confirm.confirmLabel}
+          variant={confirm.variant}
+        />
+      )}
+      {toast && (
+        <Toast
+          isOpen
+          onClose={() => setToast(null)}
+          title={toast.title}
+          subtitle={toast.subtitle}
+          variant={toast.variant}
+          duration={4000}
+        />
+      )}
     </>
   );
 };

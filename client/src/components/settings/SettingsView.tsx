@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
-  PageHeader, Panel, Chip, ConfigTile, Field, TextInput, Select, TriState, Button,
+  PageHeader, Panel, Chip, ConfigTile, Field, TextInput, Select, TriState, Button, Toast,
 } from '@tinkermonkey/heimdall-ui';
 import { usePersistedState } from '../../utils/localStorage';
 
@@ -16,6 +16,7 @@ export const SettingsView: React.FC = () => {
   const [darkCanvas, setDarkCanvas] = usePersistedState('darkCanvas', true);
   const [telemetry, setTelemetry] = usePersistedState('settings.telemetry', true);
   const [pollInterval, setPollInterval] = usePersistedState('settings.pollInterval', '15');
+  const [toastTitle, setToastTitle] = useState<string | null>(null);
 
   return (
     <>
@@ -38,7 +39,7 @@ export const SettingsView: React.FC = () => {
               title={s.title}
               description={s.description}
               summary={s.summary}
-              onClick={() => {}}
+              onClick={() => setToastTitle(`${s.title} settings not yet configurable`)}
             />
           ))}
         </div>
@@ -99,6 +100,16 @@ export const SettingsView: React.FC = () => {
           </div>
         </div>
       </Panel>
+      {toastTitle && (
+        <Toast
+          isOpen
+          onClose={() => setToastTitle(null)}
+          title={toastTitle}
+          subtitle="This section will be configurable once the backend is connected."
+          variant="info"
+          duration={4000}
+        />
+      )}
     </>
   );
 };

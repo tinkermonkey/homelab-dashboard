@@ -1,7 +1,7 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useCallback } from 'react';
 import type { DockerHost, Container } from '@homelab/shared';
-import { Panel, Table, Chip, RowMenu } from '@tinkermonkey/heimdall-ui';
-import type { Column, RowMenuAction } from '@tinkermonkey/heimdall-ui';
+import { Panel, Table, Chip, RowMenu, ConfirmDialog, Toast } from '@tinkermonkey/heimdall-ui';
+import type { Column, RowMenuAction, ToastVariant } from '@tinkermonkey/heimdall-ui';
 
 interface HostContainersPanelProps {
   host: DockerHost;
@@ -35,7 +35,39 @@ const CTN_ACTIONS: RowMenuAction[] = [
 
 type ContainerRow = Container & { _key: string };
 
-const COLUMNS: Column<ContainerRow>[] = [
+interface PendingAction {
+  actionId: 'restart' | 'stop' | 'remove';
+  containerName: string;
+}
+
+interface ToastState {
+  title: string;
+  subtitle?: string;
+  variant: ToastVariant;
+}
+
+const CONFIRM_CONFIG: Record<PendingAction['actionId'], { title: string; message: (name: string) => string; confirmLabel: string; variant: 'primary' | 'danger' }> = {
+  restart: {
+    title: 'Restart container',
+    message: (name) => `Restart "${name}"? The container will be stopped and restarted.`,
+    confirmLabel: 'Restart',
+    variant: 'primary',
+  },
+  stop: {
+    title: 'Stop container',
+    message: (name) => `Stop "${name}"? The container will be halted.`,
+    confirmLabel: 'Stop',
+    variant: 'primary',
+  },
+  remove: {
+    title: 'Remove container',
+    message: (name) => `Permanently remove "${name}"? This cannot be undone.`,
+    confirmLabel: 'Remove',
+    variant: 'danger',
+  },
+};
+
+const STATIC_COLUMNS: Column<ContainerRow>[] = [
   {
     key: 'name',
     label: 'Container',
@@ -103,20 +135,35 @@ const COLUMNS: Column<ContainerRow>[] = [
       </span>
     ),
   },
-  {
-    key: 'id',
-    label: '',
-    width: '4%',
-    render: (_v, row) => (
-      <RowMenu
-        actions={CTN_ACTIONS}
-        onAction={(actionId) => console.log(actionId, row.name)}
-      />
-    ),
-  },
 ];
 
 export const HostContainersPanel: React.FC<HostContainersPanelProps> = ({ host, query }) => {
+  const [pendingAction, setPendingAction] = useState<PendingAction | null>(null);
+  const [toast, setToast] = useState<ToastState | null>(null);
+
+  const handleAction = useCallback((actionId: string, containerName: string) => {
+    if (actionId === 'restart' || actionId === 'stop' || actionId === 'remove') {
+      setPendingAction({ actionId, containerName });
+    } else if (actionId === 'logs') {
+      setToast({ title: 'Log streaming not yet available', subtitle: 'Connect the backend API to stream container logs.', variant: 'info' });
+    }
+  }, []);
+
+  const columns = useMemo((): Column<ContainerRow>[] => [
+    ...STATIC_COLUMNS,
+    {
+      key: 'id',
+      label: '',
+      width: '4%',
+      render: (_v, row) => (
+        <RowMenu
+          actions={CTN_ACTIONS}
+          onAction={(actionId) => handleAction(actionId, row.name)}
+        />
+      ),
+    },
+  ], [handleAction]);
+
   const containers = useMemo((): ContainerRow[] => {
     const list = query
       ? host.containers.filter(c =>
@@ -129,14 +176,41 @@ export const HostContainersPanel: React.FC<HostContainersPanelProps> = ({ host, 
   if (containers.length === 0 && query) return null;
 
   const running = host.containers.filter(c => c.state === 'running').length;
+  const confirm = pendingAction ? CONFIRM_CONFIG[pendingAction.actionId] : null;
 
   return (
-    <Panel
-      className="panel-flush"
-      title={host.id}
-      subtitle={`${host.engine} · ${host.compose} · ${running}/${host.containers.length} running`}
-    >
-      <Table columns={COLUMNS} data={containers} rowKey="_key" />
-    </Panel>
+    <>
+      <Panel
+        className="panel-flush"
+        title={host.id}
+        subtitle={`${host.engine} · ${host.compose} · ${running}/${host.containers.length} running`}
+      >
+        <Table columns={columns} data={containers} rowKey="_key" />
+      </Panel>
+      {confirm && pendingAction && (
+        <ConfirmDialog
+          isOpen
+          onClose={() => setPendingAction(null)}
+          onConfirm={() => {
+            setPendingAction(null);
+            setToast({ title: 'Backend not connected', subtitle: 'Container actions require the backend API to be running.', variant: 'warning' });
+          }}
+          title={confirm.title}
+          message={confirm.message(pendingAction.containerName)}
+          confirmLabel={confirm.confirmLabel}
+          variant={confirm.variant}
+        />
+      )}
+      {toast && (
+        <Toast
+          isOpen
+          onClose={() => setToast(null)}
+          title={toast.title}
+          subtitle={toast.subtitle}
+          variant={toast.variant}
+          duration={4000}
+        />
+      )}
+    </>
   );
 };
