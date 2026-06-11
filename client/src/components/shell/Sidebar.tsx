@@ -1,5 +1,4 @@
 import React from 'react';
-import './Sidebar.css';
 import { Icon } from '../shared/Icon';
 import { NAV_TREE, NAV_ID_TO_PATH } from './sidebarNav';
 import type { NavChild, NavEntry } from './sidebarNav';

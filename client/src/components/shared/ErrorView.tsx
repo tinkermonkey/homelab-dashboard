@@ -24,8 +24,8 @@ export const ErrorView: React.FC<ErrorViewProps> = ({
         height: '100%',
         padding: '40px',
         textAlign: 'center',
-        backgroundColor: 'var(--canvas-bg)',
-        color: 'var(--canvas-fg-1)',
+        backgroundColor: 'rgb(var(--canvas-bg))',
+        color: 'rgb(var(--canvas-fg-1))',
       }}
     >
       <div

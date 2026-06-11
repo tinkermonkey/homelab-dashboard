@@ -60,8 +60,7 @@ because the package has no equivalent or the design requires a custom layout:
 | Composite | CSS classes | Location |
 |---|---|---|
 | Host metric card | `.srv-grid`, `.srv-head`, `.srv-body`, `.srv-foot`, `.role-mark` | `overview/HostCard.tsx` |
-| Gateway panel | `.gw-split`, `.gw-left`, `.gw-right`, `.gw-strip`, `.kv` | `overview/GatewayPanel.tsx` |
-| Apps grid | `.cat-chips`, `.cat-chip`, `.apps-grid`, `.app-cell`, `.state-pill` | `overview/AppsPanel.tsx` |
+| Gateway panel | `.gw-split`, `.gw-left`, `.gw-right`, `.gw-strip` | `overview/GatewayPanel.tsx` |
 | Network subsys strip | `.subsys-strip`, `.subsys` | `network/NetworkView.tsx` |
 | Top talkers list | `.talker-row`, `.talker-bar` | `network/NetworkView.tsx` |
 | Network events list | `.evt-row` | `network/NetworkView.tsx` |
@@ -70,7 +69,6 @@ because the package has no equivalent or the design requires a custom layout:
 | Inspector panel | `.inspector`, `.inspector-head`, `.inspector-section` | `topology/TopologyView.tsx` |
 | Bot console | `.bot-console`, `.bc-*` classes | `chat/BotConsole.tsx` |
 | Server list | `.server-list-card`, `.server-row` | `servers/ServersView.tsx` |
-| Tabs | `.tabs`, `.tab` | shared via `lab.css` |
 
 ### Package Component Integration Pattern
 

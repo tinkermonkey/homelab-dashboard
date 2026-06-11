@@ -1,5 +1,4 @@
 import React from 'react';
-import './Topbar.css';
 import { Icon } from '../shared/Icon';
 
 // Build breadcrumb path from nav id
