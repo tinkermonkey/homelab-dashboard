@@ -35,6 +35,9 @@ export const NAV_ID_TO_PATH: Record<string, string> = {
   overview:   '/cluster/overview',
   servers:    '/cluster/servers',
   containers: '/cluster/containers',
+  'containers/list':     '/cluster/containers',
+  'containers/networks': '/cluster/containers',
+  'containers/volumes':  '/cluster/containers',
   network:    '/cluster/network',
   apps:       '/cluster/applications',
   storage:    '/cluster/storage',
@@ -44,6 +47,10 @@ export const NAV_ID_TO_PATH: Record<string, string> = {
   settings:   '/cluster/configuration',
 };
 
+// Derive reverse mapping from top-level IDs only so child IDs
+// (which share paths with their parents) don't overwrite the parent entry.
 export const PATH_TO_NAV_ID: Record<string, string> = Object.fromEntries(
-  Object.entries(NAV_ID_TO_PATH).map(([id, path]) => [path, id])
+  Object.entries(NAV_ID_TO_PATH)
+    .filter(([id]) => !id.includes('/'))
+    .map(([id, path]) => [path, id])
 );

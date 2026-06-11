@@ -143,7 +143,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   <div
                     key={c.id}
                     className={`nav-item${isLeafActive(c.id) ? ' active' : ''}`}
-                    onClick={() => onNavigate(NAV_ID_TO_PATH[c.id] || '/cluster/overview')}
+                    onClick={() => onNavigate(NAV_ID_TO_PATH[c.id] ?? NAV_ID_TO_PATH[c.id.split('/')[0]] ?? '/cluster/overview')}
                     role="button"
                   >
                     <span className="nav-label">{c.label}</span>
