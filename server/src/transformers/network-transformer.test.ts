@@ -6,7 +6,7 @@ import type { FastifyBaseLogger } from 'fastify';
 vi.mock('../clients/mcp-client.js');
 
 describe('transformNetworkData', () => {
-  const mockLogger: FastifyBaseLogger = {
+  const mockLogger = {
     error: vi.fn(),
     warn: vi.fn(),
     info: vi.fn(),
@@ -14,7 +14,7 @@ describe('transformNetworkData', () => {
     fatal: vi.fn(),
     trace: vi.fn(),
     silent: vi.fn(),
-  } as any;
+  } as unknown as FastifyBaseLogger;
 
   const healthResponse = {
     result: [

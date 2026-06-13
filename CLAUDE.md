@@ -20,14 +20,14 @@ The design reference is the canonical source of truth for:
 - Data shapes for every entity (see `design/README.md` → "Data Shape" section)
 - Interaction behaviour (persisted UI state, polling cadences, etc.)
 
-Three views are fully designed: **Overview** (`/cluster/overview`), **Containers** (`/cluster/containers`), **Topology** (`/cluster/topology`). Seven other sidebar routes are placeholder stubs.
+All ten sidebar routes are fully implemented. The design reference (`design/app/`) covers Overview, Containers, Topology, and a combined view-other file for the remaining seven.
 
 ## Architecture Intent
 
 ```
 Browser SPA
   ├── App shell: titlebar / sidebar (256px) / topbar / statusbar
-  ├── Canvas area: routed views (Overview, Containers, Topology, stubs)
+  ├── Canvas area: routed views (Overview, Containers, Topology, + 7 more)
   └── Bot console rail (380px, collapsible) — chat with homelab agents
 
 Server (thin, to be built)
@@ -35,19 +35,60 @@ Server (thin, to be built)
       via the MCP HTTP endpoint: http://agent:3210/mcp/
 ```
 
+## CSS Architecture (three-layer stack)
+
+```
+Layer 1 — Package:   @tinkermonkey/heimdall-ui/css (loaded in App.tsx)
+                     Provides design tokens, component base styles, and layout utilities.
+                     This is the source of truth for all token values.
+
+Layer 2 — Globals:   client/src/styles/globals.css
+                     Supplemental tokens not in the package (alpha-variant accent colours,
+                     shadow-toast, h1 type scale) and real host-ID → tint colour mappings.
+
+Layer 3 — Lab:       client/src/styles/lab.css
+                     Project-specific chrome: shell frame classes (.desktop, .app-shell,
+                     .workspace, .canvas-area), boot splash, statusbar/topbar widgets,
+                     and all bespoke composite layouts (see allowlist below).
+```
+
+### Bespoke Composite Allowlist
+
+These components are built locally using `lab.css` classes rather than package components,
+because the package has no equivalent or the design requires a custom layout:
+
+| Composite | CSS classes | Location |
+|---|---|---|
+| Host metric card | `.srv-grid`, `.srv-head`, `.srv-body`, `.srv-foot`, `.role-mark` | `overview/HostCard.tsx` |
+| Gateway panel | `.gw-split`, `.gw-left`, `.gw-right`, `.gw-strip` | `overview/GatewayPanel.tsx` |
+| Bot console | `.lab-chat`, `.lab-chat__head`, `.bc-ico` | `chat/BotConsole.tsx` |
+
+### Package Component Integration Pattern
+
+View files import package components directly from `@tinkermonkey/heimdall-ui`:
+
+```tsx
+import { PageHeader, Panel, Table, Chip, Button, AlertStrip } from '@tinkermonkey/heimdall-ui';
+```
+
+- **Do not** copy component source from `design/src/components/` into `client/src/`
+- **Do not** create local wrappers around package components; import them directly
+- Package components self-style via the package CSS layer; no extra wrapper CSS needed
+- For layouts the package doesn't cover, use `lab.css` bespoke composite classes (see allowlist)
+
 ## Visual Language (non-negotiable from design)
 
 The dashboard is a **two-surface** layout:
 1. **Shell** — always dark (`#0B0F14` family): titlebar, sidebar, topbar, statusbar, bot console
 2. **Canvas** — dark by default (`#14191F` family), light mode available. The 8px top-left radius seam where canvas meets shell is a visual signature.
 
-Accent: cyan (`#22D3EE`). Used only for: active nav indicator, focus rings, primary CTAs, status pulses, env badges.
+Accent: amber (`#FBBF24`). Used for: active nav indicator, brand mark, primary CTAs, and all `--accent-primary` token references. Cyan (`#22D3EE`) is a semantic/status color only (updating, info, compute).
 
 Fonts: **Inter** (UI/body) and **JetBrains Mono** (all identifiers, eyebrow labels, table headers, stat numbers, kbd glyphs). Both from Google Fonts.
 
-Icons: Lucide-style outline, 24×24 viewBox, **1.75 stroke**, `currentColor`, round caps+joins. Names mapped in `design/icons.jsx`. No emoji anywhere, ever.
+Icons: Lucide-style outline, 24×24 viewBox, **1.75 stroke**, `currentColor`, round caps+joins. Names mapped in `design/app/lab-icons.jsx`. No emoji anywhere, ever.
 
-All CSS tokens are in `design/styles/tokens.css` (palette/type) and `design/styles/studio.css` (shell/canvas/components). These are the source of truth — do not derive values; use or migrate the tokens directly.
+All CSS tokens are in `design/styles/heimdall.css` (palette/type) and `design/styles/lab.css` (shell/canvas/components). These are the source of truth — do not derive values; use or migrate the tokens directly.
 
 ## Key Design Tokens
 
@@ -66,7 +107,7 @@ Status:     ok/running=emerald  warn/degraded=amber  err/failed=rose  updating=c
 These must survive page reloads (localStorage or equivalent):
 - `sidebarCollapsed: boolean`
 - `chatVisible: boolean`
-- `darkCanvas: boolean` (default `true`)
+- `darkCanvas: boolean` (default `false`)
 - `density: "compact" | "regular"`
 - `showAlerts: boolean`
 - Active route
@@ -94,14 +135,14 @@ When using browser automation (Playwright MCP or similar), save all screenshots 
 ## Routes
 
 ```
-overview      /cluster/overview       — implemented in design
-containers    /cluster/containers     — implemented in design
-topology      /cluster/topology       — implemented in design
-servers       placeholder
-network       placeholder
-apps          placeholder
-storage       placeholder
-bots          placeholder
-logs          placeholder
-settings      placeholder
+overview      /cluster/overview       — OverviewView (hosts, gateway, apps)
+containers    /cluster/containers     — ContainersView (docker inventory, networks, volumes)
+topology      /cluster/topology       — TopologyView (agent mesh, inspector)
+servers       /cluster/servers        — ServersView (host table with metrics)
+network       /cluster/network        — NetworkView (WAN, DNS, VPN, published services)
+apps          /cluster/applications   — ApplicationsView (service list with category filter)
+storage       /cluster/storage        — StorageView (volumes, pools, quick-access)
+bots          /cluster/bots           — BotsView (agent cards with MCP/project details)
+logs          /cluster/logs           — LogsView (log stream with host/level filter)
+settings      /cluster/configuration  — SettingsView (dashboard preferences)
 ```

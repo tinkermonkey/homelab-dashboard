@@ -1,4 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+
+const STORAGE_CHANGE_EVENT = 'persisted-state-change';
 
 export const usePersistedState = <T,>(
   key: string,
@@ -14,10 +16,24 @@ export const usePersistedState = <T,>(
     }
   });
 
+  useEffect(() => {
+    const handleChange = (e: Event) => {
+      const { key: changedKey, value } = (e as CustomEvent<{ key: string; value: unknown }>).detail;
+      if (changedKey === key) {
+        setState(value as T);
+      }
+    };
+    window.addEventListener(STORAGE_CHANGE_EVENT, handleChange);
+    return () => window.removeEventListener(STORAGE_CHANGE_EVENT, handleChange);
+  }, [key]);
+
   const setPersisted = (value: T) => {
-    setState(value);
     try {
       window.localStorage.setItem(key, JSON.stringify(value));
+      setState(value);
+      window.dispatchEvent(
+        new CustomEvent(STORAGE_CHANGE_EVENT, { detail: { key, value } })
+      );
     } catch (error) {
       console.warn(`Error writing localStorage key "${key}":`, error);
     }

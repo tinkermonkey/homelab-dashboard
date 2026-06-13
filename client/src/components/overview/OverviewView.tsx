@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
 import type { LAB_DATA, AlertSeverity } from '@homelab/shared';
-import { AlertStrip, PageHeader, StatGrid, StatTile } from '@tinkermonkey/heimdall-ui';
-import { Icon } from '../shared/Icon';
+import { AlertStrip, PageHeader, StatGrid, StatTile, Chip, Button } from '@tinkermonkey/heimdall-ui';
+import { Icon } from '@tinkermonkey/heimdall-ui';
 import { useAlerts } from '../../hooks/useAPI';
-import { ServerCard } from './ServerCard';
-import { DegradationBanner } from '../shared/DegradationBanner';
+import { HostCard } from './HostCard';
 import { GatewayPanel } from './GatewayPanel';
-import { AppsSection } from './AppsSection';
-import './OverviewView.css';
+import { AppsPanel } from './AppsPanel';
+import { asEyebrow } from '../../utils/pageHeader';
+
 
 interface OverviewViewProps {
   data: LAB_DATA & { degraded?: string[] };
@@ -24,7 +24,7 @@ function mapSeverity(severity: AlertSeverity): 'error' | 'warn' | 'info' | 'succ
 }
 
 export const OverviewView: React.FC<OverviewViewProps> = ({ data, showAlerts = true }) => {
-  const { data: alertsData } = useAlerts();
+  const { data: alertsData, error: alertsError } = useAlerts();
   const alerts = alertsData?.alerts ?? [];
   const alertsSource = alertsData?.source;
   const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set());
@@ -35,43 +35,46 @@ export const OverviewView: React.FC<OverviewViewProps> = ({ data, showAlerts = t
 
   const visibleAlerts = alerts.filter(alert => !dismissedIds.has(`${alert.name}-${alert.severity}`));
 
+  const powerDelta = data.cluster.powerDraw - data.cluster.powerAvg;
+
   return (
     <div className="overview-view">
-      {/* Page Header */}
       <PageHeader
-        eyebrow={`${data.cluster.location} · last sync ${data.cluster.lastSync}`}
-        idChip={data.cluster.name}
+        eyebrow={asEyebrow(
+          <span className="eyebrow-row">
+            <Chip variant="amber">cluster · {data.cluster.name}</Chip>
+            <span className="mono-meta">{data.cluster.location} · last sync {data.cluster.lastSync}</span>
+          </span>
+        )}
+        idChip={`/cluster/${data.cluster.name.toLowerCase()}`}
         title="Overview"
         subtitle="Resource state across hosts, gateway health, and deployed services. All systems polled every 15 s."
         actions={
-          <div style={{ display: 'flex', gap: '8px' }}>
-            <button className="btn btn--sm btn--ghost" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <Icon name="refresh" size={13} />
+          <div style={{ display: 'flex', gap: 8 }}>
+            <Button variant="secondary" size="sm">
+              <Icon name="reload" size={13} />
               Refresh
-            </button>
-            <button className="btn btn--sm btn--primary" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            </Button>
+            <Button variant="primary" size="sm">
               <Icon name="bot" size={13} />
               Ask lab-bot
-            </button>
+            </Button>
           </div>
         }
       />
 
-      {/* Degradation Banner */}
-      <DegradationBanner degraded={data.degraded} />
+      {data.degraded && data.degraded.length > 0 && (
+        <AlertStrip
+          alerts={[{ id: 'degradation', severity: 'warn', message: `Partial Data: ${data.degraded.join(', ')} are temporarily unavailable. Showing cached data.` }]}
+          style={{ marginBottom: '24px' }}
+        />
+      )}
 
-      {/* Alerts Strip */}
       {showAlerts && (
         <>
-          {(alertsSource === 'mock' || alertsSource === 'unavailable') && (
+          {(alertsError || alertsSource === 'mock' || alertsSource === 'unavailable') && (
             <AlertStrip
-              alerts={[
-                {
-                  id: 'alerts-unavailable',
-                  severity: 'warn',
-                  message: 'Alert service unavailable.',
-                },
-              ]}
+              alerts={[{ id: 'alerts-unavailable', severity: 'warn', message: 'Alert service unavailable.' }]}
               style={{ marginBottom: '12px' }}
             />
           )}
@@ -86,55 +89,46 @@ export const OverviewView: React.FC<OverviewViewProps> = ({ data, showAlerts = t
         </>
       )}
 
-      {/* Cluster Stats */}
       <StatGrid columns={4}>
         <StatTile
           color="cyan"
-          label="Clients Online"
-          value={data.gateway.clientsTotal ?? '—'}
-          delta={data.gateway.clientsTotal != null ? {
-            value: data.gateway.clientsTotal,
-            label: 'connected',
-          } : undefined}
+          label="Power draw"
+          value={`${data.cluster.powerDraw} W`}
+          delta={{ value: Math.abs(powerDelta), direction: powerDelta >= 0 ? 'up' : 'down', label: 'vs 7d avg' }}
+          sparkData={data.servers[0]?.cpu.hist}
         />
         <StatTile
           color="amber"
-          label="Active Alerts"
+          label="Active alerts"
           value={data.cluster.activeAlerts}
+          meta="check alertmanager"
+          metaIcon="alert"
         />
         <StatTile
           color="violet"
-          label="Egress Today"
-          value={`${data.cluster.egressTodayGB.toFixed(1)}GB`}
-          delta={{
-            value: Math.abs(data.cluster.egressDelta),
-            direction: data.cluster.egressDelta < 0 ? 'down' : 'up',
-            label: '%',
-          }}
+          label="Egress today"
+          value={`${data.cluster.egressTodayGB.toFixed(1)} GB`}
+          delta={{ value: Math.abs(data.cluster.egressDelta), direction: 'down', label: 'vs 7d' }}
+          sparkData={data.gateway.upHist}
         />
         <StatTile
           color="emerald"
-          label="Cluster Uptime"
-          value={`${data.cluster.uptimeDays}d`}
-          delta={{
-            value: data.cluster.uptimeHours,
-            label: `${data.cluster.uptimeHours}h`,
-          }}
+          label="Cluster uptime"
+          value={`${data.cluster.uptimeDays}d ${data.cluster.uptimeHours}h`}
+          meta="all hosts up"
+          metaIcon="check"
+          sparkData={data.servers[1]?.cpu.hist}
         />
       </StatGrid>
 
-      {/* Server Cards */}
-      <div className="server-grid">
+      <div className="srv-grid">
         {data.servers.map(server => (
-          <ServerCard key={server.id} server={server} />
+          <HostCard key={server.id} server={server} />
         ))}
       </div>
 
-      {/* Gateway Panel */}
       <GatewayPanel gateway={data.gateway} />
-
-      {/* Apps Section */}
-      <AppsSection apps={data.apps} />
+      <AppsPanel apps={data.apps} />
     </div>
   );
 };

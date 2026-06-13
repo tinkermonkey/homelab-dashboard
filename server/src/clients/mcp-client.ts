@@ -95,7 +95,7 @@ export class MCPClient {
       return data.content;
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
-      throw new Error(`MCP tool call failed (${server}/${tool}): ${message}`);
+      throw new Error(`MCP tool call failed (${server}/${tool}): ${message}`, { cause: error });
     }
   }
 

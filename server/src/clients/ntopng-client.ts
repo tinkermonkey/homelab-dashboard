@@ -51,7 +51,7 @@ export class NtopngClient {
       return data;
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
-      throw new Error(`ntopng request failed: ${message}`);
+      throw new Error(`ntopng request failed: ${message}`, { cause: error });
     }
   }
 

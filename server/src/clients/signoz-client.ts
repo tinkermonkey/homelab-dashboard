@@ -62,7 +62,7 @@ export class SigNozClient {
       }));
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
-      throw new Error(`Failed to fetch active alerts: ${message}`);
+      throw new Error(`Failed to fetch active alerts: ${message}`, { cause: error });
     }
   }
 }

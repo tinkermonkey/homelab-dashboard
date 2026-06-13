@@ -1,59 +1,27 @@
-/* Project-specific overrides — heimdall-tokens.css is the canonical token source */
+/* Supplemental tokens not included in the package dist/style.css.
+   These match the values from design/styles/heimdall.css and fill gaps
+   in the package's v2 token set used by project-chrome classes in lab.css. */
+:root {
+  --accent-primary-bg-alpha-xs:     rgba(251, 191, 36, 0.05);
+  --accent-primary-bg-alpha-sm:     rgba(251, 191, 36, 0.10);
+  --accent-primary-bg-alpha-md:     rgba(251, 191, 36, 0.12);
+  --accent-primary-border-alpha-sm: rgba(251, 191, 36, 0.20);
+  --accent-primary-border-alpha-md: rgba(251, 191, 36, 0.22);
+  --accent-primary-border-alpha-lg: rgba(251, 191, 36, 0.28);
+  --status-cyan-bg-alpha-md:        rgba(34, 211, 238, 0.16);
+  --shadow-toast:                   0 14px 40px -16px rgba(0, 0, 0, 0.5);
+  --type-h1-size:                   24px;
+  --type-h1-weight:                 var(--font-weight-bold, 700);
+}
 
 /* Per-host color tints mapped to actual server host IDs from the API */
 :root {
-  --host-t5610-tint:        var(--status-cyan);
-  --host-petit-cochon-tint: var(--status-emerald);
-  --host-hp7052-tint:       var(--status-violet);
+  --host-t5610-tint:            var(--status-cyan);
+  --host-petit-cochon-tint:     var(--status-emerald);
+  --host-hp7052-tint:           var(--status-violet);
   --host-austins-mac-mini-tint: var(--status-amber);
-}
-
-/* app-cell host left-border tints (uses actual host IDs from API data) */
-.app-cell[data-host="t5610"]         { border-left-color: var(--status-cyan); }
-.app-cell[data-host="petit-cochon"]  { border-left-color: var(--status-emerald); }
-.app-cell[data-host="hp7052"]        { border-left-color: var(--status-violet); }
-.app-cell[data-host="austins-mac-mini"] { border-left-color: var(--status-amber); }
-
-* {
-  box-sizing: border-box;
-}
-
-html, body {
-  margin: 0;
-  padding: 0;
-  width: 100%;
-  height: 100%;
-  overflow: hidden;
-}
-
-#root {
-  width: 100%;
-  height: 100%;
 }
 
 code, pre, .monospace {
   font-family: var(--font-mono);
 }
-
-/* Compact density mode */
-body.density-compact {
-  --density-card-header-padding: 8px 12px;
-  --density-metric-row-padding: 4px 0;
-  --density-canvas-padding: 12px;
-}
-
-body.density-compact .table__cell,
-body.density-compact .table__header {
-  padding: 6px 12px !important;
-}
-
-body.density-compact .table__row {
-  line-height: 1.3;
-}
-
-/* Topology stage needs a minimum width to render the graph usefully */
-.topology-stage {
-  min-width: 1560px;
-}
-
-

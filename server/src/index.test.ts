@@ -1,12 +1,9 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
-import type { LAB_DATA, DOCKER_DATA, TOPOLOGY_DATA, STATUS_DATA, Alert } from '@homelab/shared';
-import { registerRoutes, isValidBotId } from './index.js';
+import type { LAB_DATA, DOCKER_DATA, TOPOLOGY_DATA, STATUS_DATA, Alert, NETWORK_DATA } from '@homelab/shared';
+import { registerRoutes } from './index.js';
 import { getCachedData, clearCache } from './cache.js';
-import { transformMetrics } from './transformers/metrics-transformer.js';
-import { transformDockerData, transformTopologyData } from './transformers/mcp-transformer.js';
-import { signozClient } from './clients/signoz-client.js';
 import { fetchWithTimeout } from './utils/fetch-with-timeout.js';
 
 // Mock modules
@@ -92,6 +89,14 @@ const mockLabData: LAB_DATA = {
 
 const mockDockerData: DOCKER_DATA = {
   hosts: [],
+};
+
+const mockNetworkData: NETWORK_DATA = {
+  subsystems: [],
+  clients: { total: 0, wired: 0, wireless: 0, topTalkers: [] },
+  gateway: { cpuPct: 0, memPct: 0 },
+  ipsEvents: [],
+  events: [],
 };
 
 const mockTopologyData: TOPOLOGY_DATA = {
@@ -264,6 +269,48 @@ describe('Server Routes', () => {
     });
   });
 
+  describe('GET /api/network', () => {
+    it('returns network data with status 200 when no degradation', async () => {
+      const networkData = { ...mockNetworkData, degraded: [], source: 'real' as const };
+      vi.mocked(getCachedData).mockResolvedValue(networkData);
+
+      const response = await fastify.inject({
+        method: 'GET',
+        url: '/api/network',
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(JSON.parse(response.body).degraded).toEqual([]);
+      expect(JSON.parse(response.body).source).toBe('real');
+    });
+
+    it('returns network data with status 206 when degraded', async () => {
+      const networkData = { ...mockNetworkData, degraded: ['udm-health'], source: 'unavailable' as const };
+      vi.mocked(getCachedData).mockResolvedValue(networkData);
+
+      const response = await fastify.inject({
+        method: 'GET',
+        url: '/api/network',
+      });
+
+      expect(response.statusCode).toBe(206);
+      expect(JSON.parse(response.body).degraded).toEqual(['udm-health']);
+      expect(JSON.parse(response.body).source).toBe('unavailable');
+    });
+
+    it('returns 500 when cache fails', async () => {
+      vi.mocked(getCachedData).mockRejectedValue(new Error('Cache error'));
+
+      const response = await fastify.inject({
+        method: 'GET',
+        url: '/api/network',
+      });
+
+      expect(response.statusCode).toBe(500);
+      expect(JSON.parse(response.body)).toEqual({ error: 'Failed to fetch network data' });
+    });
+  });
+
   describe('GET /api/alerts', () => {
     it('returns alerts from alertmanager when available', async () => {
       const alertData = { alerts: mockAlerts, source: 'alertmanager' };
@@ -420,7 +467,7 @@ describe('Server Routes', () => {
           }),
         },
       };
-      vi.mocked(fetchWithTimeout).mockResolvedValue(mockResponse as any);
+      vi.mocked(fetchWithTimeout).mockResolvedValue(mockResponse as unknown as Response);
 
       const response = await fastify.inject({
         method: 'POST',
@@ -442,7 +489,7 @@ describe('Server Routes', () => {
           }),
         },
       };
-      vi.mocked(fetchWithTimeout).mockResolvedValue(mockResponse as any);
+      vi.mocked(fetchWithTimeout).mockResolvedValue(mockResponse as unknown as Response);
 
       await fastify.inject({
         method: 'POST',
@@ -465,7 +512,7 @@ describe('Server Routes', () => {
           }),
         },
       };
-      vi.mocked(fetchWithTimeout).mockResolvedValue(mockResponse as any);
+      vi.mocked(fetchWithTimeout).mockResolvedValue(mockResponse as unknown as Response);
 
       await fastify.inject({
         method: 'POST',
@@ -489,7 +536,7 @@ describe('Server Routes', () => {
           }),
         },
       };
-      vi.mocked(fetchWithTimeout).mockResolvedValue(mockResponse as any);
+      vi.mocked(fetchWithTimeout).mockResolvedValue(mockResponse as unknown as Response);
 
       await fastify.inject({
         method: 'POST',
@@ -505,8 +552,9 @@ describe('Server Routes', () => {
     it('omits Authorization header when token is not configured', async () => {
       // Override config to have empty token for this specific test
       const configModule = await import('./config.js');
-      const originalToken = (configModule.config as any).phoneHomeChatToken;
-      (configModule.config as any).phoneHomeChatToken = '';
+      const mutableConfig = configModule.config as unknown as Record<string, string>;
+      const originalToken = mutableConfig.phoneHomeChatToken;
+      mutableConfig.phoneHomeChatToken = '';
 
       try {
         const mockResponse = {
@@ -518,7 +566,7 @@ describe('Server Routes', () => {
             }),
           },
         };
-        vi.mocked(fetchWithTimeout).mockResolvedValue(mockResponse as any);
+        vi.mocked(fetchWithTimeout).mockResolvedValue(mockResponse as unknown as Response);
 
         await fastify.inject({
           method: 'POST',
@@ -531,7 +579,7 @@ describe('Server Routes', () => {
         const headers = call[1]?.headers as Record<string, string> | undefined;
         expect(headers?.Authorization).toBeUndefined();
       } finally {
-        (configModule.config as any).phoneHomeChatToken = originalToken;
+        mutableConfig.phoneHomeChatToken = originalToken;
       }
     });
 
@@ -541,7 +589,7 @@ describe('Server Routes', () => {
         status: 200,
         body: null,
       };
-      vi.mocked(fetchWithTimeout).mockResolvedValue(mockResponse as any);
+      vi.mocked(fetchWithTimeout).mockResolvedValue(mockResponse as unknown as Response);
 
       const response = await fastify.inject({
         method: 'POST',
@@ -576,11 +624,11 @@ describe('Server Routes', () => {
           }),
         },
       };
-      vi.mocked(fetchWithTimeout).mockResolvedValue(mockResponse as any);
+      vi.mocked(fetchWithTimeout).mockResolvedValue(mockResponse as unknown as Response);
 
       for (const botId of validIds) {
         vi.clearAllMocks();
-        vi.mocked(fetchWithTimeout).mockResolvedValue(mockResponse as any);
+        vi.mocked(fetchWithTimeout).mockResolvedValue(mockResponse as unknown as Response);
 
         const response = await fastify.inject({
           method: 'POST',
@@ -662,6 +710,17 @@ describe('Server Routes', () => {
       await fastify.inject({
         method: 'GET',
         url: '/api/docker',
+      });
+
+      expect(vi.mocked(getCachedData).mock.calls[0][1]).toBe(20);
+    });
+
+    it('passes correct cache TTL for network endpoint', async () => {
+      vi.mocked(getCachedData).mockResolvedValue({ ...mockNetworkData, degraded: [], source: 'real' as const });
+
+      await fastify.inject({
+        method: 'GET',
+        url: '/api/network',
       });
 
       expect(vi.mocked(getCachedData).mock.calls[0][1]).toBe(20);

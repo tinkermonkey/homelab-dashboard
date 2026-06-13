@@ -1,5 +1,5 @@
 import React from 'react';
-import { Icon } from './Icon';
+import { Icon } from '@tinkermonkey/heimdall-ui';
 
 interface ErrorViewProps {
   title: string;
@@ -24,8 +24,8 @@ export const ErrorView: React.FC<ErrorViewProps> = ({
         height: '100%',
         padding: '40px',
         textAlign: 'center',
-        backgroundColor: 'var(--canvas-bg)',
-        color: 'var(--canvas-fg-1)',
+        backgroundColor: 'rgb(var(--canvas-bg))',
+        color: 'rgb(var(--canvas-fg-1))',
       }}
     >
       <div
@@ -35,13 +35,9 @@ export const ErrorView: React.FC<ErrorViewProps> = ({
           marginBottom: '24px',
         }}
       >
-        <Icon
-          name={isDegraded ? 'alert-triangle' : 'x-circle'}
-          size={48}
-          style={{
-            color: isDegraded ? '#F59E0B' : '#F43F5E',
-          }}
-        />
+        <span style={{ color: isDegraded ? '#F59E0B' : '#F43F5E' }}>
+          <Icon name={isDegraded ? 'alert' : 'x'} size={48} />
+        </span>
       </div>
 
       <h2 style={{ fontSize: '18px', fontWeight: 600, marginBottom: '8px' }}>

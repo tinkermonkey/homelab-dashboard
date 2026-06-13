@@ -1,5 +1,5 @@
 # Logs
-logs
+/logs
 *.log
 npm-debug.log*
 yarn-debug.log*
@@ -25,3 +25,6 @@ dist-ssr
 
 # Test outputs
 test-output.txt
+
+# Package tarballs — reference packages by git hash in package.json, not committed tarballs
+*.tgz

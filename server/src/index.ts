@@ -3,8 +3,8 @@ import cors from '@fastify/cors';
 import staticPlugin from '@fastify/static';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import type { LAB_DATA, DOCKER_DATA, TOPOLOGY_DATA, STATUS_DATA } from '@homelab/shared';
-import { getLabData, getDockerData, getTopologyData, getStatusData } from './mock-data.js';
+import type { LAB_DATA, STATUS_DATA } from '@homelab/shared';
+import { getLabData } from './mock-data.js';
 import { config } from './config.js';
 import { getCachedData, peekCache } from './cache.js';
 import { transformMetrics } from './transformers/metrics-transformer.js';
@@ -41,7 +41,8 @@ export async function registerRoutes(app: FastifyInstance) {
           const stats = await ntopngClient.getWanInterfaceStats();
           downMbps = stats.downMbps;
           upMbps = stats.upMbps;
-        } catch {
+        } catch (err) {
+          app.log.error(`ntopng stats unavailable: ${err instanceof Error ? err.message : String(err)}`);
           degraded.push('ntopng');
         }
 
@@ -49,7 +50,8 @@ export async function registerRoutes(app: FastifyInstance) {
           const alerts = await signozClient.getActiveAlerts();
           alertCount = alerts.length;
           alertPrimary = alerts[0]?.name ?? '';
-        } catch {
+        } catch (err) {
+          app.log.error(`signoz alerts unavailable: ${err instanceof Error ? err.message : String(err)}`);
           degraded.push('signoz');
         }
 
@@ -61,7 +63,8 @@ export async function registerRoutes(app: FastifyInstance) {
           };
           const wan = (raw?.result ?? []).find(s => s.subsystem === 'wan');
           ping = wan?.uptime_stats?.WAN?.latency_average ?? 0;
-        } catch {
+        } catch (err) {
+          app.log.error(`udm network health unavailable: ${err instanceof Error ? err.message : String(err)}`);
           degraded.push('udm');
         }
 

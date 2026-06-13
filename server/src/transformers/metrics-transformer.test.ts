@@ -170,7 +170,7 @@ describe('Metrics Transformer', () => {
 });
 
 describe('transformMetrics', () => {
-  const mockLogger: FastifyBaseLogger = {
+  const mockLogger = {
     error: vi.fn(),
     warn: vi.fn(),
     info: vi.fn(),
@@ -178,7 +178,7 @@ describe('transformMetrics', () => {
     fatal: vi.fn(),
     trace: vi.fn(),
     silent: vi.fn(),
-  } as any;
+  } as unknown as FastifyBaseLogger;
 
   const makeServer = (id: string, ip: string) => ({
     id,
