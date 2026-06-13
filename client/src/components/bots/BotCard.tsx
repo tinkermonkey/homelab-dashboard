@@ -1,14 +1,14 @@
 import React from 'react';
 import type { Bot, TopologyBot } from '@homelab/shared';
-import { Panel, KVGrid, Chip } from '@tinkermonkey/heimdall-ui';
-import type { KVGridRow } from '@tinkermonkey/heimdall-ui';
+import { Panel, KVGrid, Chip, Avatar } from '@tinkermonkey/heimdall-ui';
+import type { KVGridRow, StatusColor } from '@tinkermonkey/heimdall-ui';
 
 interface BotCardProps {
   bot: Bot;
   topologyBot?: TopologyBot;
 }
 
-function statusTone(status: Bot['status']): string {
+function statusTone(status: Bot['status']): StatusColor {
   if (status === 'ok') return 'emerald';
   if (status === 'busy') return 'amber';
   return 'neutral';
@@ -27,22 +27,18 @@ export const BotCard: React.FC<BotCardProps> = ({ bot, topologyBot }) => {
   ];
 
   return (
-    <Panel title={bot.label} subtitle={bot.role}>
-      <div className="row" style={{ alignItems: 'flex-start', gap: 4, marginBottom: 8 }}>
-        <span
-          className={`pulse-dot pulse-dot--${tone} pulse-dot--sm`}
-          style={{ marginTop: 2, flexShrink: 0 }}
-        />
-        <span className="cell-mono muted" style={{ fontSize: 11 }}>{bot.status}</span>
-      </div>
+    <Panel
+      title={bot.label}
+      subtitle={bot.role}
+      headerAction={
+        <span className="row" style={{ gap: 6 }}>
+          <span className={`pulse-dot pulse-dot--${tone} pulse-dot--sm`} style={{ flexShrink: 0 }} />
+          <span className="cell-mono muted" style={{ fontSize: 11 }}>{bot.status}</span>
+        </span>
+      }
+    >
       <div className="row" style={{ gap: 12, marginBottom: 12 }}>
-        <div
-          className="bot-avatar"
-          data-id={bot.id}
-          style={{ width: 40, height: 40, flexShrink: 0 }}
-        >
-          {bot.avatar.slice(0, 2).toUpperCase()}
-        </div>
+        <Avatar name={bot.label.replace(/-/g, ' ')} color={tone} size="lg" shape="rounded" decorative />
         <p style={{ margin: 0, fontSize: 12.5, lineHeight: 1.55, color: 'rgb(var(--canvas-fg-2))' }}>
           {bot.desc}
         </p>

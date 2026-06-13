@@ -1,18 +1,9 @@
 import React, { useMemo, useState } from 'react';
-import { PageHeader, Panel, Chip, Select, AlertStrip } from '@tinkermonkey/heimdall-ui';
+import { PageHeader, Panel, Chip, Select, AlertStrip, LogStream } from '@tinkermonkey/heimdall-ui';
+import type { LogEntry } from '@tinkermonkey/heimdall-ui';
 import { asEyebrow } from '../../utils/pageHeader';
-import type { StatusColor } from '@tinkermonkey/heimdall-ui';
 
-type LogLevel = 'INFO' | 'WARN' | 'ERROR' | 'DEBUG';
-
-interface LogEntry {
-  id: string;
-  timestamp: Date;
-  level: LogLevel;
-  op: string;
-  target: string;
-  message: string;
-}
+type LogLevel = LogEntry['level'];
 
 const LOG_OPS: [LogLevel, string, string, string][] = [
   ['INFO',  'ops-bot',   'nyx',    'docker compose up -d jellyfin → recreated 1 container'],
@@ -35,56 +26,6 @@ function synthLogs(): LogEntry[] {
   });
 }
 
-const LEVEL_COLOR: Record<LogLevel, StatusColor> = {
-  INFO:  'cyan',
-  WARN:  'amber',
-  ERROR: 'rose',
-  DEBUG: 'neutral',
-};
-
-function formatTime(d: Date): string {
-  return d.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
-}
-
-interface LogStreamProps {
-  entries: LogEntry[];
-}
-
-const LogStream: React.FC<LogStreamProps> = ({ entries }) => (
-  <div style={{ overflowY: 'auto', maxHeight: 460, fontFamily: 'var(--font-mono)', fontSize: 11.5 }}>
-    {entries.map(e => (
-      <div
-        key={e.id}
-        className="row"
-        style={{
-          gap: 12,
-          padding: '5px 14px',
-          borderBottom: '1px solid rgb(var(--canvas-border))',
-          alignItems: 'baseline',
-        }}
-      >
-        <span style={{ color: 'rgb(var(--canvas-fg-3))', flexShrink: 0, width: 80 }}>
-          {formatTime(e.timestamp)}
-        </span>
-        <span style={{ flexShrink: 0, width: 48 }}>
-          <Chip variant={LEVEL_COLOR[e.level]}>
-            {e.level}
-          </Chip>
-        </span>
-        <span style={{ color: 'rgb(var(--canvas-fg-2))', flexShrink: 0, width: 80 }}>
-          {e.op}
-        </span>
-        <span style={{ color: 'rgb(var(--canvas-fg-3))', flexShrink: 0, width: 56 }}>
-          {e.target}
-        </span>
-        <span style={{ color: 'rgb(var(--canvas-fg-1))', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {e.message}
-        </span>
-      </div>
-    ))}
-  </div>
-);
-
 export const LogsView: React.FC = () => {
   const [level, setLevel] = useState('');
   const all = useMemo(() => synthLogs(), []);
@@ -106,14 +47,14 @@ export const LogsView: React.FC = () => {
           <div style={{ width: 180 }}>
             <Select
               value={level}
-              onChange={e => setLevel((e.target as HTMLSelectElement).value)}
-              aria-label="Level filter"
+              onChange={value => setLevel(value)}
+              ariaLabel="Level filter"
             >
-              <option value="">All levels</option>
-              <option value="INFO">INFO</option>
-              <option value="WARN">WARN</option>
-              <option value="ERROR">ERROR</option>
-              <option value="DEBUG">DEBUG</option>
+              <Select.Item value="">All levels</Select.Item>
+              <Select.Item value="INFO">INFO</Select.Item>
+              <Select.Item value="WARN">WARN</Select.Item>
+              <Select.Item value="ERROR">ERROR</Select.Item>
+              <Select.Item value="DEBUG">DEBUG</Select.Item>
             </Select>
           </div>
         }
@@ -123,7 +64,7 @@ export const LogsView: React.FC = () => {
         style={{ marginBottom: '24px' }}
       />
       <Panel title="Live stream" subtitle={`${entries.length} lines`} className="panel-flush">
-        <LogStream entries={entries} />
+        <LogStream entries={entries} showOps follow={false} maxRows={60} />
       </Panel>
     </>
   );

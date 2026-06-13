@@ -89,14 +89,11 @@ export const AppsPanel: React.FC<AppsPanelProps> = ({ apps }) => {
   const running = apps.filter(a => a.state === 'running').length;
 
   return (
-    <Panel className="panel-flush">
-      {/* Header rendered inside flush body */}
-      <div className="panel__header">
-        <div>
-          <div className="panel__title">Applications</div>
-          <div className="panel__subtitle">{apps.length} services · {running} running</div>
-        </div>
-      </div>
+    <Panel
+      className="panel-flush"
+      title="Applications"
+      subtitle={`${apps.length} services · ${running} running`}
+    >
       <div style={{ padding: '8px 14px 0' }}>
         <TabBar tabs={tabs} activeTabId={cat} onSelectTab={setCat} />
       </div>
