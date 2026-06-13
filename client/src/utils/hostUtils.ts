@@ -8,10 +8,6 @@ export const ROLE_COLOR: Record<Server['role'], StatusColor> = {
   gpu: 'amber',
 };
 
-export function getInitials(id: string): string {
-  return id.split('-').map(w => w[0]).join('').substring(0, 2).toUpperCase();
-}
-
 export function cpuTone(v: number): StatusColor { return v >= 85 ? 'rose' : v >= 75 ? 'amber' : 'cyan'; }
 export function memTone(v: number): StatusColor { return v >= 90 ? 'rose' : v >= 78 ? 'amber' : 'violet'; }
 export function diskTone(v: number): StatusColor { return v >= 92 ? 'rose' : v >= 85 ? 'amber' : 'emerald'; }

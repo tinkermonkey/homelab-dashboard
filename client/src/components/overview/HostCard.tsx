@@ -1,7 +1,7 @@
 import React from 'react';
 import type { Server } from '@homelab/shared';
-import { Panel, MetricRow } from '@tinkermonkey/heimdall-ui';
-import { ROLE_COLOR, getInitials, cpuTone, memTone, diskTone } from '../../utils/hostUtils';
+import { Panel, MetricRow, Avatar } from '@tinkermonkey/heimdall-ui';
+import { ROLE_COLOR, cpuTone, memTone, diskTone } from '../../utils/hostUtils';
 
 interface HostCardProps {
   server: Server;
@@ -13,9 +13,7 @@ export const HostCard: React.FC<HostCardProps> = ({ server }) => {
   return (
     <Panel className="panel-flush">
       <div className="srv-head">
-        <div className="role-mark role-mark--lg" data-role={server.role}>
-          {getInitials(server.id)}
-        </div>
+        <Avatar name={server.id.replace(/-/g, ' ')} color={ROLE_COLOR[server.role]} size="md" shape="rounded" decorative />
         <div className="srv-head__main">
           <span className="srv-head__name">
             {server.id}

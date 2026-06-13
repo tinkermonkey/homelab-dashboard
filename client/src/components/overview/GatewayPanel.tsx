@@ -21,22 +21,20 @@ export const GatewayPanel: React.FC<GatewayPanelProps> = ({ gateway }) => {
   ];
 
   return (
-    <Panel className="panel-flush">
-      {/* Custom header with action — rendered inside flush body */}
-      <div className="panel__header" style={{ justifyContent: 'space-between' }}>
-        <div>
-          <div className="panel__title">Internet connection</div>
-          <div className="panel__subtitle">{gateway.hostname} · {gateway.plan}</div>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+    <Panel
+      className="panel-flush"
+      title="Internet connection"
+      subtitle={`${gateway.hostname} · ${gateway.plan}`}
+      headerAction={
+        <div className="row" style={{ gap: 8 }}>
           <Chip variant={statusTone}>{gateway.status}</Chip>
           <Button variant="ghost" size="sm">
             <Icon name="arrowRight" size={13} />
             Run speedtest
           </Button>
         </div>
-      </div>
-
+      }
+    >
       <div className="gw-split">
         <div className="gw-left">
           <KVGrid rows={kvRows} />

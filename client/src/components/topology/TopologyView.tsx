@@ -102,7 +102,7 @@ export const TopologyView: React.FC = () => {
       return (
         <TopologyNode
           title={hid}
-          role={s?.role ?? 'host'}
+          nodeRole={s?.role ?? 'host'}
           status="ok"
           onSelect={() => setSelectedId(node.id)}
         />
@@ -119,7 +119,7 @@ export const TopologyView: React.FC = () => {
     return (
       <TopologyNode
         title={b.label}
-        role={`${b.role} · ${b.model.replace('claude-', '')}`}
+        nodeRole={`${b.role} · ${b.model.replace('claude-', '')}`}
         status={statusMap[b.status] ?? 'idle'}
         onSelect={() => setSelectedId(node.id)}
       />

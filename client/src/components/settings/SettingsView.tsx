@@ -58,23 +58,23 @@ export const SettingsView: React.FC = () => {
           <Field label="Polling interval" hint="seconds between cluster data fetches">
             <Select
               value={pollInterval}
-              onChange={e => setPollInterval((e.target as HTMLSelectElement).value)}
-              aria-label="Polling interval"
+              onChange={value => setPollInterval(value)}
+              ariaLabel="Polling interval"
             >
-              <option value="5">5 seconds</option>
-              <option value="15">15 seconds (default)</option>
-              <option value="30">30 seconds</option>
-              <option value="60">60 seconds</option>
+              <Select.Item value="5">5 seconds</Select.Item>
+              <Select.Item value="15">15 seconds (default)</Select.Item>
+              <Select.Item value="30">30 seconds</Select.Item>
+              <Select.Item value="60">60 seconds</Select.Item>
             </Select>
           </Field>
           <Field label="Default theme">
             <Select
               value={darkCanvas ? 'dark' : 'light'}
-              onChange={e => setDarkCanvas((e.target as HTMLSelectElement).value === 'dark')}
-              aria-label="Theme"
+              onChange={value => setDarkCanvas(value === 'dark')}
+              ariaLabel="Theme"
             >
-              <option value="dark">Dark canvas</option>
-              <option value="light">Light canvas</option>
+              <Select.Item value="dark">Dark canvas</Select.Item>
+              <Select.Item value="light">Light canvas</Select.Item>
             </Select>
           </Field>
           <Field label="Density">
