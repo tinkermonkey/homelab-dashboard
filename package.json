@@ -25,9 +25,5 @@
   "bugs": {
     "url": "https://github.com/tinkermonkey/homelab-dashboard/issues"
   },
-  "homepage": "https://github.com/tinkermonkey/homelab-dashboard#readme",
-  "dependencies": {
-    "@rolldown/binding-darwin-arm64": "^1.0.2",
-    "lightningcss-darwin-arm64": "^1.32.0"
-  }
+  "homepage": "https://github.com/tinkermonkey/homelab-dashboard#readme"
 }
