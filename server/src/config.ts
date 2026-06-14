@@ -31,6 +31,11 @@ export const config = {
   phoneHomeChatUrl: process.env.PHONE_HOME_CHAT_URL || 'http://localhost:8000/v1/chat/completions',
   phoneHomeChatToken: process.env.PHONE_HOME_CHAT_TOKEN || '',
 
+  // Cluster identity (shown in dashboard chrome)
+  clusterName: process.env.CLUSTER_NAME || 'Homelab',
+  clusterLocation: process.env.CLUSTER_LOCATION || 'rack-01 · basement',
+  clusterDomain: process.env.CLUSTER_DOMAIN || 'local',
+
   // Logging
   logLevel: process.env.LOG_LEVEL || 'info',
 };

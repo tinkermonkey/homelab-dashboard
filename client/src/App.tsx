@@ -292,7 +292,7 @@ const AppContent: React.FC = () => {
           <div className="statusbar-group">
             <div className="sb-item">
               <span className="pulse emerald xs" />
-              prometheus<strong className="strong">:9090</strong>
+              elasticsearch<strong className="strong">:9200</strong>
             </div>
             {hostCount > 0 && (
               <>

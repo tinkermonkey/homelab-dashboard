@@ -55,7 +55,7 @@ button, input, textarea { font: inherit; }
   background: rgb(var(--shell-bg));
 }
 .app-shell.no-chat { --chat-w: 0px; }
-.app-shell.with-chat { --chat-w: 380px; }
+.app-shell.with-chat { --chat-w: 384px; }
 .workspace {
   display: flex; flex-direction: column;
   background: rgb(var(--shell-bg));

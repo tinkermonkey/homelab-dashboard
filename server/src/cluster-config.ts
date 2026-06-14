@@ -1,3 +1,9 @@
+// Import config for its dotenv side-effect AND values: this module is imported
+// (via mock-data) before index.ts imports config.js, so reading process.env
+// directly here would run BEFORE dotenv loaded the .env and always fall back to
+// defaults. Sourcing from `config` guarantees dotenv has populated the env.
+import { config } from './config.js';
+
 export interface ServerSpec {
   id: string;
   role: 'compute' | 'storage' | 'k8s' | 'gpu';
@@ -9,9 +15,9 @@ export interface ServerSpec {
 }
 
 export const CLUSTER_CONFIG = {
-  name: process.env.CLUSTER_NAME || 'Homelab',
-  location: process.env.CLUSTER_LOCATION || 'rack-01 · basement',
-  domain: process.env.CLUSTER_DOMAIN || 'local',
+  name: config.clusterName,
+  location: config.clusterLocation,
+  domain: config.clusterDomain,
 };
 
 export const SERVER_REGISTRY: ServerSpec[] = [
