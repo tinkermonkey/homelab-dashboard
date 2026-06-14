@@ -34,27 +34,32 @@ function buildNavSections(
     title: '',
     items: NAV_TREE.map(item => {
       switch (item.id) {
+        // Keep Servers/Bots/Containers as leaf items: the package Sidebar makes
+        // any parent-with-children expand-only (it never emits onSelectItem), so
+        // injecting children would make these rows un-navigable. Drill-down into
+        // a specific host/bot lives inside the respective view.
         case 'servers':
-          return {
-            ...item,
-            count: servers.length || undefined,
-            children: servers.map(s => ({ id: `servers/${s.id}`, label: s.id })),
-          };
+          return { ...item, count: servers.length || undefined };
         case 'containers':
           return { ...item, count: totalContainers || undefined };
         case 'apps':
           return { ...item, count: apps.length || undefined };
         case 'bots':
-          return {
-            ...item,
-            count: bots.length || undefined,
-            children: bots.map(b => ({ id: `bots/${b.id}`, label: b.id })),
-          };
+          return { ...item, count: bots.length || undefined };
         default:
           return { ...item };
       }
     }),
   }];
+}
+
+// Resolve any nav id (including dynamic children like `servers/<id>`) to a route.
+function resolveNavPath(id: string): string {
+  if (NAV_ID_TO_PATH[id]) return NAV_ID_TO_PATH[id];
+  if (id.startsWith('servers/')) return '/cluster/servers';
+  if (id.startsWith('bots/')) return '/cluster/bots';
+  if (id.startsWith('containers/')) return '/cluster/containers';
+  return '/cluster/overview';
 }
 
 const PALETTE_COMMANDS = NAV_TREE.map(item => ({
@@ -72,7 +77,6 @@ const AppContent: React.FC = () => {
   const [sidebarCollapsed, setSidebarCollapsed] = usePersistedState('sidebarCollapsed', false);
   const [darkCanvas] = usePersistedState('darkCanvas', false);
   const [chatVisible, setChatVisible] = usePersistedState('chatVisible', true);
-  const [activeBot, setActiveBot] = usePersistedState('activeBot', 'lab-bot');
   const [activeRoute, setActiveRoute] = usePersistedState('activeRoute', '/cluster/overview');
   const [density] = usePersistedState('density', 'regular');
   const [showAlerts] = usePersistedState('showAlerts', true);
@@ -160,7 +164,7 @@ const AppContent: React.FC = () => {
             <span className="brand-mark"><i /></span>
             <div className="brand-name">
               {clusterName}
-              <span>homelab · v3.2</span>
+              <span>{clusterData?.cluster?.domain || 'cluster'}</span>
             </div>
             <button
               className="rail-collapse"
@@ -175,7 +179,7 @@ const AppContent: React.FC = () => {
             sections={navSections}
             activeItemId={activeNavId}
             collapsed={sidebarCollapsed}
-            onSelectItem={(id) => navigate(NAV_ID_TO_PATH[id] ?? '/cluster/overview')}
+            onSelectItem={(id) => navigate(resolveNavPath(id))}
           />
 
           <div className="rail-footer">
@@ -278,13 +282,7 @@ const AppContent: React.FC = () => {
         </div>
 
         {chatVisible && (
-          <BotConsole
-            bots={clusterData?.bots ?? []}
-            threadByBot={clusterData?.threadByBot ?? {}}
-            activeBot={activeBot}
-            onActiveBotChange={setActiveBot}
-            onClose={() => setChatVisible(false)}
-          />
+          <BotConsole onClose={() => setChatVisible(false)} />
         )}
       </div>
 

@@ -153,9 +153,9 @@ export const ServersView: React.FC = () => {
             <span className="mono-meta">{reachable} reachable · polled 15 s</span>
           </span>
         )}
-        idChip="/cluster/asgard/servers"
+        idChip={`/cluster/${(data?.cluster?.name ?? 'cluster').toLowerCase()}/servers`}
         title="Servers"
-        subtitle="Physical and virtual hosts in the asgard cluster."
+        subtitle={`Physical and virtual hosts in the ${data?.cluster?.name ?? 'homelab'} cluster.`}
         actions={
           <Button variant="secondary" size="sm">
             <Icon name="plus" size={13} />

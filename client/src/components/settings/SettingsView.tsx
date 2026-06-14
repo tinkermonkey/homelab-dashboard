@@ -1,24 +1,21 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
-  PageHeader, Panel, Chip, ConfigTile, Field, TextInput, Select, SegmentedControl, TriState, Button, Toast,
+  PageHeader, Panel, Chip, Field, Select, SegmentedControl, TriState, Button,
 } from '@tinkermonkey/heimdall-ui';
 import { usePersistedState } from '../../utils/localStorage';
+import { useCluster } from '../../hooks/useAPI';
 import { asEyebrow } from '../../utils/pageHeader';
 
-const SECTIONS = [
-  { id: 'cluster', icon: 'settings' as const, title: 'Cluster', description: 'Name, domain, polling cadence', summary: [] },
-  { id: 'access',  icon: 'lock' as const,     title: 'Access & SSO', description: 'OIDC, sessions, API tokens', summary: [] },
-  { id: 'alerts',  icon: 'bell' as const,      title: 'Alerting', description: 'Routes, silences, thresholds', summary: [] },
-  { id: 'backup',  icon: 'download' as const,   title: 'Backups', description: 'restic targets & schedule', summary: [] },
-];
-
 export const SettingsView: React.FC = () => {
-  const [clusterName, setClusterName] = usePersistedState('settings.clusterName', 'asgard');
+  const { data: clusterData } = useCluster();
+  const clusterName = clusterData?.cluster?.name ?? 'homelab';
+  const clusterDomain = clusterData?.cluster?.domain;
+  const slug = clusterName.toLowerCase();
+
   const [darkCanvas, setDarkCanvas] = usePersistedState('darkCanvas', false);
   const [density, setDensity] = usePersistedState<string>('density', 'regular');
-  const [telemetry, setTelemetry] = usePersistedState('settings.telemetry', true);
-  const [pollInterval, setPollInterval] = usePersistedState('settings.pollInterval', '15');
-  const [toastTitle, setToastTitle] = useState<string | null>(null);
+  const [showAlerts, setShowAlerts] = usePersistedState('showAlerts', true);
+  const [chatVisible, setChatVisible] = usePersistedState('chatVisible', true);
 
   return (
     <>
@@ -28,45 +25,29 @@ export const SettingsView: React.FC = () => {
             <Chip variant="neutral">settings</Chip>
           </span>
         )}
-        idChip="/cluster/asgard/settings"
+        idChip={`/cluster/${slug}/settings`}
         title="Configuration"
-        subtitle="Cluster-wide preferences for the Heimdall control plane."
+        subtitle="Dashboard preferences for the Heimdall control plane. Saved to this browser."
       />
-      <Panel title="Sections">
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 10 }}>
-          {SECTIONS.map(s => (
-            <ConfigTile
-              key={s.id}
-              icon={s.icon}
-              title={s.title}
-              description={s.description}
-              summary={s.summary}
-              onClick={() => setToastTitle(`${s.title} settings not yet configurable`)}
-            />
-          ))}
+      <Panel title="Cluster identity" subtitle="set in the deployment environment">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14, maxWidth: 460 }}>
+          <Field
+            label="Cluster name"
+            hint="configured via the server CLUSTER_NAME env; shown in the topbar"
+          >
+            <div className="row" style={{ gap: 8, alignItems: 'center' }}>
+              <Chip variant="neutral" form="id-tag">{clusterName}</Chip>
+              {clusterDomain && (
+                <span style={{ fontSize: 13, color: 'rgb(var(--canvas-fg-2))' }}>
+                  {clusterDomain}
+                </span>
+              )}
+            </div>
+          </Field>
         </div>
       </Panel>
-      <Panel title="General" subtitle="cluster identity & display">
+      <Panel title="Display" subtitle="appearance & layout">
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14, maxWidth: 460 }}>
-          <Field label="Cluster name" hint="shown in the topbar">
-            <TextInput
-              value={clusterName}
-              onChange={e => setClusterName((e.target as HTMLInputElement).value)}
-              mono
-            />
-          </Field>
-          <Field label="Polling interval" hint="seconds between cluster data fetches">
-            <Select
-              value={pollInterval}
-              onChange={value => setPollInterval(value)}
-              ariaLabel="Polling interval"
-            >
-              <Select.Item value="5">5 seconds</Select.Item>
-              <Select.Item value="15">15 seconds (default)</Select.Item>
-              <Select.Item value="30">30 seconds</Select.Item>
-              <Select.Item value="60">60 seconds</Select.Item>
-            </Select>
-          </Field>
           <Field label="Default theme">
             <Select
               value={darkCanvas ? 'dark' : 'light'}
@@ -87,13 +68,26 @@ export const SettingsView: React.FC = () => {
               ]}
             />
           </Field>
-          <Field label="Telemetry">
+        </div>
+      </Panel>
+      <Panel title="Interface" subtitle="panels & widgets">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14, maxWidth: 460 }}>
+          <Field label="Alerts">
             <label className="row" style={{ gap: 8, fontSize: 13, color: 'rgb(var(--canvas-fg-2))' }}>
               <TriState
-                checked={telemetry}
-                onChange={e => setTelemetry((e.target as HTMLInputElement).checked)}
+                checked={showAlerts}
+                onChange={e => setShowAlerts((e.target as HTMLInputElement).checked)}
               />
-              Send anonymous usage metrics
+              Show the alerts strip on the overview
+            </label>
+          </Field>
+          <Field label="Bot console">
+            <label className="row" style={{ gap: 8, fontSize: 13, color: 'rgb(var(--canvas-fg-2))' }}>
+              <TriState
+                checked={chatVisible}
+                onChange={e => setChatVisible((e.target as HTMLInputElement).checked)}
+              />
+              Keep the bot console rail open
             </label>
           </Field>
           <div className="row" style={{ gap: 8 }}>
@@ -101,11 +95,10 @@ export const SettingsView: React.FC = () => {
               variant="ghost"
               size="sm"
               onClick={() => {
-                setClusterName('asgard');
                 setDarkCanvas(false);
                 setDensity('regular');
-                setTelemetry(true);
-                setPollInterval('15');
+                setShowAlerts(true);
+                setChatVisible(true);
               }}
             >
               Reset to defaults
@@ -113,16 +106,6 @@ export const SettingsView: React.FC = () => {
           </div>
         </div>
       </Panel>
-      {toastTitle && (
-        <Toast
-          isOpen
-          onClose={() => setToastTitle(null)}
-          title={toastTitle}
-          subtitle="This section will be configurable once the backend is connected."
-          variant="info"
-          duration={4000}
-        />
-      )}
     </>
   );
 };

@@ -1,67 +1,115 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import DOMPurify from 'dompurify';
-import type { Bot, ThreadItem } from '@homelab/shared';
+import type { ThreadItem, ThreadMessage, ThreadDetailMessage } from '@homelab/shared';
 import {
   Icon,
   ChatContainer,
   ChatMessage,
   ChatComposer,
-  ChatSuggestions,
   ChatDivider,
   type BotTab,
 } from '@tinkermonkey/heimdall-ui';
+import { useQueryClient } from '@tanstack/react-query';
+import { useThreads, useThread } from '../../hooks/useAPI';
+import { usePersistedState } from '../../utils/localStorage';
 import { useChatStream } from '../../hooks/useChatStream';
 
 interface BotConsoleProps {
-  bots: Bot[];
-  threadByBot: Record<string, ThreadItem[]>;
-  activeBot: string;
-  onActiveBotChange: (botId: string) => void;
   onClose?: () => void;
 }
 
-function mapBotStatus(status: Bot['status']): BotTab['status'] {
-  if (status === 'ok') return 'healthy';
-  if (status === 'busy') return 'busy';
-  return 'idle';
+function avatarFor(label: string): string {
+  const parts = label.split(/[-_\s]/).filter(Boolean);
+  if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+  return label.slice(0, 2).toUpperCase();
 }
 
-function mapToolStatus(status: string): 'running' | 'success' | 'error' {
-  if (status === 'running') return 'running';
-  if (status === 'error' || status === 'failed') return 'error';
-  return 'success';
+// Map persisted phone-home transcript messages onto the dashboard thread shape.
+function messagesToThread(
+  messages: ThreadDetailMessage[] | undefined,
+  agentLabel: string,
+): ThreadItem[] {
+  return (messages ?? []).map((m): ThreadMessage => ({
+    kind: 'msg',
+    who: m.role === 'user' ? 'user' : 'assistant',
+    name: m.role === 'user' ? 'you' : agentLabel,
+    when: '',
+    body: [{ p: m.content ?? '' }],
+  }));
 }
 
-export const BotConsole: React.FC<BotConsoleProps> = ({
-  bots,
-  threadByBot,
-  activeBot,
-  onActiveBotChange,
-  onClose,
-}) => {
-  const baseThread = threadByBot[activeBot] || [];
-  const { thread, send, draft, setDraft } = useChatStream({ baseThread, activeBot });
-  const activeBotObj = bots.find(b => b.id === activeBot);
-  const [sendError, setSendError] = React.useState<{ botId: string; message: string } | null>(null);
-  const displayedError = sendError?.botId === activeBot ? sendError.message : null;
+/**
+ * Thread-centric bot console. Tabs are phone-home conversation threads; the
+ * control plane delegates to agent nodes, and the working agent is shown
+ * read-only via each thread's `agent` field. Sending a message streams a reply
+ * from POST /v1/chat/completions (proxied by /api/chat/:threadId).
+ */
+export const BotConsole: React.FC<BotConsoleProps> = ({ onClose }) => {
+  const queryClient = useQueryClient();
+  const { data: threadsData } = useThreads();
+  const threads = useMemo(() => threadsData?.threads ?? [], [threadsData]);
+
+  const [activeThreadId, setActiveThreadId] = usePersistedState('activeThread', '');
+
+  // Fall back to the most-recently-active thread when nothing valid is selected.
+  const effectiveId = useMemo(() => {
+    if (activeThreadId && threads.some(t => t.id === activeThreadId)) return activeThreadId;
+    return threads[0]?.id ?? '';
+  }, [activeThreadId, threads]);
+
+  const activeThread = threads.find(t => t.id === effectiveId);
+  const agentLabel = activeThread?.agent || 'control plane';
+
+  const { data: detail } = useThread(effectiveId || null);
+  const baseThread = useMemo(
+    () => messagesToThread(detail?.messages, agentLabel),
+    [detail, agentLabel],
+  );
+
+  const { thread, send, draft, setDraft } = useChatStream({ baseThread, activeBot: effectiveId });
+
+  const [sendError, setSendError] = React.useState<{ id: string; message: string } | null>(null);
+  const displayedError = sendError?.id === effectiveId ? sendError.message : null;
 
   const handleSend = (value: string) => {
+    if (!effectiveId) {
+      setSendError({ id: '', message: 'Create a conversation first.' });
+      return;
+    }
     setSendError(null);
     send(value).catch((err: unknown) => {
-      console.error('BotConsole send failed:', err);
       setSendError({
-        botId: activeBot,
+        id: effectiveId,
         message: err instanceof Error ? err.message : 'Failed to send message.',
       });
     });
   };
 
-  const botTabs: BotTab[] = bots.map(b => ({
-    id: b.id,
-    label: b.label,
-    role: b.role,
-    status: mapBotStatus(b.status),
-  }));
+  const createThread = async () => {
+    try {
+      const res = await fetch('/api/threads', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      });
+      if (!res.ok) return;
+      const created = await res.json();
+      await queryClient.invalidateQueries({ queryKey: ['threads'] });
+      if (created?.id) setActiveThreadId(created.id);
+    } catch {
+      // Roster refreshes on its own poll; nothing else to do.
+    }
+  };
+
+  const botTabs: BotTab[] = threads.map(t => {
+    const title = t.title?.trim();
+    return {
+      id: t.id,
+      label: title ? (title.length > 30 ? `${title.slice(0, 30)}…` : title) : 'New thread',
+      role: t.agent || '—',
+      status: t.state === 'running' ? 'busy' : 'idle',
+    };
+  });
 
   const composer = (
     <>
@@ -74,8 +122,8 @@ export const BotConsole: React.FC<BotConsoleProps> = ({
         value={draft}
         onChange={setDraft}
         onSubmit={handleSend}
-        scopeLabel={activeBotObj?.label ?? activeBot}
-        placeholder={`Ask ${activeBotObj?.label ?? 'bot'} to do something…`}
+        scopeLabel={agentLabel}
+        placeholder={effectiveId ? 'Message the control plane…' : 'Start a conversation to begin…'}
       />
     </>
   );
@@ -85,8 +133,8 @@ export const BotConsole: React.FC<BotConsoleProps> = ({
       <header className="lab-chat__head">
         <span className="pulse emerald sm" />
         <div className="t">Bot console</div>
-        <button className="bc-ico" title="Settings" aria-label="Settings">
-          <Icon name="settings" size={13} />
+        <button className="bc-ico" title="New conversation" aria-label="New conversation" onClick={createThread}>
+          <span style={{ fontSize: 16, lineHeight: 1, fontWeight: 600 }}>+</span>
         </button>
         {onClose && (
           <button className="bc-ico" title="Close" aria-label="Close bot console" onClick={onClose}>
@@ -96,26 +144,29 @@ export const BotConsole: React.FC<BotConsoleProps> = ({
       </header>
       <ChatContainer
         bots={botTabs}
-        activeBotId={activeBot}
-        onBotChange={onActiveBotChange}
+        activeBotId={effectiveId}
+        onBotChange={setActiveThreadId}
         composer={composer}
       >
-        {thread.map((item, i) => {
-          if (item.kind === 'divider') {
-            return <ChatDivider key={i} label={item.label} />;
-          }
+        {threads.length === 0 ? (
+          <div style={{ padding: 16, fontSize: 13, color: 'rgb(var(--canvas-fg-3))' }}>
+            No conversations yet. Use the + button above to start chatting with the control plane.
+          </div>
+        ) : (
+          thread.map((item, i) => {
+            if (item.kind === 'divider') {
+              return <ChatDivider key={i} label={item.label} />;
+            }
 
-          const isUser = item.who === 'user';
-          const bot = isUser ? null : bots.find(b => b.id === item.who);
-
-          return (
-            <React.Fragment key={i}>
+            const isUser = item.who === 'user';
+            return (
               <ChatMessage
+                key={i}
                 role={isUser ? 'user' : 'bot'}
-                senderName={isUser ? (item.name ?? 'you') : (bot?.label ?? item.who)}
+                senderName={isUser ? (item.name ?? 'you') : agentLabel}
                 timestamp={item.when}
-                avatar={isUser ? undefined : (bot?.avatar ?? item.who.slice(0, 2).toUpperCase())}
-                badge={!isUser ? bot?.role : undefined}
+                avatar={isUser ? undefined : avatarFor(agentLabel)}
+                badge={!isUser && activeThread?.agent ? activeThread.agent : undefined}
                 body={
                   <div>
                     {item.body.map((b, j) => (
@@ -123,22 +174,11 @@ export const BotConsole: React.FC<BotConsoleProps> = ({
                     ))}
                   </div>
                 }
-                toolBlock={item.tool ? {
-                  name: item.tool.name,
-                  status: mapToolStatus(item.tool.status),
-                  output: item.tool.lines.map(l => ({ key: l.k, value: l.v })),
-                } : undefined}
                 thinkingBlock={item.thinking}
               />
-              {item.suggestions && item.suggestions.length > 0 && (
-                <ChatSuggestions
-                  suggestions={item.suggestions.map(s => s.t)}
-                  onSelect={handleSend}
-                />
-              )}
-            </React.Fragment>
-          );
-        })}
+            );
+          })
+        )}
       </ChatContainer>
     </aside>
   );

@@ -242,7 +242,7 @@ export const TopologyView: React.FC = () => {
             </span>
           </span>)
         }
-        idChip="/cluster/asgard/topology"
+        idChip={`/cluster/${(clusterData?.cluster?.name ?? 'cluster').toLowerCase()}/topology`}
         title="Topology"
         subtitle="Agent mesh and the hosts they operate. Drag to pan, scroll to zoom, click a node to inspect."
         actions={

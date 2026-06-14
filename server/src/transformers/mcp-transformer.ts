@@ -117,10 +117,19 @@ export async function transformDockerData(logger: FastifyBaseLogger): Promise<{
   degraded: string[];
   source: 'real' | 'unavailable';
 }> {
-  // No container inventory tool is available via phone-home MCP.
-  // Container count per host is derived from apps in metrics-transformer.
-  logger.debug('Docker inventory: no MCP source available, returning empty');
-  return { data: { hosts: [] }, degraded: [], source: 'unavailable' };
+  // Container inventory comes from the homelab-data MCP `list_containers` tool
+  // (reached over the LAN via phone-home). It already returns the DOCKER_DATA
+  // shape ({ hosts: [...] }); it may be empty until the MCP backend reports.
+  try {
+    const raw = (await mcpClient.callTool('homelab-data', 'list_containers')) as
+      | { hosts?: DOCKER_DATA['hosts'] }
+      | null;
+    const hosts = Array.isArray(raw?.hosts) ? raw!.hosts! : [];
+    return { data: { hosts }, degraded: [], source: 'real' };
+  } catch (error) {
+    logger.error({ err: error }, 'Error fetching container inventory from phone-home MCP');
+    return { data: { hosts: [] }, degraded: ['docker'], source: 'unavailable' };
+  }
 }
 
 export async function transformTopologyData(logger: FastifyBaseLogger): Promise<{

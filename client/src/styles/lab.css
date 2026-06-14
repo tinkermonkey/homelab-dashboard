@@ -86,7 +86,7 @@ button, input, textarea { font: inherit; }
 }
 .canvas-inner {
   padding: 22px 26px 32px;
-  min-width: 1080px;
+  min-width: 0;
   display: flex; flex-direction: column; gap: 18px;
 }
 .canvas-area::-webkit-scrollbar { width: 10px; height: 10px; }
@@ -1010,3 +1010,14 @@ body.density-compact .overview-view { gap: 12px; }
 .density-compact .grid-2       { gap: 10px; }
 .density-compact .srv-grid     { gap: 10px; }
 .density-compact .canvas-inner { padding: 16px 20px 24px; gap: 12px; }
+
+/* ---- Responsive: collapse fixed multi-column composites on narrow canvases
+   so the dashboard fills (and fits) the browser width instead of overflowing. */
+@media (max-width: 1180px) {
+  .srv-grid,
+  .grid-2,
+  .grid-3,
+  .gw-split,
+  .topo-wrap,
+  .topo-stage-wrap { grid-template-columns: 1fr; }
+}

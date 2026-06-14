@@ -131,6 +131,44 @@ export class MetricbeatClient {
     if (!load) throw new Error(`No load data for ${hostname}`);
     return `${load['1']} / ${load['5']} / ${load['15']}`;
   }
+
+  // Latest root-filesystem capacity for a host (mount '/') from the system module.
+  // Returns null when the host has no recent filesystem sample.
+  async getFilesystemCapacity(hostname: string): Promise<{
+    usedPct: number;
+    usedBytes: number;
+    totalBytes: number;
+    freeBytes: number;
+  } | null> {
+    const data = (await this.search({
+      size: 1,
+      sort: [{ '@timestamp': 'desc' }],
+      query: {
+        bool: {
+          must: [
+            { term: { 'event.module': 'system' } },
+            { match: { 'metricset.name': 'filesystem' } },
+            { match: { 'host.name': hostname } },
+            { match: { 'system.filesystem.mount_point': '/' } },
+          ],
+        },
+      },
+      _source: ['system.filesystem'],
+    })) as EsLatestResponse;
+
+    const fs = (data.hits.hits[0]?._source as {
+      system?: { filesystem?: { used?: { pct?: number; bytes?: number }; total?: number; free?: number } };
+    } | undefined)?.system?.filesystem;
+
+    if (!fs || fs.total == null) return null;
+
+    return {
+      usedPct: Math.round((fs.used?.pct ?? 0) * 1000) / 10,
+      usedBytes: fs.used?.bytes ?? 0,
+      totalBytes: fs.total ?? 0,
+      freeBytes: fs.free ?? 0,
+    };
+  }
 }
 
 export const metricbeatClient = new MetricbeatClient();

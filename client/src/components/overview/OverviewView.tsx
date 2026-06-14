@@ -57,7 +57,7 @@ export const OverviewView: React.FC<OverviewViewProps> = ({ data, showAlerts = t
             </Button>
             <Button variant="primary" size="sm">
               <Icon name="bot" size={13} />
-              Ask lab-bot
+              Ask the bots
             </Button>
           </div>
         }

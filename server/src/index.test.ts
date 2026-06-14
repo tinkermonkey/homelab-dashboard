@@ -91,6 +91,25 @@ const mockDockerData: DOCKER_DATA = {
   hosts: [],
 };
 
+const mockLogEntries = [
+  {
+    id: 'trace-1',
+    timestamp: 1718000000000,
+    level: 'INFO' as const,
+    op: 'phone-home',
+    target: 'phone-home',
+    message: 'request handled',
+  },
+];
+
+const mockStorageData = {
+  filesystems: [
+    { host: 't5610', mount: '/', usedPct: 42.5, usedBytes: 100, totalBytes: 200, freeBytes: 100 },
+  ],
+  degraded: [],
+  source: 'real' as const,
+};
+
 const mockNetworkData: NETWORK_DATA = {
   subsystems: [],
   clients: { total: 0, wired: 0, wireless: 0, topTalkers: [] },
@@ -122,12 +141,32 @@ const mockAlerts: Alert[] = [
   },
 ];
 
+// Build a streaming-capable mock Response for the chat proxy (uses global fetch).
+function streamingChatResponse(chunks: string[] = [], status = 200) {
+  const reads = chunks.map((c) => ({ done: false, value: new TextEncoder().encode(c) }));
+  reads.push({ done: true } as never);
+  let i = 0;
+  return {
+    ok: status >= 200 && status < 300,
+    status,
+    body: {
+      getReader: () => ({
+        read: vi.fn(async () => (i < reads.length ? reads[i++] : { done: true })),
+        cancel: vi.fn(async () => {}),
+      }),
+    },
+  } as unknown as Response;
+}
+
 describe('Server Routes', () => {
   let fastify: ReturnType<typeof Fastify>;
 
   beforeEach(async () => {
     vi.clearAllMocks();
     clearCache();
+
+    // Chat proxy uses global fetch (not fetchWithTimeout); default to a benign stream.
+    global.fetch = vi.fn().mockResolvedValue(streamingChatResponse(['data: test\n\n']));
 
     fastify = Fastify({ logger: false });
     await fastify.register(cors, {
@@ -354,8 +393,8 @@ describe('Server Routes', () => {
     });
   });
 
-  describe('POST /api/chat/:botId', () => {
-    it('returns 400 for invalid bot ID format', async () => {
+  describe('POST /api/chat/:threadId', () => {
+    it('returns 400 for invalid thread ID format', async () => {
       const response = await fastify.inject({
         method: 'POST',
         url: '/api/chat/invalid@bot',
@@ -363,32 +402,53 @@ describe('Server Routes', () => {
       });
 
       expect(response.statusCode).toBe(400);
-      expect(JSON.parse(response.body)).toEqual({ error: 'Invalid bot ID format' });
+      expect(JSON.parse(response.body)).toEqual({ error: 'Invalid thread ID format' });
     });
 
-    it('rejects bot IDs exceeding 64 characters', async () => {
-      const longBotId = 'a'.repeat(65);
+    it('rejects thread IDs exceeding 64 characters', async () => {
+      const longThreadId = 'a'.repeat(65);
       const response = await fastify.inject({
         method: 'POST',
-        url: `/api/chat/${longBotId}`,
+        url: `/api/chat/${longThreadId}`,
         payload: { message: 'hello' },
       });
 
       expect(response.statusCode).toBe(400);
     });
 
-    it('accepts valid bot IDs with alphanumeric, underscore, and hyphen', async () => {
-      const mockResponse = new Response('data', { status: 200 });
-      vi.mocked(fetchWithTimeout).mockResolvedValue(mockResponse);
-
+    it('accepts valid thread IDs with alphanumeric, underscore, and hyphen', async () => {
       const response = await fastify.inject({
         method: 'POST',
         url: '/api/chat/valid-bot_123',
         payload: { message: 'hello' },
       });
 
-      // Bot ID validation should pass (not return 400)
+      // Thread ID validation should pass (not return 400)
       expect(response.statusCode).not.toBe(400);
+    });
+
+    it('returns 400 when message is missing', async () => {
+      const response = await fastify.inject({
+        method: 'POST',
+        url: '/api/chat/test-bot',
+        payload: {},
+      });
+
+      expect(response.statusCode).toBe(400);
+      expect(JSON.parse(response.body)).toEqual({ error: 'Message is required' });
+      expect(global.fetch).not.toHaveBeenCalled();
+    });
+
+    it('returns 400 when message is blank/whitespace', async () => {
+      const response = await fastify.inject({
+        method: 'POST',
+        url: '/api/chat/test-bot',
+        payload: { message: '   ' },
+      });
+
+      expect(response.statusCode).toBe(400);
+      expect(JSON.parse(response.body)).toEqual({ error: 'Message is required' });
+      expect(global.fetch).not.toHaveBeenCalled();
     });
 
     it('returns 413 for oversized request body', async () => {
@@ -406,8 +466,8 @@ describe('Server Routes', () => {
       expect(body.message).toContain('too large');
     });
 
-    it('returns 500 when chat service is unavailable', async () => {
-      vi.mocked(fetchWithTimeout).mockResolvedValue(
+    it('returns upstream status when chat service is unavailable', async () => {
+      global.fetch = vi.fn().mockResolvedValue(
         new Response('Service Unavailable', { status: 503 })
       );
 
@@ -422,7 +482,7 @@ describe('Server Routes', () => {
     });
 
     it('returns 500 when chat service throws error', async () => {
-      vi.mocked(fetchWithTimeout).mockRejectedValue(new Error('Network error'));
+      global.fetch = vi.fn().mockRejectedValue(new Error('Network error'));
 
       const response = await fastify.inject({
         method: 'POST',
@@ -434,41 +494,18 @@ describe('Server Routes', () => {
       expect(JSON.parse(response.body)).toEqual({ error: 'Chat service error' });
     });
 
-    it('sends Bearer token in Authorization header when token is configured', async () => {
-      const mockResponse = new Response('data', { status: 200 });
-      vi.mocked(fetchWithTimeout).mockResolvedValue(mockResponse);
-
-      const response = await fastify.inject({
+    it('calls global fetch (not fetchWithTimeout) for the chat upstream', async () => {
+      await fastify.inject({
         method: 'POST',
         url: '/api/chat/test-bot',
         payload: { message: 'hello' },
       });
 
-      // Should call fetchWithTimeout with Authorization header containing Bearer token
-      expect(fetchWithTimeout).toHaveBeenCalled();
-      const call = vi.mocked(fetchWithTimeout).mock.calls[vi.mocked(fetchWithTimeout).mock.calls.length - 1];
-      expect(call[1]?.headers).toEqual(
-        expect.objectContaining({
-          Authorization: 'Bearer test-bearer-token',
-        })
-      );
+      expect(global.fetch).toHaveBeenCalled();
+      expect(fetchWithTimeout).not.toHaveBeenCalled();
     });
 
-    it('successfully handles chat requests to phone-home', async () => {
-      const mockResponse = {
-        ok: true,
-        status: 200,
-        body: {
-          getReader: () => ({
-            read: vi
-              .fn()
-              .mockResolvedValueOnce({ done: false, value: new TextEncoder().encode('data: test\n\n') })
-              .mockResolvedValueOnce({ done: true }),
-          }),
-        },
-      };
-      vi.mocked(fetchWithTimeout).mockResolvedValue(mockResponse as unknown as Response);
-
+    it('sends Bearer token in Authorization header when token is configured', async () => {
       const response = await fastify.inject({
         method: 'POST',
         url: '/api/chat/test-bot',
@@ -476,77 +513,55 @@ describe('Server Routes', () => {
       });
 
       expect(response.statusCode).toBe(200);
-      expect(fetchWithTimeout).toHaveBeenCalled();
+      expect(global.fetch).toHaveBeenCalled();
+      const call = vi.mocked(global.fetch).mock.calls.at(-1)!;
+      const init = call[1] as RequestInit;
+      expect(init.headers).toEqual(
+        expect.objectContaining({
+          Authorization: 'Bearer test-bearer-token',
+        })
+      );
     });
 
-    it('constructs correct phoneHome URL with botId', async () => {
-      const mockResponse = {
-        ok: true,
-        status: 200,
-        body: {
-          getReader: () => ({
-            read: vi.fn().mockResolvedValueOnce({ done: true }),
-          }),
-        },
-      };
-      vi.mocked(fetchWithTimeout).mockResolvedValue(mockResponse as unknown as Response);
+    it('successfully streams chat responses from phone-home', async () => {
+      const response = await fastify.inject({
+        method: 'POST',
+        url: '/api/chat/test-bot',
+        payload: { message: 'hello' },
+      });
 
+      expect(response.statusCode).toBe(200);
+      expect(global.fetch).toHaveBeenCalled();
+    });
+
+    it('targets config.phoneHomeChatUrl (no id appended to URL)', async () => {
       await fastify.inject({
         method: 'POST',
         url: '/api/chat/my-custom-bot',
         payload: { message: 'test' },
       });
 
-      expect(fetchWithTimeout).toHaveBeenCalled();
-      const call = vi.mocked(fetchWithTimeout).mock.calls[0];
-      expect(call[0]).toBe('http://phone-home:8000/chat/my-custom-bot');
+      expect(global.fetch).toHaveBeenCalled();
+      const call = vi.mocked(global.fetch).mock.calls[0];
+      expect(call[0]).toBe('http://phone-home:8000/chat');
     });
 
-    it('sends request body as JSON to phone-home', async () => {
-      const mockResponse = {
-        ok: true,
-        status: 200,
-        body: {
-          getReader: () => ({
-            read: vi.fn().mockResolvedValueOnce({ done: true }),
-          }),
-        },
-      };
-      vi.mocked(fetchWithTimeout).mockResolvedValue(mockResponse as unknown as Response);
-
+    it('reshapes the body into a phone-home chat-completions request', async () => {
       await fastify.inject({
         method: 'POST',
-        url: '/api/chat/test-bot',
+        url: '/api/chat/my-thread',
         payload: { message: 'test message' },
       });
 
-      expect(fetchWithTimeout).toHaveBeenCalled();
-      const call = vi.mocked(fetchWithTimeout).mock.calls[0];
-      const body = call[1]?.body as string;
-      expect(JSON.parse(body)).toEqual({ message: 'test message' });
-    });
-
-    it('uses 30s timeout for chat requests', async () => {
-      const mockResponse = {
-        ok: true,
-        status: 200,
-        body: {
-          getReader: () => ({
-            read: vi.fn().mockResolvedValueOnce({ done: true }),
-          }),
-        },
-      };
-      vi.mocked(fetchWithTimeout).mockResolvedValue(mockResponse as unknown as Response);
-
-      await fastify.inject({
-        method: 'POST',
-        url: '/api/chat/test-bot',
-        payload: { message: 'test' },
+      expect(global.fetch).toHaveBeenCalled();
+      const call = vi.mocked(global.fetch).mock.calls[0];
+      const init = call[1] as RequestInit;
+      expect(JSON.parse(init.body as string)).toEqual({
+        model: 'claude',
+        stream: true,
+        user: 'my-thread',
+        messages: [{ role: 'user', content: 'test message' }],
       });
-
-      expect(fetchWithTimeout).toHaveBeenCalled();
-      const call = vi.mocked(fetchWithTimeout).mock.calls[0];
-      expect(call[1]?.timeout).toBe(30000);
     });
 
     it('omits Authorization header when token is not configured', async () => {
@@ -557,26 +572,16 @@ describe('Server Routes', () => {
       mutableConfig.phoneHomeChatToken = '';
 
       try {
-        const mockResponse = {
-          ok: true,
-          status: 200,
-          body: {
-            getReader: () => ({
-              read: vi.fn().mockResolvedValueOnce({ done: true }),
-            }),
-          },
-        };
-        vi.mocked(fetchWithTimeout).mockResolvedValue(mockResponse as unknown as Response);
-
         await fastify.inject({
           method: 'POST',
           url: '/api/chat/test-bot',
           payload: { message: 'test' },
         });
 
-        expect(fetchWithTimeout).toHaveBeenCalled();
-        const call = vi.mocked(fetchWithTimeout).mock.calls[0];
-        const headers = call[1]?.headers as Record<string, string> | undefined;
+        expect(global.fetch).toHaveBeenCalled();
+        const call = vi.mocked(global.fetch).mock.calls[0];
+        const init = call[1] as RequestInit;
+        const headers = init.headers as Record<string, string> | undefined;
         expect(headers?.Authorization).toBeUndefined();
       } finally {
         mutableConfig.phoneHomeChatToken = originalToken;
@@ -584,12 +589,11 @@ describe('Server Routes', () => {
     });
 
     it('handles response with no body gracefully', async () => {
-      const mockResponse = {
+      global.fetch = vi.fn().mockResolvedValue({
         ok: true,
         status: 200,
         body: null,
-      };
-      vi.mocked(fetchWithTimeout).mockResolvedValue(mockResponse as unknown as Response);
+      } as unknown as Response);
 
       const response = await fastify.inject({
         method: 'POST',
@@ -601,38 +605,26 @@ describe('Server Routes', () => {
       expect(JSON.parse(response.body)).toEqual({ error: 'No response body' });
     });
 
-    it('handles empty bot ID', async () => {
+    it('handles empty thread ID', async () => {
       const response = await fastify.inject({
         method: 'POST',
         url: '/api/chat/',
         payload: { message: 'hello' },
       });
 
-      // Empty bot ID is matched by route but fails validation, returns 400
+      // Empty thread ID is matched by route but fails validation, returns 400
       expect(response.statusCode).toBe(400);
     });
 
-
-    it('accepts bot IDs with only valid characters', async () => {
+    it('accepts thread IDs with only valid characters', async () => {
       const validIds = ['bot', 'bot_123', 'bot-test', 'bot123test', 'BOT_TEST_123'];
-      const mockResponse = {
-        ok: true,
-        status: 200,
-        body: {
-          getReader: () => ({
-            read: vi.fn().mockResolvedValueOnce({ done: true }),
-          }),
-        },
-      };
-      vi.mocked(fetchWithTimeout).mockResolvedValue(mockResponse as unknown as Response);
 
-      for (const botId of validIds) {
-        vi.clearAllMocks();
-        vi.mocked(fetchWithTimeout).mockResolvedValue(mockResponse as unknown as Response);
+      for (const threadId of validIds) {
+        global.fetch = vi.fn().mockResolvedValue(streamingChatResponse());
 
         const response = await fastify.inject({
           method: 'POST',
-          url: `/api/chat/${botId}`,
+          url: `/api/chat/${threadId}`,
           payload: { message: 'test' },
         });
 
@@ -641,8 +633,7 @@ describe('Server Routes', () => {
     });
 
     it('returns 4xx status from upstream when service returns 4xx', async () => {
-      const mockResponse = new Response('Bad Request', { status: 400 });
-      vi.mocked(fetchWithTimeout).mockResolvedValue(mockResponse);
+      global.fetch = vi.fn().mockResolvedValue(new Response('Bad Request', { status: 400 }));
 
       const response = await fastify.inject({
         method: 'POST',
@@ -655,8 +646,7 @@ describe('Server Routes', () => {
     });
 
     it('returns 5xx status from upstream when service returns 5xx', async () => {
-      const mockResponse = new Response('Internal Server Error', { status: 500 });
-      vi.mocked(fetchWithTimeout).mockResolvedValue(mockResponse);
+      global.fetch = vi.fn().mockResolvedValue(new Response('Internal Server Error', { status: 500 }));
 
       const response = await fastify.inject({
         method: 'POST',
@@ -666,6 +656,218 @@ describe('Server Routes', () => {
 
       expect(response.statusCode).toBe(500);
       expect(JSON.parse(response.body)).toEqual({ error: 'Internal Server Error' });
+    });
+  });
+
+  describe('GET /api/logs', () => {
+    it('returns log entries from the signoz source', async () => {
+      vi.mocked(getCachedData).mockResolvedValue({ entries: mockLogEntries, source: 'signoz' });
+
+      const response = await fastify.inject({
+        method: 'GET',
+        url: '/api/logs',
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = JSON.parse(response.body);
+      expect(body.source).toBe('signoz');
+      expect(body.entries).toEqual(mockLogEntries);
+    });
+
+    it('returns empty entries with unavailable source on error', async () => {
+      vi.mocked(getCachedData).mockRejectedValue(new Error('MCP down'));
+
+      const response = await fastify.inject({
+        method: 'GET',
+        url: '/api/logs',
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(JSON.parse(response.body)).toEqual({ entries: [], source: 'unavailable' });
+    });
+
+    it('uses a 10s cache TTL', async () => {
+      vi.mocked(getCachedData).mockResolvedValue({ entries: [], source: 'signoz' });
+
+      await fastify.inject({ method: 'GET', url: '/api/logs' });
+
+      expect(vi.mocked(getCachedData).mock.calls[0][1]).toBe(10);
+    });
+  });
+
+  describe('GET /api/storage', () => {
+    it('returns filesystems with status 200 when not degraded', async () => {
+      vi.mocked(getCachedData).mockResolvedValue(mockStorageData);
+
+      const response = await fastify.inject({
+        method: 'GET',
+        url: '/api/storage',
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = JSON.parse(response.body);
+      expect(body.filesystems).toEqual(mockStorageData.filesystems);
+      expect(body.source).toBe('real');
+    });
+
+    it('returns 206 when storage data is degraded', async () => {
+      vi.mocked(getCachedData).mockResolvedValue({
+        ...mockStorageData,
+        degraded: ['metricbeat'],
+      });
+
+      const response = await fastify.inject({
+        method: 'GET',
+        url: '/api/storage',
+      });
+
+      expect(response.statusCode).toBe(206);
+      expect(JSON.parse(response.body).degraded).toEqual(['metricbeat']);
+    });
+
+    it('returns empty filesystems with unavailable source on error', async () => {
+      vi.mocked(getCachedData).mockRejectedValue(new Error('metricbeat down'));
+
+      const response = await fastify.inject({
+        method: 'GET',
+        url: '/api/storage',
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(JSON.parse(response.body)).toEqual({ filesystems: [], source: 'unavailable' });
+    });
+
+    it('uses a 30s cache TTL', async () => {
+      vi.mocked(getCachedData).mockResolvedValue(mockStorageData);
+
+      await fastify.inject({ method: 'GET', url: '/api/storage' });
+
+      expect(vi.mocked(getCachedData).mock.calls[0][1]).toBe(30);
+    });
+  });
+
+  describe('GET /api/threads', () => {
+    it('returns the threads roster from phone-home', async () => {
+      const roster = { threads: [{ id: 'thread-1', title: 'First' }] };
+      vi.mocked(fetchWithTimeout).mockResolvedValue(
+        new Response(JSON.stringify(roster), { status: 200 })
+      );
+
+      const response = await fastify.inject({
+        method: 'GET',
+        url: '/api/threads',
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(JSON.parse(response.body)).toEqual(roster);
+      // Proxies the phone-home REST API via fetchWithTimeout.
+      const call = vi.mocked(fetchWithTimeout).mock.calls[0];
+      expect(call[0]).toBe('http://phone-home:8000/v1/threads');
+    });
+
+    it('falls back to an empty roster when phone-home returns non-ok', async () => {
+      vi.mocked(fetchWithTimeout).mockResolvedValue(
+        new Response('nope', { status: 503 })
+      );
+
+      const response = await fastify.inject({
+        method: 'GET',
+        url: '/api/threads',
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(JSON.parse(response.body)).toEqual({ threads: [] });
+    });
+
+    it('falls back to an empty roster when phone-home is unreachable', async () => {
+      vi.mocked(fetchWithTimeout).mockRejectedValue(new Error('ECONNREFUSED'));
+
+      const response = await fastify.inject({
+        method: 'GET',
+        url: '/api/threads',
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(JSON.parse(response.body)).toEqual({ threads: [] });
+    });
+  });
+
+  describe('POST /api/threads', () => {
+    it('creates a thread via phone-home and returns the result', async () => {
+      const created = { id: 'thread-42' };
+      vi.mocked(fetchWithTimeout).mockResolvedValue(
+        new Response(JSON.stringify(created), { status: 200 })
+      );
+
+      const response = await fastify.inject({
+        method: 'POST',
+        url: '/api/threads',
+        payload: { title: 'New thread' },
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(JSON.parse(response.body)).toEqual(created);
+      const call = vi.mocked(fetchWithTimeout).mock.calls[0];
+      expect(call[0]).toBe('http://phone-home:8000/v1/threads');
+      expect(call[1]?.method).toBe('POST');
+    });
+
+    it('propagates the upstream status when thread creation fails', async () => {
+      vi.mocked(fetchWithTimeout).mockResolvedValue(
+        new Response('bad', { status: 422 })
+      );
+
+      const response = await fastify.inject({
+        method: 'POST',
+        url: '/api/threads',
+        payload: { title: 'x' },
+      });
+
+      expect(response.statusCode).toBe(422);
+      expect(JSON.parse(response.body)).toEqual({ error: 'Failed to create thread' });
+    });
+  });
+
+  describe('GET /api/threads/:id', () => {
+    it('returns 400 for an invalid thread id', async () => {
+      const response = await fastify.inject({
+        method: 'GET',
+        url: '/api/threads/bad@id',
+      });
+
+      expect(response.statusCode).toBe(400);
+      expect(JSON.parse(response.body)).toEqual({ error: 'Invalid thread id' });
+    });
+
+    it('returns the thread detail from phone-home', async () => {
+      const detail = { id: 'thread-1', messages: [] };
+      vi.mocked(fetchWithTimeout).mockResolvedValue(
+        new Response(JSON.stringify(detail), { status: 200 })
+      );
+
+      const response = await fastify.inject({
+        method: 'GET',
+        url: '/api/threads/thread-1',
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(JSON.parse(response.body)).toEqual(detail);
+      const call = vi.mocked(fetchWithTimeout).mock.calls[0];
+      expect(call[0]).toBe('http://phone-home:8000/v1/threads/thread-1');
+    });
+
+    it('propagates the upstream status when the thread is not found', async () => {
+      vi.mocked(fetchWithTimeout).mockResolvedValue(
+        new Response('missing', { status: 404 })
+      );
+
+      const response = await fastify.inject({
+        method: 'GET',
+        url: '/api/threads/thread-x',
+      });
+
+      expect(response.statusCode).toBe(404);
+      expect(JSON.parse(response.body)).toEqual({ error: 'Thread not found' });
     });
   });
 

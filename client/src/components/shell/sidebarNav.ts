@@ -17,11 +17,7 @@ export interface NavEntry {
 export const NAV_TREE: NavEntry[] = [
   { id: 'overview',   label: 'Overview',      icon: 'dashboard' },
   { id: 'servers',    label: 'Servers',        icon: 'component' },
-  { id: 'containers', label: 'Containers',     icon: 'layout',   children: [
-    { id: 'containers/list',     label: 'Containers' },
-    { id: 'containers/networks', label: 'Networks' },
-    { id: 'containers/volumes',  label: 'Volumes' },
-  ]},
+  { id: 'containers', label: 'Containers',     icon: 'layout' },
   { id: 'network',    label: 'Network',        icon: 'link' },
   { id: 'apps',       label: 'Applications',   icon: 'pipeline' },
   { id: 'storage',    label: 'Storage',        icon: 'data' },

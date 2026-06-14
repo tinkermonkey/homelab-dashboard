@@ -8,17 +8,6 @@ import { Icon } from '@tinkermonkey/heimdall-ui';
 import { ErrorView } from '../shared/ErrorView';
 import { asEyebrow } from '../../utils/pageHeader';
 
-interface VpnPeer {
-  _key: string;
-  peer: string;
-  endpoint: string;
-  ip: string;
-  rx: string;
-  tx: string;
-  handshake: string;
-  up: boolean;
-}
-
 interface PublishedService {
   _key: string;
   service: string;
@@ -28,27 +17,6 @@ interface PublishedService {
   proto: string;
   net: string;
 }
-
-const VPN_PEERS: VpnPeer[] = [];
-
-const VPN_COLS: Column<VpnPeer>[] = [
-  {
-    key: 'peer',
-    label: 'Peer',
-    width: '20%',
-    render: (_v, row) => (
-      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-        <span className={`pulse-dot pulse-dot--sm pulse-dot--${row.up ? 'emerald' : 'neutral'}`} />
-        <span className="cell-name" style={{ fontSize: 12.5 }}>{row.peer}</span>
-      </span>
-    ),
-  },
-  { key: 'ip', label: 'Tunnel IP', width: '16%', render: (v) => <span className="cell-mono">{String(v)}</span> },
-  { key: 'endpoint', label: 'Endpoint', width: '24%', render: (v) => <span className="cell-mono">{String(v)}</span> },
-  { key: 'rx', label: 'RX', width: '12%', render: (v) => <span className="cell-mono">{String(v)}</span> },
-  { key: 'tx', label: 'TX', width: '12%', render: (v) => <span className="cell-mono">{String(v)}</span> },
-  { key: 'handshake', label: 'Handshake', width: '16%', render: (v) => <span className="cell-mono" style={{ color: 'rgb(var(--canvas-fg-3))' }}>{String(v)}</span> },
-];
 
 const PUB_COLS: Column<PublishedService>[] = [
   {
@@ -74,6 +42,7 @@ export const NetworkView: React.FC = () => {
 
   const gw = cluster?.gateway;
   const degraded = cluster?.degraded;
+  const clusterSlug = (cluster?.cluster?.name ?? 'cluster').toLowerCase();
 
   const published = useMemo((): PublishedService[] => {
     if (!docker) return [];
@@ -145,21 +114,11 @@ export const NetworkView: React.FC = () => {
     );
   }
 
-  const dnsKv = [
-    { key: 'Resolved 24h', value: `${gw.dnsResolved.toLocaleString()} queries` },
-    { key: 'Blocked', value: <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>{gw.dnsBlocked.toLocaleString()} <Chip variant="amber">{gw.blockedPct}%</Chip></span> },
-    { key: 'Upstream', value: 'unbound · 127.0.0.1#5335' },
-    { key: 'Cache hit', value: '78.4 %' },
-    { key: 'Lists', value: '6 blocklists · 1.18M domains' },
-  ];
-
   const wanKv = [
-    { key: 'ISP', value: gw.isp },
-    { key: 'Plan', value: gw.plan },
-    { key: 'Public IP', value: gw.publicIp },
-    { key: 'WAN iface', value: gw.wanIf },
-    { key: 'Ping', value: `${gw.pingMs} ms · jitter ${gw.jitterMs} ms` },
-    { key: 'Loss 24h', value: `${gw.lossPct.toFixed(2)} %` },
+    { key: 'ISP', value: gw.isp || '—' },
+    { key: 'ASN', value: gw.asn || '—' },
+    { key: 'Public IP', value: gw.publicIp || '—' },
+    { key: 'Ping', value: gw.pingMs != null ? `${gw.pingMs} ms` : '—' },
   ];
 
   return (
@@ -171,9 +130,9 @@ export const NetworkView: React.FC = () => {
             <span className="mono-meta">{gw.hostname} · uptime {gw.statusFor}</span>
           </span>
         )}
-        idChip="/cluster/asgard/network"
+        idChip={`/cluster/${clusterSlug}/network`}
         title="Network"
-        subtitle="WAN link, DNS, VPN and the services published across the cluster."
+        subtitle="WAN link, VPN and the services published across the cluster."
         actions={
           <Button variant="primary" size="sm">
             <Icon name="arrowRight" size={13} />
@@ -189,12 +148,12 @@ export const NetworkView: React.FC = () => {
         />
       )}
 
-      <StatGrid columns={4}>
+      <StatGrid columns={3}>
         <StatTile
           color="cyan"
           label="Download"
           value={`${gw.downMbps} Mbps`}
-          meta="10 Gbit link"
+          meta="wan link"
           metaIcon="arrowDown"
           sparkData={gw.downHist}
         />
@@ -202,16 +161,9 @@ export const NetworkView: React.FC = () => {
           color="violet"
           label="Upload"
           value={`${gw.upMbps} Mbps`}
-          meta="symmetric"
+          meta="wan link"
           metaIcon="arrowUp"
           sparkData={gw.upHist}
-        />
-        <StatTile
-          color="amber"
-          label="DNS blocked"
-          value={`${gw.blockedPct}%`}
-          meta={`${gw.dnsBlocked} of ${gw.dnsResolved.toLocaleString()}`}
-          metaIcon="lock"
         />
         <StatTile
           color="emerald"
@@ -239,21 +191,18 @@ export const NetworkView: React.FC = () => {
         </div>
       </Panel>
 
-      <div className="grid-2">
-        <Panel title="WAN link" subtitle={gw.asn}>
-          <KVGrid rows={wanKv} />
-        </Panel>
-        <Panel title="Pi-hole DNS" subtitle="aether · :8082">
-          <KVGrid rows={dnsKv} />
-        </Panel>
-      </div>
+      <Panel title="WAN link" subtitle={gw.asn || '—'}>
+        <KVGrid rows={wanKv} />
+      </Panel>
 
       <Panel
         className="panel-flush"
         title="WireGuard peers"
         subtitle={`${gw.vpnPeersActive} active · ${gw.vpnPeers} configured`}
       >
-        <Table columns={VPN_COLS} data={VPN_PEERS} rowKey="_key" />
+        <div className="empty-state" style={{ padding: 24, textAlign: 'center', color: 'rgb(var(--canvas-fg-3))' }}>
+          Per-peer detail is not available from the current data source.
+        </div>
       </Panel>
 
       <Panel

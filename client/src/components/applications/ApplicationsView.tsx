@@ -28,7 +28,7 @@ export const ApplicationsView: React.FC = () => {
             <span className="mono-meta">scraped every 15 s</span>
           </span>
         )}
-        idChip="/cluster/asgard/apps"
+        idChip={`/cluster/${(data?.cluster?.name ?? 'cluster').toLowerCase()}/apps`}
         title="Applications"
         subtitle="Every service deployed across the cluster, by category."
         actions={

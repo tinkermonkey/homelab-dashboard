@@ -1,11 +1,10 @@
-import React, { useMemo, useState } from 'react';
-import type { Volume } from '@homelab/shared';
+import React, { useMemo } from 'react';
+import type { Volume, StorageFilesystem } from '@homelab/shared';
 import {
-  PageHeader, StatGrid, StatTile, Panel, QuickAccessGrid, Table, Chip, Button, Toast, AlertStrip,
+  PageHeader, StatGrid, StatTile, Panel, QuickAccessGrid, Table, Chip, AlertStrip,
 } from '@tinkermonkey/heimdall-ui';
-import type { Column, QuickAccessGridItem, ToastVariant } from '@tinkermonkey/heimdall-ui';
-import { useDocker } from '../../hooks/useAPI';
-import { Icon } from '@tinkermonkey/heimdall-ui';
+import type { Column, QuickAccessGridItem } from '@tinkermonkey/heimdall-ui';
+import { useDocker, useStorage, useCluster } from '../../hooks/useAPI';
 import { ErrorView } from '../shared/ErrorView';
 import { asEyebrow } from '../../utils/pageHeader';
 
@@ -14,12 +13,14 @@ interface VolumeRow extends Volume {
   _key: string;
 }
 
-const STORAGE_POOLS: QuickAccessGridItem[] = [
-  { id: 'tank', icon: 'data', title: 'tank · ZRAID2', description: '8×16 TB · 52.1/90 TB used' },
-  { id: 'fast', icon: 'trending-up', title: 'fast · NVMe mirror', description: '2×2 TB · 1.2/2 TB used' },
-  { id: 'backup', icon: 'lock', title: 'backup · restic', description: 'offsite B2 · last 04:00' },
-  { id: 'cache', icon: 'layout', title: 'l2arc cache', description: '480 GB · 78% hit rate' },
-];
+/** Format a byte count to a human-readable GB/TB string with one decimal. */
+function bytesToHuman(bytes: number): string {
+  if (!bytes || bytes <= 0) return '0 GB';
+  const GB = 1024 ** 3;
+  const TB = 1024 ** 4;
+  if (bytes >= TB) return `${(bytes / TB).toFixed(1)} TB`;
+  return `${(bytes / GB).toFixed(1)} GB`;
+}
 
 const COLUMNS: Column<VolumeRow>[] = [
   {
@@ -58,15 +59,10 @@ const COLUMNS: Column<VolumeRow>[] = [
   },
 ];
 
-interface ToastState {
-  title: string;
-  subtitle?: string;
-  variant: ToastVariant;
-}
-
 export const StorageView: React.FC = () => {
   const { data, isLoading, error } = useDocker();
-  const [toast, setToast] = useState<ToastState | null>(null);
+  const { data: storage } = useStorage();
+  const clusterName = useCluster().data?.cluster?.name;
 
   const volumes = useMemo((): VolumeRow[] => {
     if (!data) return [];
@@ -76,6 +72,36 @@ export const StorageView: React.FC = () => {
     );
     return rows;
   }, [data]);
+
+  const filesystems = useMemo<StorageFilesystem[]>(
+    () => storage?.filesystems ?? [],
+    [storage]
+  );
+
+  const aggregates = useMemo(() => {
+    const usedBytes = filesystems.reduce((sum, fs) => sum + (fs.usedBytes || 0), 0);
+    const totalBytes = filesystems.reduce((sum, fs) => sum + (fs.totalBytes || 0), 0);
+    const freeBytes = filesystems.reduce((sum, fs) => sum + (fs.freeBytes || 0), 0);
+    const hosts = new Set(filesystems.map(fs => fs.host)).size;
+    const avgUsedPct = filesystems.length
+      ? Math.round(filesystems.reduce((sum, fs) => sum + (fs.usedPct || 0), 0) / filesystems.length)
+      : 0;
+    return { usedBytes, totalBytes, freeBytes, hosts, avgUsedPct };
+  }, [filesystems]);
+
+  const storageUnavailable = storage?.source === 'unavailable' || filesystems.length === 0;
+
+  const fsTiles = useMemo<QuickAccessGridItem[]>(
+    () => filesystems.map((fs) => ({
+      id: `${fs.host}-${fs.mount}`,
+      icon: 'data',
+      title: `${fs.host} · ${fs.mount}`,
+      description: `${bytesToHuman(fs.usedBytes)} / ${bytesToHuman(fs.totalBytes)} · ${Math.round(fs.usedPct)}% used`,
+    })),
+    [filesystems]
+  );
+
+  const idChip = `/cluster/${(clusterName ?? 'cluster').toLowerCase()}/storage`;
 
   if (isLoading) return <div style={{ padding: 24 }}>Loading…</div>;
   if (error || !data) return (
@@ -90,19 +116,13 @@ export const StorageView: React.FC = () => {
       <PageHeader
         eyebrow={asEyebrow(
           <span className="eyebrow-row">
-            <Chip variant="emerald">storage · helios</Chip>
-            <span className="mono-meta">TrueNAS Core · ZFS</span>
+            <Chip variant="emerald">storage · {clusterName ?? 'cluster'}</Chip>
+            <span className="mono-meta">Metricbeat · filesystem</span>
           </span>
         )}
-        idChip="/cluster/asgard/storage"
+        idChip={idChip}
         title="Storage"
-        subtitle="Pools, datasets and Docker volumes across the cluster."
-        actions={
-          <Button variant="secondary" size="sm">
-            <Icon name="download" size={13} />
-            Snapshot now
-          </Button>
-        }
+        subtitle="Per-host filesystem capacity and Docker volumes across the cluster."
       />
       {data?.degraded && data.degraded.length > 0 && (
         <AlertStrip
@@ -111,31 +131,25 @@ export const StorageView: React.FC = () => {
         />
       )}
       <StatGrid columns={4}>
-        <StatTile color="emerald" label="Capacity used" value="53.3 TB" meta="of 92 TB" metaIcon="pie-chart" />
-        <StatTile color="cyan" label="Volumes" value={volumes.length} meta="docker · local" metaIcon="copy" />
-        <StatTile color="violet" label="Snapshots" value="1,284" meta="retain 30d" metaIcon="copy" />
-        <StatTile color="amber" label="Last backup" value="04:00" meta="restic → B2" metaIcon="lock" />
+        <StatTile color="emerald" label="Capacity used" value={bytesToHuman(aggregates.usedBytes)} meta={`of ${bytesToHuman(aggregates.totalBytes)}`} metaIcon="pie-chart" />
+        <StatTile color="cyan" label="Free" value={bytesToHuman(aggregates.freeBytes)} meta={`${aggregates.avgUsedPct}% avg used`} metaIcon="bar-chart" />
+        <StatTile color="violet" label="Filesystems" value={filesystems.length} meta={`${aggregates.hosts} hosts`} metaIcon="data" />
+        <StatTile color="amber" label="Volumes" value={volumes.length} meta="docker · local" metaIcon="copy" />
       </StatGrid>
-      <Panel title="Pools & jobs" subtitle="ZFS pools and backup targets">
-        <QuickAccessGrid
-          columns={4}
-          tiles={STORAGE_POOLS}
-          onAction={() => setToast({ title: 'Pool management not yet available', subtitle: 'Storage pool details will be available once the backend is connected.', variant: 'info' })}
-        />
+      <Panel title="Filesystems" subtitle="Per-host root filesystem capacity">
+        {storageUnavailable ? (
+          <span className="cell-mono muted">No filesystem metrics reported yet.</span>
+        ) : (
+          <QuickAccessGrid columns={4} tiles={fsTiles} />
+        )}
       </Panel>
       <Panel className="panel-flush" title="Docker volumes" subtitle={`${volumes.length} volumes`}>
-        <Table columns={COLUMNS} data={volumes} rowKey="_key" />
+        {volumes.length === 0 ? (
+          <span className="cell-mono muted">No container volumes reported yet.</span>
+        ) : (
+          <Table columns={COLUMNS} data={volumes} rowKey="_key" />
+        )}
       </Panel>
-      {toast && (
-        <Toast
-          isOpen
-          onClose={() => setToast(null)}
-          title={toast.title}
-          subtitle={toast.subtitle}
-          variant={toast.variant}
-          duration={4000}
-        />
-      )}
     </>
   );
 };

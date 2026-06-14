@@ -39,7 +39,7 @@ export const BotsView: React.FC = () => {
             <span className="mono-meta">claude · sonnet + haiku</span>
           </span>
         )}
-        idChip="/cluster/asgard/bots"
+        idChip={`/cluster/${(data?.cluster?.name ?? 'cluster').toLowerCase()}/bots`}
         title="Bots"
         subtitle="The agent mesh that operates the homelab. Open topology to see how they relate."
         actions={

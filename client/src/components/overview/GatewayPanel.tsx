@@ -11,20 +11,19 @@ export const GatewayPanel: React.FC<GatewayPanelProps> = ({ gateway }) => {
   const statusTone = gateway.status === 'degraded' ? 'amber' : gateway.status === 'offline' ? 'rose' : 'emerald';
 
   const kvRows = [
-    { key: 'ISP', value: gateway.isp },
-    { key: 'ASN', value: gateway.asn },
-    { key: 'Public IP', value: <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>{gateway.publicIp} <span className="tag-pill">↗ ipv4</span></span> },
-    { key: 'Geo', value: gateway.geo },
-    { key: 'WAN iface', value: gateway.wanIf },
-    { key: 'Ping', value: `${gateway.pingMs} ms · jitter ${gateway.jitterMs} ms` },
-    { key: 'Loss 24h', value: `${gateway.lossPct.toFixed(2)} %` },
+    { key: 'ISP', value: gateway.isp || '—' },
+    { key: 'ASN', value: gateway.asn || '—' },
+    { key: 'Public IP', value: gateway.publicIp ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>{gateway.publicIp} <span className="tag-pill">↗ ipv4</span></span> : '—' },
+    { key: 'Ping', value: gateway.pingMs != null ? `${gateway.pingMs} ms` : '—' },
+    { key: 'WWW latency', value: gateway.wwwLatencyMs != null ? `${gateway.wwwLatencyMs} ms` : '—' },
+    { key: 'Clients', value: gateway.clientsTotal != null ? `${gateway.clientsTotal}` : '—' },
   ];
 
   return (
     <Panel
       className="panel-flush"
       title="Internet connection"
-      subtitle={`${gateway.hostname} · ${gateway.plan}`}
+      subtitle={gateway.hostname}
       headerAction={
         <div className="row" style={{ gap: 8 }}>
           <Chip variant={statusTone}>{gateway.status}</Chip>
@@ -55,7 +54,7 @@ export const GatewayPanel: React.FC<GatewayPanelProps> = ({ gateway }) => {
           <div>
             <div className="gw-charthead">
               <span className="t">Latency · 24h</span>
-              <span className="v">{gateway.pingMs} ms · loss {gateway.lossPct.toFixed(2)}%</span>
+              <span className="v">{gateway.pingMs} ms</span>
             </div>
             <LineChart
               series={[gateway.pingHist]}
@@ -69,19 +68,19 @@ export const GatewayPanel: React.FC<GatewayPanelProps> = ({ gateway }) => {
 
       <div className="gw-strip">
         <div>
-          <span className="k">Ingress · today</span>
-          <span className="v">{gateway.ingressTodayGB.toFixed(1)} GB</span>
-          <span className="m">↓ {gateway.downMbps} Mbps peak</span>
+          <span className="k">Download</span>
+          <span className="v">{gateway.downMbps} Mbps</span>
+          <span className="m">wan link</span>
         </div>
         <div>
-          <span className="k">Egress · today</span>
-          <span className="v">{gateway.egressTodayGB.toFixed(1)} GB</span>
-          <span className="m">↑ {gateway.egressMonthTB.toFixed(2)} TB / mo</span>
+          <span className="k">Upload</span>
+          <span className="v">{gateway.upMbps} Mbps</span>
+          <span className="m">wan link</span>
         </div>
         <div>
-          <span className="k">DNS · pihole</span>
-          <span className="v">{gateway.dnsResolved.toLocaleString()} q</span>
-          <span className="m">blocked {gateway.blockedPct}%</span>
+          <span className="k">Gateway load</span>
+          <span className="v">{gateway.cpuPct != null ? `${gateway.cpuPct}%` : '—'}</span>
+          <span className="m">{gateway.memPct != null ? `mem ${gateway.memPct}%` : 'cpu'}</span>
         </div>
         <div>
           <span className="k">VPN peers</span>

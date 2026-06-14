@@ -25,11 +25,47 @@ describe('MCP Transformer', () => {
   });
 
   describe('transformDockerData', () => {
-    it('always returns unavailable — no container MCP source exists', async () => {
+    it('returns hosts from the list_containers MCP tool', async () => {
+      const hosts = [
+        {
+          id: 't5610',
+          containers: [
+            { id: 'c1', name: 'nginx', image: 'nginx:latest', state: 'running' },
+          ],
+        },
+      ];
+      vi.mocked(mcpClient.callTool).mockResolvedValue({ hosts });
+
       const result = await transformDockerData(mockLogger);
+
+      expect(mcpClient.callTool).toHaveBeenCalledWith('homelab-data', 'list_containers');
+      expect(result.data).toEqual({ hosts });
+      expect(result.degraded).toEqual([]);
+      expect(result.source).toBe('real');
+    });
+
+    it('returns empty hosts when the tool result has no hosts array', async () => {
+      vi.mocked(mcpClient.callTool).mockResolvedValue({});
+
+      const result = await transformDockerData(mockLogger);
+
       expect(result.data).toEqual({ hosts: [] });
       expect(result.degraded).toEqual([]);
+      expect(result.source).toBe('real');
+    });
+
+    it('degrades to unavailable when the MCP tool call throws', async () => {
+      vi.mocked(mcpClient.callTool).mockRejectedValue(new Error('Connection refused'));
+
+      const result = await transformDockerData(mockLogger);
+
+      expect(result.data).toEqual({ hosts: [] });
+      expect(result.degraded).toEqual(['docker']);
       expect(result.source).toBe('unavailable');
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        expect.objectContaining({ err: expect.any(Error) }),
+        expect.stringContaining('Error fetching container inventory from phone-home MCP'),
+      );
     });
   });
 

@@ -9,7 +9,7 @@ export interface ServerSpec {
 }
 
 export const CLUSTER_CONFIG = {
-  name: process.env.CLUSTER_NAME || 'asgard',
+  name: process.env.CLUSTER_NAME || 'Homelab',
   location: process.env.CLUSTER_LOCATION || 'rack-01 · basement',
   domain: process.env.CLUSTER_DOMAIN || 'local',
 };

@@ -1,5 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
-import type { LAB_DATA, DOCKER_DATA, TOPOLOGY_DATA, STATUS_DATA, ALERTS_DATA, NETWORK_DATA, Alert } from '@homelab/shared';
+import type {
+  LAB_DATA, DOCKER_DATA, TOPOLOGY_DATA, STATUS_DATA, ALERTS_DATA, NETWORK_DATA, Alert,
+  LOGS_DATA, STORAGE_DATA, THREADS_DATA, ThreadDetail,
+} from '@homelab/shared';
 
 const API_BASE = import.meta.env.VITE_API_BASE || '/api';
 
@@ -180,5 +183,49 @@ export function useAlerts() {
     refetchInterval: 5000,
     staleTime: 2000,
     gcTime: 5 * 60 * 1000,
+  });
+}
+
+// Logs hook (15s polling) — operational log stream from SigNoz
+export function useLogs() {
+  return useQuery({
+    queryKey: ['logs'],
+    queryFn: async () => (await fetchJSON<LOGS_DATA>(`${API_BASE}/logs`)).data,
+    refetchInterval: 15000,
+    staleTime: 5000,
+    gcTime: 5 * 60 * 1000,
+  });
+}
+
+// Storage hook (30s polling) — per-host root filesystem capacity from Metricbeat
+export function useStorage() {
+  return useQuery({
+    queryKey: ['storage'],
+    queryFn: async () => (await fetchJSON<STORAGE_DATA>(`${API_BASE}/storage`)).data,
+    refetchInterval: 30000,
+    staleTime: 10000,
+    gcTime: 10 * 60 * 1000,
+  });
+}
+
+// Chat threads roster (10s polling) — phone-home conversation threads
+export function useThreads() {
+  return useQuery({
+    queryKey: ['threads'],
+    queryFn: async () => (await fetchJSON<THREADS_DATA>(`${API_BASE}/threads`)).data,
+    refetchInterval: 10000,
+    staleTime: 3000,
+    gcTime: 10 * 60 * 1000,
+  });
+}
+
+// Single thread detail incl. message history (on-demand)
+export function useThread(id: string | null) {
+  return useQuery({
+    queryKey: ['thread', id],
+    queryFn: async () => (await fetchJSON<ThreadDetail>(`${API_BASE}/threads/${id}`)).data,
+    enabled: !!id,
+    staleTime: 2000,
+    gcTime: 10 * 60 * 1000,
   });
 }

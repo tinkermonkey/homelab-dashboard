@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from "react";
 import { PageHeader, TabBar, FilterBar, Chip, Button, AlertStrip } from "@tinkermonkey/heimdall-ui";
-import { useDocker } from "../../hooks/useAPI";
+import { useDocker, useCluster } from "../../hooks/useAPI";
 import { Icon } from "@tinkermonkey/heimdall-ui";
 import { ErrorView } from "../shared/ErrorView";
 import { ContainersTab } from "./ContainersTab";
@@ -12,6 +12,7 @@ type ActiveTab = "containers" | "networks" | "volumes";
 
 export const ContainersView: React.FC = () => {
   const { data, isLoading, error } = useDocker();
+  const { data: clusterData } = useCluster();
   const [activeTab, setActiveTab] = useState<ActiveTab>("containers");
   const [query, setQuery] = useState("");
 
@@ -73,7 +74,7 @@ export const ContainersView: React.FC = () => {
             <span className="mono-meta">{totalContainers} containers · {runningContainers} running</span>
           </span>
         )}
-        idChip="/cluster/asgard/docker"
+        idChip={`/cluster/${(clusterData?.cluster?.name ?? 'cluster').toLowerCase()}/docker`}
         title="Containers"
         subtitle="Docker inventory aggregated across every host engine — state, health, ports, and mounts."
         actions={

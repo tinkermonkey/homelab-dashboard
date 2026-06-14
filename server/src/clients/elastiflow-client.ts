@@ -1,5 +1,6 @@
 import { config } from '../config.js';
 import { fetchWithTimeout } from '../utils/fetch-with-timeout.js';
+import { SERVER_REGISTRY } from '../cluster-config.js';
 
 interface EsAggResponse {
   aggregations: {
@@ -12,12 +13,11 @@ interface EsAggResponse {
   };
 }
 
-// Maps dashboard server ID → LAN IP for flow matching
-const SERVER_IP_MAP: Record<string, string> = {
-  nyx: '192.168.0.117',
-  helios: '192.168.0.245',
-  aether: '192.168.0.72',
-};
+// Maps dashboard server ID → LAN IP for flow matching. Derived from the
+// authoritative SERVER_REGISTRY so it never drifts from the real host IPs.
+const SERVER_IP_MAP: Record<string, string> = Object.fromEntries(
+  SERVER_REGISTRY.map((s) => [s.id, s.ip]),
+);
 
 export class ElastiFlowClient {
   private baseUrl: string;
@@ -41,7 +41,7 @@ export class ElastiFlowClient {
   }
 
   // Returns 48 half-hour buckets of bytes/sec for a server (by LAN IP)
-  // hostname here is the dashboard server ID (nyx/helios/aether)
+  // hostname here is the dashboard server ID (t5610/petit-cochon/hp7052)
   async getHostThroughput(hostname: string): Promise<number[]> {
     const ip = SERVER_IP_MAP[hostname];
     if (!ip) return [];

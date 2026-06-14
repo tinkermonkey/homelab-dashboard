@@ -13,7 +13,10 @@ import { transformNetworkData } from './transformers/network-transformer.js';
 import { signozClient } from './clients/signoz-client.js';
 import { ntopngClient } from './clients/ntopng-client.js';
 import { mcpClient } from './clients/mcp-client.js';
+import { metricbeatClient } from './clients/metricbeat-client.js';
+import { SERVER_REGISTRY } from './cluster-config.js';
 import { fetchWithTimeout } from './utils/fetch-with-timeout.js';
+import type { LogEntryDTO } from '@homelab/shared';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -25,6 +28,32 @@ export function isValidBotId(botId: string): boolean {
 
 // Max request body size: 1MB
 const MAX_BODY_SIZE = 1024 * 1024;
+
+// Authenticated GET/POST against the phone-home REST API (threads roster).
+async function phoneHomeRequest(
+  pathAndQuery: string,
+  init: { method?: string; body?: string } = {},
+): Promise<Response> {
+  const base = config.phoneHomeUrl.replace(/\/$/, '');
+  return fetchWithTimeout(`${base}${pathAndQuery}`, {
+    method: init.method ?? 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(config.phoneHomeChatToken ? { Authorization: `Bearer ${config.phoneHomeChatToken}` } : {}),
+    },
+    ...(init.body !== undefined ? { body: init.body } : {}),
+    timeout: 10000,
+  });
+}
+
+// Map a SigNoz/OTEL severity string to the package LogStream level vocabulary.
+function normalizeLogLevel(severity?: string | null): LogEntryDTO['level'] {
+  const s = (severity ?? '').toLowerCase();
+  if (s.startsWith('err') || s === 'fatal' || s === 'critical') return 'ERROR';
+  if (s.startsWith('warn')) return 'WARN';
+  if (s.startsWith('debug') || s === 'trace') return 'DEBUG';
+  return 'INFO';
+}
 
 export async function registerRoutes(app: FastifyInstance) {
   // GET /api/status (2.2s cadence, 2s cache)
@@ -216,34 +245,158 @@ export async function registerRoutes(app: FastifyInstance) {
     }
   });
 
-  // POST /api/chat/:botId (SSE proxy to phone-home)
-  app.post<{ Params: { botId: string } }>('/api/chat/:botId', async (request, reply) => {
-    const { botId } = request.params;
+  // GET /api/logs (10s cache) — operational log stream from SigNoz via homelab-data MCP
+  app.get('/api/logs', async (request, reply) => {
+    try {
+      const data = await getCachedData('logs', 10, async () => {
+        const raw = await mcpClient.callTool('homelab-data', 'signoz_query_logs', { limit: 100 }) as
+          | { result?: Array<{ timestamp?: number; severity?: string | null; service?: string | null; body?: string; trace_id?: string | null }> }
+          | Array<{ timestamp?: number; severity?: string | null; service?: string | null; body?: string; trace_id?: string | null }>;
+        const records = Array.isArray(raw) ? raw : (raw?.result ?? []);
+        const entries: LogEntryDTO[] = records.map((r, i) => ({
+          id: r.trace_id || `log-${i}`,
+          // SigNoz timestamps are epoch nanoseconds
+          timestamp: r.timestamp ? Math.floor(r.timestamp / 1e6) : Date.now(),
+          level: normalizeLogLevel(r.severity),
+          op: r.service || 'signoz',
+          target: r.service || '',
+          message: r.body ?? '',
+        }));
+        return { entries, source: 'signoz' as const };
+      }, (msg) => app.log.error(msg));
+      reply.send(data);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      app.log.error(`Failed to fetch logs: ${message}`);
+      reply.send({ entries: [], source: 'unavailable' });
+    }
+  });
 
-    // Validate botId to prevent path traversal
-    if (!isValidBotId(botId)) {
-      reply.status(400).send({ error: 'Invalid bot ID format' });
+  // GET /api/storage (30s cache) — root filesystem capacity per host from Metricbeat
+  app.get('/api/storage', async (request, reply) => {
+    try {
+      const data = await getCachedData('storage', 30, async () => {
+        const hosts = SERVER_REGISTRY.filter(s => s.metricsHostname);
+        const settled = await Promise.allSettled(
+          hosts.map(async (s) => {
+            const cap = await metricbeatClient.getFilesystemCapacity(s.metricsHostname!);
+            return cap ? { host: s.id, mount: '/', ...cap } : null;
+          }),
+        );
+        const filesystems = settled.flatMap(r => (r.status === 'fulfilled' && r.value ? [r.value] : []));
+        const degraded = settled.some(r => r.status === 'rejected') ? ['metricbeat'] : [];
+        return {
+          filesystems,
+          degraded,
+          source: filesystems.length > 0 ? ('real' as const) : ('unavailable' as const),
+        };
+      }, (msg) => app.log.error(msg));
+
+      if (data.degraded && data.degraded.length > 0) reply.status(206);
+      reply.send(data);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      app.log.error(`Failed to fetch storage data: ${message}`);
+      reply.send({ filesystems: [], source: 'unavailable' });
+    }
+  });
+
+  // GET /api/threads — phone-home chat threads (bot console tabs)
+  app.get('/api/threads', async (request, reply) => {
+    try {
+      const res = await phoneHomeRequest('/v1/threads');
+      if (!res.ok) {
+        app.log.warn(`phone-home threads list unavailable: HTTP ${res.status}`);
+        reply.send({ threads: [] });
+        return;
+      }
+      reply.send(await res.json());
+    } catch (error) {
+      app.log.error(`Failed to list threads: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      reply.send({ threads: [] });
+    }
+  });
+
+  // POST /api/threads — create a new chat thread
+  app.post('/api/threads', async (request, reply) => {
+    try {
+      const body = JSON.stringify(request.body ?? {});
+      if (body.length > MAX_BODY_SIZE) {
+        reply.status(413).send({ error: 'Request body too large' });
+        return;
+      }
+      const res = await phoneHomeRequest('/v1/threads', { method: 'POST', body });
+      if (!res.ok) {
+        reply.status(res.status).send({ error: 'Failed to create thread' });
+        return;
+      }
+      reply.send(await res.json());
+    } catch (error) {
+      app.log.error(`Failed to create thread: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      reply.status(502).send({ error: 'Chat service unavailable' });
+    }
+  });
+
+  // GET /api/threads/:id — thread detail incl. message history
+  app.get<{ Params: { id: string } }>('/api/threads/:id', async (request, reply) => {
+    const { id } = request.params;
+    if (!isValidBotId(id)) {
+      reply.status(400).send({ error: 'Invalid thread id' });
+      return;
+    }
+    try {
+      const res = await phoneHomeRequest(`/v1/threads/${encodeURIComponent(id)}`);
+      if (!res.ok) {
+        reply.status(res.status).send({ error: 'Thread not found' });
+        return;
+      }
+      reply.send(await res.json());
+    } catch (error) {
+      app.log.error(`Failed to get thread ${id}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      reply.status(502).send({ error: 'Chat service unavailable' });
+    }
+  });
+
+  // POST /api/chat/:threadId (SSE proxy to phone-home /v1/chat/completions)
+  app.post<{ Params: { threadId: string } }>('/api/chat/:threadId', async (request, reply) => {
+    const { threadId } = request.params;
+
+    // Validate threadId (phone-home session key) to prevent path traversal
+    if (!isValidBotId(threadId)) {
+      reply.status(400).send({ error: 'Invalid thread ID format' });
       return;
     }
 
     try {
-      // Validate request body size
-      const bodyString = JSON.stringify(request.body);
+      const incoming = request.body as { message?: string } | undefined;
+      const message = typeof incoming?.message === 'string' ? incoming.message : '';
+      if (!message.trim()) {
+        reply.status(400).send({ error: 'Message is required' });
+        return;
+      }
+
+      // Reshape into phone-home's OpenAI-compatible chat request. `user` is the
+      // thread/session key so the control plane continues the right conversation.
+      const bodyString = JSON.stringify({
+        model: 'claude',
+        stream: true,
+        user: threadId,
+        messages: [{ role: 'user', content: message }],
+      });
       if (bodyString.length > MAX_BODY_SIZE) {
         reply.status(413).send({ error: 'Request body too large' });
         return;
       }
 
-      const phoneHomeUrl = `${config.phoneHomeChatUrl}/${botId}`;
-
-      const response = await fetchWithTimeout(phoneHomeUrl, {
+      // Use plain fetch (no abort timer) — a chat turn streams for minutes and
+      // fetchWithTimeout would abort the stream mid-flight.
+      const response = await fetch(config.phoneHomeChatUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           ...(config.phoneHomeChatToken ? { Authorization: `Bearer ${config.phoneHomeChatToken}` } : {}),
         },
         body: bodyString,
-        timeout: 30000,
       });
 
       if (!response.ok) {
@@ -293,7 +446,7 @@ export async function registerRoutes(app: FastifyInstance) {
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
-      app.log.error(`Chat proxy error for botId ${botId}: ${message}`);
+      app.log.error(`Chat proxy error for thread ${threadId}: ${message}`);
 
       // If headers already sent (SSE stream started), write error as SSE event
       if (reply.raw.headersSent) {
@@ -310,10 +463,14 @@ export async function registerRoutes(app: FastifyInstance) {
     reply.send({ status: 'ok' });
   });
 
-  // Root endpoint
-  app.get('/', async (request, reply) => {
-    reply.send({ message: 'Homelab Dashboard BFF Server' });
-  });
+  // Root info endpoint — only in dev. In production the static plugin + SPA
+  // fallback own '/', so registering an explicit '/' route here would shadow
+  // the SPA (Fastify prefers an explicit route over the static wildcard).
+  if (process.env.NODE_ENV !== 'production') {
+    app.get('/', async (request, reply) => {
+      reply.send({ message: 'Homelab Dashboard BFF Server' });
+    });
+  }
 }
 
 const fastify = Fastify({ logger: true });
