@@ -1,7 +1,48 @@
-import type { DOCKER_DATA, TOPOLOGY_DATA, TopologyBot } from '@homelab/shared';
+import type { DOCKER_DATA, DockerHost, Container, TOPOLOGY_DATA, TopologyBot } from '@homelab/shared';
 import type { FastifyBaseLogger } from 'fastify';
 import { mcpClient, type McpServer } from '../clients/mcp-client.js';
+import { metricbeatClient } from '../clients/metricbeat-client.js';
 import { SERVER_REGISTRY } from '../cluster-config.js';
+
+// --- Docker container inventory (from the Metricbeat docker module in ES) ---
+
+// Split "registry/name:tag" into image + tag (a ':' before the last '/' is a
+// host:port, not a tag).
+function splitImage(full: string): { image: string; tag: string } {
+  if (!full) return { image: '', tag: '' };
+  const colon = full.lastIndexOf(':');
+  if (colon > full.lastIndexOf('/')) {
+    return { image: full.slice(0, colon), tag: full.slice(colon + 1) };
+  }
+  return { image: full, tag: 'latest' };
+}
+
+function stateFromStatus(status: string): Container['state'] {
+  const s = status.toLowerCase();
+  if (s.startsWith('up')) return 'running';
+  if (s.startsWith('exited') || s.startsWith('dead')) return 'exited';
+  return 'updating';
+}
+
+function healthFromContainer(health: string | null, state: Container['state']): Container['health'] {
+  if (health === 'healthy') return 'healthy';
+  if (health === 'unhealthy') return 'unhealthy';
+  if (health === 'starting') return 'pulling';
+  if (state === 'exited') return 'stopped';
+  return 'healthy';
+}
+
+function formatBytes(bytes: number): string {
+  if (!bytes || bytes <= 0) return '—';
+  const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+  let v = bytes;
+  let i = 0;
+  while (v >= 1024 && i < units.length - 1) {
+    v /= 1024;
+    i += 1;
+  }
+  return `${Math.round(v * 10) / 10} ${units[i]}`;
+}
 
 // Static metadata for known agents — label, role, desc, avatar, and classification
 interface AgentMeta {
@@ -117,17 +158,52 @@ export async function transformDockerData(logger: FastifyBaseLogger): Promise<{
   degraded: string[];
   source: 'real' | 'unavailable';
 }> {
-  // Container inventory comes from the homelab-data MCP `list_containers` tool
-  // (reached over the LAN via phone-home). It already returns the DOCKER_DATA
-  // shape ({ hosts: [...] }); it may be empty until the MCP backend reports.
+  // Container inventory is derived from the Metricbeat docker module in
+  // Elasticsearch (same connection used for host metrics): the `container`,
+  // `cpu`/`memory`, and `healthcheck` metricsets, joined by container id and
+  // grouped per host. Ports/mounts and docker networks/volumes aren't shipped
+  // by Metricbeat, so those stay empty.
   try {
-    const raw = (await mcpClient.callTool('homelab-data', 'list_containers')) as
-      | { hosts?: DOCKER_DATA['hosts'] }
-      | null;
-    const hosts = Array.isArray(raw?.hosts) ? raw!.hosts! : [];
+    const containers = await metricbeatClient.getDockerContainers();
+    const byHost = new Map<string, Container[]>();
+
+    for (const c of containers) {
+      const { image, tag } = splitImage(c.image);
+      const state = stateFromStatus(c.status);
+      const entry: Container = {
+        id: c.id.slice(0, 12),
+        name: c.name,
+        image,
+        tag,
+        state,
+        health: healthFromContainer(c.health, state),
+        uptime: c.status,
+        ports: [],
+        mounts: [],
+        networks: c.project ? [c.project] : [],
+        size: formatBytes(c.sizeRwBytes),
+        cpu: c.cpuPct,
+        mem: c.memPct,
+      };
+      const list = byHost.get(c.host) ?? [];
+      list.push(entry);
+      byHost.set(c.host, list);
+    }
+
+    const hosts: DockerHost[] = [...byHost.entries()]
+      .map(([host, conts]): DockerHost => ({
+        id: host,
+        engine: 'docker',
+        compose: '',
+        containers: conts.sort((a, b) => a.name.localeCompare(b.name)),
+        networks: [],
+        volumes: [],
+      }))
+      .sort((a, b) => a.id.localeCompare(b.id));
+
     return { data: { hosts }, degraded: [], source: 'real' };
   } catch (error) {
-    logger.error({ err: error }, 'Error fetching container inventory from phone-home MCP');
+    logger.error({ err: error }, 'Error fetching container inventory from Metricbeat');
     return { data: { hosts: [] }, degraded: ['docker'], source: 'unavailable' };
   }
 }

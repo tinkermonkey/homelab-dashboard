@@ -238,6 +238,15 @@ export async function transformMetrics(
     degraded.push('signoz-alerts');
   }
 
+  // Per-host container counts from the Metricbeat docker module (same ES source)
+  let containerCounts: Record<string, number> = {};
+  try {
+    containerCounts = (await metricbeatClient.getContainerCountsByHost()) ?? {};
+  } catch (error) {
+    logger.error({ err: error }, 'Error fetching container counts');
+    degraded.push('docker-counts');
+  }
+
   // Derive current values from histograms and compute status/containers
   result.servers = result.servers.map(server => {
     const cpuV = server.cpu.hist.length > 0 ? server.cpu.hist[server.cpu.hist.length - 1] : 0;
@@ -253,7 +262,7 @@ export async function transformMetrics(
       disk: { ...server.disk, v: diskV },
       net: { ...server.net, v: netV },
       status,
-      containers: 0, // GAP: no container inventory source via MCP
+      containers: containerCounts[server.id] ?? 0,
     };
   });
 

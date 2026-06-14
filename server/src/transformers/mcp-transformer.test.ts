@@ -1,9 +1,11 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { transformDockerData, transformTopologyData } from './mcp-transformer.js';
 import { mcpClient } from '../clients/mcp-client.js';
+import { metricbeatClient } from '../clients/metricbeat-client.js';
 import type { FastifyBaseLogger } from 'fastify';
 
 vi.mock('../clients/mcp-client.js');
+vi.mock('../clients/metricbeat-client.js');
 
 describe('MCP Transformer', () => {
   const mockLogger = {
@@ -25,27 +27,53 @@ describe('MCP Transformer', () => {
   });
 
   describe('transformDockerData', () => {
-    it('returns hosts from the list_containers MCP tool', async () => {
-      const hosts = [
+    it('maps Metricbeat docker containers grouped and sorted by host', async () => {
+      vi.mocked(metricbeatClient.getDockerContainers).mockResolvedValue([
         {
-          id: 't5610',
-          containers: [
-            { id: 'c1', name: 'nginx', image: 'nginx:latest', state: 'running' },
-          ],
+          host: 't5610', id: '828f81095303abcdef0123', name: 'context-library-context-server-1',
+          image: 'context-library-context-server', status: 'Up 36 minutes', created: '2026-06-14T03:12:03.000Z',
+          cpuPct: 0.8, memPct: 1.2, sizeRwBytes: 0, health: 'healthy', ips: ['172.23.0.2'], project: 'context-library',
         },
-      ];
-      vi.mocked(mcpClient.callTool).mockResolvedValue({ hosts });
+        {
+          host: 't5610', id: 'aa11bb22cc33dd44ee55', name: 'flow-collector',
+          image: 'elastiflow/flow-collector:7.23.0', status: 'Exited (0) 2 hours ago', created: '2026-06-10T00:00:00.000Z',
+          cpuPct: 0, memPct: 0, sizeRwBytes: 1048576, health: null, ips: [], project: 'elastiflow',
+        },
+      ]);
 
       const result = await transformDockerData(mockLogger);
 
-      expect(mcpClient.callTool).toHaveBeenCalledWith('homelab-data', 'list_containers');
-      expect(result.data).toEqual({ hosts });
-      expect(result.degraded).toEqual([]);
+      expect(metricbeatClient.getDockerContainers).toHaveBeenCalled();
       expect(result.source).toBe('real');
+      expect(result.degraded).toEqual([]);
+      expect(result.data.hosts).toHaveLength(1);
+
+      const host = result.data.hosts[0];
+      expect(host.id).toBe('t5610');
+      expect(host.engine).toBe('docker');
+      expect(host.containers).toHaveLength(2);
+
+      const [c0, c1] = host.containers; // sorted by name
+      expect(c0.name).toBe('context-library-context-server-1');
+      expect(c0.id).toBe('828f81095303'); // truncated to 12 chars
+      expect(c0.image).toBe('context-library-context-server');
+      expect(c0.tag).toBe('latest');
+      expect(c0.state).toBe('running');
+      expect(c0.health).toBe('healthy');
+      expect(c0.uptime).toBe('Up 36 minutes');
+      expect(c0.cpu).toBe(0.8);
+      expect(c0.networks).toEqual(['context-library']);
+      expect(c0.size).toBe('—');
+
+      expect(c1.image).toBe('elastiflow/flow-collector');
+      expect(c1.tag).toBe('7.23.0');
+      expect(c1.state).toBe('exited');
+      expect(c1.health).toBe('stopped');
+      expect(c1.size).toBe('1 MB');
     });
 
-    it('returns empty hosts when the tool result has no hosts array', async () => {
-      vi.mocked(mcpClient.callTool).mockResolvedValue({});
+    it('returns empty hosts (still real) when there are no containers', async () => {
+      vi.mocked(metricbeatClient.getDockerContainers).mockResolvedValue([]);
 
       const result = await transformDockerData(mockLogger);
 
@@ -54,8 +82,8 @@ describe('MCP Transformer', () => {
       expect(result.source).toBe('real');
     });
 
-    it('degrades to unavailable when the MCP tool call throws', async () => {
-      vi.mocked(mcpClient.callTool).mockRejectedValue(new Error('Connection refused'));
+    it('degrades to unavailable when the ES query throws', async () => {
+      vi.mocked(metricbeatClient.getDockerContainers).mockRejectedValue(new Error('Connection refused'));
 
       const result = await transformDockerData(mockLogger);
 
@@ -64,7 +92,7 @@ describe('MCP Transformer', () => {
       expect(result.source).toBe('unavailable');
       expect(mockLogger.error).toHaveBeenCalledWith(
         expect.objectContaining({ err: expect.any(Error) }),
-        expect.stringContaining('Error fetching container inventory from phone-home MCP'),
+        expect.stringContaining('Error fetching container inventory from Metricbeat'),
       );
     });
   });
