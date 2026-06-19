@@ -48,4 +48,14 @@ export const SERVER_REGISTRY: ServerSpec[] = [
     model: '', // GAP: no API source
     metricsHostname: 'hp7052',
   },
+  {
+    id: 'austins-mac-mini',
+    role: 'compute',
+    mark: 'MM',
+    hostname: 'austins-mac-mini', // GAP: UDM client hostname for uptime match — refine if needed
+    ip: '192.168.0.246',
+    model: '', // GAP: no API source
+    // macOS Metricbeat ships host.name as the FQDN (.local), unlike the Linux hosts.
+    metricsHostname: 'austins-mac-mini.local',
+  },
 ];
