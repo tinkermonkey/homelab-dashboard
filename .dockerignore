@@ -11,7 +11,12 @@ build/
 .repair_cycle.log
 .playwright-mcp/
 design/
+documentation/
+screenshots/
 client/dist/
-server/dist/
 client/node_modules/
+client/.playwright-mcp/
+server/dist/
 server/node_modules/
+.claude/
+.mcp.json

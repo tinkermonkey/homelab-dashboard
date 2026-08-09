@@ -5,6 +5,8 @@
 
 FROM switchyard-orchestrator:latest
 
+# Base image provides: Claude CLI, Git, GitHub CLI, Node.js, npm, Python 3, procps
+
 USER root
 
 # ============================================================================
@@ -18,8 +20,9 @@ COPY client/package.json ./client/
 COPY server/package.json ./server/
 
 RUN --mount=type=cache,target=/root/.npm \
-    npm ci && \
-    chown -R orchestrator:orchestrator /workspace/homelab-dashboard
+    npm ci --ignore-scripts && \
+    npm rebuild && \
+    find /workspace/homelab-dashboard -path '*/node_modules' -maxdepth 3 -exec chown -R orchestrator:orchestrator {} +
 
 # ============================================================================
 # Switch to runtime user
