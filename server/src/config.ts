@@ -25,11 +25,10 @@ export const config = {
   elastiflowUser: process.env.ELASTIFLOW_USER || '',
   elastiflowPassword: process.env.ELASTIFLOW_PASSWORD || '',
 
-  // phone-home — bearer token auth for both MCP REST API and chat.
-  // Chat uses phone-home's OpenAI-compatible streaming endpoint.
-  phoneHomeUrl: process.env.PHONE_HOME_URL || 'http://localhost:8000',
-  phoneHomeChatUrl: process.env.PHONE_HOME_CHAT_URL || 'http://localhost:8000/v1/chat/completions',
-  phoneHomeChatToken: process.env.PHONE_HOME_CHAT_TOKEN || '',
+  // homelab-data-mcp (phone-home repo) — MCP Streamable HTTP with a static
+  // bearer token. Source of UDM, container inventory and SigNoz log data.
+  homelabDataMcpUrl: process.env.HOMELAB_DATA_MCP_URL || 'http://localhost:3220/mcp/',
+  homelabDataMcpToken: process.env.HOMELAB_DATA_MCP_TOKEN || '',
 
   // Cluster identity (shown in dashboard chrome)
   clusterName: process.env.CLUSTER_NAME || 'Homelab',

@@ -290,6 +290,7 @@ describe('transformMetrics', () => {
     vi.spyOn(metricbeatClient, 'getMemoryHistory').mockResolvedValue([60]);
     vi.spyOn(metricbeatClient, 'getDiskHistory').mockResolvedValue([70]);
     vi.spyOn(metricbeatClient, 'getLoadAverage').mockResolvedValue('1.5 / 1.8 / 2.0');
+    vi.spyOn(metricbeatClient, 'getContainerCountsByHost').mockResolvedValue({});
 
     vi.spyOn(ntopngClient, 'getWanInterfaceStats').mockResolvedValue({
       downMbps: 500,
@@ -299,7 +300,7 @@ describe('transformMetrics', () => {
       egressTodayGB: 0,
     });
 
-    vi.spyOn(mcpClient, 'callTool').mockImplementation(async (_server, tool) => {
+    vi.spyOn(mcpClient, 'callTool').mockImplementation(async (tool) => {
       if (tool === 'udm_get_network_health') return udmHealthResponse;
       if (tool === 'udm_get_connected_clients') return udmClientsResponse;
       return {};

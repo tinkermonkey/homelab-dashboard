@@ -15,36 +15,10 @@ import { ntopngClient } from './clients/ntopng-client.js';
 import { mcpClient } from './clients/mcp-client.js';
 import { metricbeatClient } from './clients/metricbeat-client.js';
 import { SERVER_REGISTRY } from './cluster-config.js';
-import { fetchWithTimeout } from './utils/fetch-with-timeout.js';
 import type { LogEntryDTO } from '@homelab/shared';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-
-// Validate botId: alphanumeric, underscore, and hyphen only, max 64 chars
-export function isValidBotId(botId: string): boolean {
-  return /^[a-zA-Z0-9_-]{1,64}$/.test(botId);
-}
-
-// Max request body size: 1MB
-const MAX_BODY_SIZE = 1024 * 1024;
-
-// Authenticated GET/POST against the phone-home REST API (threads roster).
-async function phoneHomeRequest(
-  pathAndQuery: string,
-  init: { method?: string; body?: string } = {},
-): Promise<Response> {
-  const base = config.phoneHomeUrl.replace(/\/$/, '');
-  return fetchWithTimeout(`${base}${pathAndQuery}`, {
-    method: init.method ?? 'GET',
-    headers: {
-      'Content-Type': 'application/json',
-      ...(config.phoneHomeChatToken ? { Authorization: `Bearer ${config.phoneHomeChatToken}` } : {}),
-    },
-    ...(init.body !== undefined ? { body: init.body } : {}),
-    timeout: 10000,
-  });
-}
 
 // Map a SigNoz/OTEL severity string to the package LogStream level vocabulary.
 function normalizeLogLevel(severity?: string | null): LogEntryDTO['level'] {
@@ -87,7 +61,7 @@ export async function registerRoutes(app: FastifyInstance) {
         // Ping latency from UDM Pro WAN monitoring (uptime_stats.WAN.latency_average)
         let ping = 0;
         try {
-          const raw = await mcpClient.callTool('homelab-data', 'udm_get_network_health') as {
+          const raw = await mcpClient.callTool('udm_get_network_health') as {
             result?: Array<{ subsystem: string; uptime_stats?: { WAN?: { latency_average?: number } } }>;
           };
           const wan = (raw?.result ?? []).find(s => s.subsystem === 'wan');
@@ -176,7 +150,7 @@ export async function registerRoutes(app: FastifyInstance) {
   app.get('/api/topology', async (request, reply) => {
     try {
       const data = await getCachedData('topology', 60, async () => {
-        const { data: topoData, degraded, source } = await transformTopologyData(app.log);
+        const { data: topoData, degraded, source } = await transformTopologyData();
         return {
           ...topoData,
           degraded,
@@ -249,7 +223,7 @@ export async function registerRoutes(app: FastifyInstance) {
   app.get('/api/logs', async (request, reply) => {
     try {
       const data = await getCachedData('logs', 10, async () => {
-        const raw = await mcpClient.callTool('homelab-data', 'signoz_query_logs', { limit: 100 }) as
+        const raw = await mcpClient.callTool('signoz_query_logs', { limit: 100 }) as
           | { result?: Array<{ timestamp?: number; severity?: string | null; service?: string | null; body?: string; trace_id?: string | null }> }
           | Array<{ timestamp?: number; severity?: string | null; service?: string | null; body?: string; trace_id?: string | null }>;
         const records = Array.isArray(raw) ? raw : (raw?.result ?? []);
@@ -298,163 +272,6 @@ export async function registerRoutes(app: FastifyInstance) {
       const message = error instanceof Error ? error.message : 'Unknown error';
       app.log.error(`Failed to fetch storage data: ${message}`);
       reply.send({ filesystems: [], source: 'unavailable' });
-    }
-  });
-
-  // GET /api/threads — phone-home chat threads (bot console tabs)
-  app.get('/api/threads', async (request, reply) => {
-    try {
-      const res = await phoneHomeRequest('/v1/threads');
-      if (!res.ok) {
-        app.log.warn(`phone-home threads list unavailable: HTTP ${res.status}`);
-        reply.send({ threads: [] });
-        return;
-      }
-      reply.send(await res.json());
-    } catch (error) {
-      app.log.error(`Failed to list threads: ${error instanceof Error ? error.message : 'Unknown error'}`);
-      reply.send({ threads: [] });
-    }
-  });
-
-  // POST /api/threads — create a new chat thread
-  app.post('/api/threads', async (request, reply) => {
-    try {
-      const body = JSON.stringify(request.body ?? {});
-      if (body.length > MAX_BODY_SIZE) {
-        reply.status(413).send({ error: 'Request body too large' });
-        return;
-      }
-      const res = await phoneHomeRequest('/v1/threads', { method: 'POST', body });
-      if (!res.ok) {
-        reply.status(res.status).send({ error: 'Failed to create thread' });
-        return;
-      }
-      reply.send(await res.json());
-    } catch (error) {
-      app.log.error(`Failed to create thread: ${error instanceof Error ? error.message : 'Unknown error'}`);
-      reply.status(502).send({ error: 'Chat service unavailable' });
-    }
-  });
-
-  // GET /api/threads/:id — thread detail incl. message history
-  app.get<{ Params: { id: string } }>('/api/threads/:id', async (request, reply) => {
-    const { id } = request.params;
-    if (!isValidBotId(id)) {
-      reply.status(400).send({ error: 'Invalid thread id' });
-      return;
-    }
-    try {
-      const res = await phoneHomeRequest(`/v1/threads/${encodeURIComponent(id)}`);
-      if (!res.ok) {
-        reply.status(res.status).send({ error: 'Thread not found' });
-        return;
-      }
-      reply.send(await res.json());
-    } catch (error) {
-      app.log.error(`Failed to get thread ${id}: ${error instanceof Error ? error.message : 'Unknown error'}`);
-      reply.status(502).send({ error: 'Chat service unavailable' });
-    }
-  });
-
-  // POST /api/chat/:threadId (SSE proxy to phone-home /v1/chat/completions)
-  app.post<{ Params: { threadId: string } }>('/api/chat/:threadId', async (request, reply) => {
-    const { threadId } = request.params;
-
-    // Validate threadId (phone-home session key) to prevent path traversal
-    if (!isValidBotId(threadId)) {
-      reply.status(400).send({ error: 'Invalid thread ID format' });
-      return;
-    }
-
-    try {
-      const incoming = request.body as { message?: string } | undefined;
-      const message = typeof incoming?.message === 'string' ? incoming.message : '';
-      if (!message.trim()) {
-        reply.status(400).send({ error: 'Message is required' });
-        return;
-      }
-
-      // Reshape into phone-home's OpenAI-compatible chat request. `user` is the
-      // thread/session key so the control plane continues the right conversation.
-      const bodyString = JSON.stringify({
-        model: 'claude',
-        stream: true,
-        user: threadId,
-        messages: [{ role: 'user', content: message }],
-      });
-      if (bodyString.length > MAX_BODY_SIZE) {
-        reply.status(413).send({ error: 'Request body too large' });
-        return;
-      }
-
-      // Use plain fetch (no abort timer) — a chat turn streams for minutes and
-      // fetchWithTimeout would abort the stream mid-flight.
-      const response = await fetch(config.phoneHomeChatUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(config.phoneHomeChatToken ? { Authorization: `Bearer ${config.phoneHomeChatToken}` } : {}),
-        },
-        body: bodyString,
-      });
-
-      if (!response.ok) {
-        let errorDetail = 'Chat service unavailable';
-        try {
-          const responseText = await response.text();
-          if (responseText) {
-            try {
-              const errorJson = JSON.parse(responseText);
-              errorDetail = errorJson.error || errorJson.message || responseText.slice(0, 100);
-            } catch {
-              errorDetail = responseText.slice(0, 100);
-            }
-          }
-        } catch (readError) {
-          app.log.debug(`Failed to read upstream error body: ${readError instanceof Error ? readError.message : 'Unknown error'}`);
-        }
-        reply.status(response.status).send({ error: errorDetail });
-        return;
-      }
-
-      // Stream the response
-      const reader = response.body?.getReader();
-      if (!reader) {
-        reply.status(500).send({ error: 'No response body' });
-        return;
-      }
-
-      // Set up SSE response headers only when streaming is confirmed to start
-      reply.header('Content-Type', 'text/event-stream');
-      reply.header('Cache-Control', 'no-cache');
-      reply.header('Connection', 'keep-alive');
-
-      const decoder = new TextDecoder();
-      try {
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-
-          const chunk = decoder.decode(value, { stream: true });
-          reply.raw.write(chunk);
-        }
-
-        reply.raw.end();
-      } finally {
-        await reader.cancel().catch(() => {});
-      }
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error';
-      app.log.error(`Chat proxy error for thread ${threadId}: ${message}`);
-
-      // If headers already sent (SSE stream started), write error as SSE event
-      if (reply.raw.headersSent) {
-        reply.raw.write(`data: ${JSON.stringify({ error: 'Chat service error' })}\n\n`);
-        reply.raw.end();
-      } else {
-        reply.status(500).send({ error: 'Chat service error' });
-      }
     }
   });
 
@@ -507,8 +324,8 @@ function validateCredentials(logger: FastifyInstance['log']) {
   if (!config.ntopngToken) {
     logger.warn('NTOPNG_TOKEN environment variable is not set. ntopng requests may fail.');
   }
-  if (!config.phoneHomeChatToken) {
-    logger.warn('PHONE_HOME_CHAT_TOKEN environment variable is not set. Chat requests may not authenticate.');
+  if (!config.homelabDataMcpToken) {
+    logger.warn('HOMELAB_DATA_MCP_TOKEN environment variable is not set. homelab-data MCP requests will be rejected.');
   }
 }
 

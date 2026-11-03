@@ -127,8 +127,8 @@ export async function transformMetrics(
   // Fetch gateway identity, ping, and server uptime from UniFi UDM
   try {
     const [healthRaw, clientsRaw] = await Promise.all([
-      mcpClient.callTool('homelab-data', 'udm_get_network_health'),
-      mcpClient.callTool('homelab-data', 'udm_get_connected_clients'),
+      mcpClient.callTool('udm_get_network_health'),
+      mcpClient.callTool('udm_get_connected_clients'),
     ]);
 
     const subsystems: UdmSubsystem[] = (healthRaw as UdmHealthResult)?.result ?? [];

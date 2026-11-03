@@ -188,10 +188,10 @@ export async function transformNetworkData(
   const degraded: string[] = [];
 
   const [healthResult, clientsResult, ipsResult, eventsResult] = await Promise.allSettled([
-    mcpClient.callTool('homelab-data', 'udm_get_network_health'),
-    mcpClient.callTool('homelab-data', 'udm_get_connected_clients'),
-    mcpClient.callTool('homelab-data', 'udm_get_ips_events'),
-    mcpClient.callTool('homelab-data', 'udm_get_events'),
+    mcpClient.callTool('udm_get_network_health'),
+    mcpClient.callTool('udm_get_connected_clients'),
+    mcpClient.callTool('udm_get_ips_events'),
+    mcpClient.callTool('udm_get_events'),
   ]);
 
   // Health → subsystems + gateway CPU/mem

@@ -281,32 +281,6 @@ export interface STORAGE_DATA {
   source?: 'real' | 'unavailable';
 }
 
-// Chat threads (phone-home control-plane conversations)
-export interface ThreadSummary {
-  id: string;
-  title: string;
-  state: string;
-  agent: string;
-  message_count: number;
-  last_message_preview?: string;
-  last_active_at?: number;
-  created_at?: number;
-  source?: string;
-}
-
-export interface THREADS_DATA {
-  threads: ThreadSummary[];
-}
-
-export interface ThreadDetailMessage {
-  role: string;
-  content: string;
-}
-
-export interface ThreadDetail extends ThreadSummary {
-  messages: ThreadDetailMessage[];
-}
-
 // Network data
 export type SubsystemId = 'wan' | 'wlan' | 'lan' | 'vpn' | 'www';
 

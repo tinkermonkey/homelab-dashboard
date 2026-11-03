@@ -1,213 +1,195 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { MCPClient } from './mcp-client.js';
+import { describe, it, expect, vi, afterEach } from 'vitest';
+import { MCPClient, parseSseMessages } from './mcp-client.js';
+
+const URL_ = 'http://t5610:3220/mcp/';
+
+type ToolResult = {
+  isError?: boolean;
+  content?: Array<Record<string, unknown>>;
+  structuredContent?: Record<string, unknown> | null;
+};
+
+const sse = (message: unknown) =>
+  new Response(`event: message\r\ndata: ${JSON.stringify(message)}\r\n\r\n`, {
+    status: 200,
+    headers: { 'Content-Type': 'text/event-stream' },
+  });
+
+const json = (message: unknown, headers: Record<string, string> = {}) =>
+  new Response(JSON.stringify(message), {
+    status: 200,
+    headers: { 'Content-Type': 'application/json', ...headers },
+  });
+
+// A fake homelab-data-mcp: hands out session ids, accepts the initialized
+// notification, and answers tools/call with `toolResult` over SSE.
+function fakeServer(toolResult: ToolResult | ((name: string) => ToolResult), opts: { sessionId?: string } = {}) {
+  const sessionId = opts.sessionId ?? 'sess-1';
+  return vi.fn(async (_url: unknown, init?: RequestInit) => {
+    const msg = JSON.parse(init!.body as string);
+    if (msg.method === 'initialize') {
+      return new Response(
+        `event: message\ndata: ${JSON.stringify({ jsonrpc: '2.0', id: msg.id, result: { protocolVersion: '2025-06-18', capabilities: {}, serverInfo: { name: 'homelab-data', version: '1' } } })}\n\n`,
+        { status: 200, headers: { 'Content-Type': 'text/event-stream', 'mcp-session-id': sessionId } },
+      );
+    }
+    if (msg.method === 'notifications/initialized') {
+      return new Response(null, { status: 202 });
+    }
+    if (msg.method === 'tools/call') {
+      const result = typeof toolResult === 'function' ? toolResult(msg.params.name) : toolResult;
+      return sse({ jsonrpc: '2.0', id: msg.id, result });
+    }
+    throw new Error(`unexpected method ${msg.method}`);
+  });
+}
+
+const bodies = (fetchMock: ReturnType<typeof vi.fn>) =>
+  fetchMock.mock.calls.map(([, init]) => JSON.parse((init as RequestInit).body as string));
 
 describe('MCPClient', () => {
-  beforeEach(() => {
-    global.fetch = vi.fn();
-  });
-
   afterEach(() => {
-    vi.clearAllMocks();
-  });
-
-  const successResponse = (result: unknown) => ({
-    ok: true,
-    json: async () => ({
-      server: 'homelab-data',
-      tool: 'test_tool',
-      is_error: false,
-      content: [],
-      structured_content: result,
-    }),
+    vi.restoreAllMocks();
   });
 
   describe('callTool', () => {
-    it('returns structured_content on success', async () => {
-      global.fetch = vi.fn().mockResolvedValue(successResponse({ data: 'test' }));
+    it('initializes a session, then calls the tool with its arguments', async () => {
+      const fetchMock = fakeServer({ structuredContent: { data: 'test' }, content: [] });
+      global.fetch = fetchMock;
 
-      const client = new MCPClient('http://localhost:8000', 'my-token');
-      const result = await client.callTool('homelab-data', 'my_tool');
+      const client = new MCPClient(URL_, 'tok');
+      const result = await client.callTool('my_tool', { foo: 'bar' });
 
       expect(result).toEqual({ data: 'test' });
+      const sent = bodies(fetchMock);
+      expect(sent.map(m => m.method)).toEqual(['initialize', 'notifications/initialized', 'tools/call']);
+      expect(sent[2].params).toEqual({ name: 'my_tool', arguments: { foo: 'bar' } });
+      expect(fetchMock.mock.calls.every(([url]) => url === URL_)).toBe(true);
     });
 
-    it('builds correct REST URL', async () => {
-      const fetchMock = vi.fn().mockResolvedValue(successResponse(null));
+    it('sends bearer auth, Accept for JSON and SSE, and the session id after initialize', async () => {
+      const fetchMock = fakeServer({ structuredContent: {} }, { sessionId: 'abc' });
       global.fetch = fetchMock;
 
-      const client = new MCPClient('http://localhost:8000', 'tok');
-      await client.callTool('my-server', 'my-tool', { foo: 'bar' });
+      await new MCPClient(URL_, 'secret-token').callTool('t');
 
-      const [url, opts] = fetchMock.mock.calls[0];
-      expect(url).toBe('http://localhost:8000/v1/servers/my-server/tools/my-tool');
-      expect(JSON.parse(opts.body)).toEqual({ arguments: { foo: 'bar' } });
-    });
-
-    it('sends bearer auth header', async () => {
-      const fetchMock = vi.fn().mockResolvedValue(successResponse(null));
-      global.fetch = fetchMock;
-
-      const client = new MCPClient('http://localhost:8000', 'secret-token');
-      await client.callTool('s', 't');
-
-      const [, opts] = fetchMock.mock.calls[0];
-      expect(opts.headers['Authorization']).toBe('Bearer secret-token');
+      const headers = fetchMock.mock.calls.map(([, init]) => (init as RequestInit).headers as Record<string, string>);
+      expect(headers.every(h => h['Authorization'] === 'Bearer secret-token')).toBe(true);
+      expect(headers[0]['Accept']).toBe('application/json, text/event-stream');
+      expect(headers[0]['Mcp-Session-Id']).toBeUndefined();
+      expect(headers[2]['Mcp-Session-Id']).toBe('abc');
+      expect(headers[2]['Mcp-Protocol-Version']).toBe('2025-06-18');
     });
 
     it('omits auth header when no token configured', async () => {
-      const fetchMock = vi.fn().mockResolvedValue(successResponse(null));
+      const fetchMock = fakeServer({ structuredContent: {} });
       global.fetch = fetchMock;
 
-      const client = new MCPClient('http://localhost:8000', '');
-      await client.callTool('s', 't');
+      await new MCPClient(URL_, '').callTool('t');
 
-      const [, opts] = fetchMock.mock.calls[0];
-      expect(opts.headers['Authorization']).toBeUndefined();
+      const [, init] = fetchMock.mock.calls[0];
+      expect(((init as RequestInit).headers as Record<string, string>)['Authorization']).toBeUndefined();
     });
 
-    it('falls back to content array when structured_content is null and no type field', async () => {
-      global.fetch = vi.fn().mockResolvedValue({
-        ok: true,
-        json: async () => ({
-          server: 's', tool: 't', is_error: false,
-          content: [{ text: 'hello' }],
-          structured_content: null,
-        }),
-      });
+    it('reuses one session across calls, including concurrent ones', async () => {
+      const fetchMock = fakeServer({ structuredContent: {} });
+      global.fetch = fetchMock;
 
-      const client = new MCPClient();
-      const result = await client.callTool('s', 't');
-      expect(result).toEqual([{ text: 'hello' }]);
+      const client = new MCPClient(URL_, 'tok');
+      await Promise.all([client.callTool('a'), client.callTool('b')]);
+      await client.callTool('c');
+
+      expect(bodies(fetchMock).filter(m => m.method === 'initialize')).toHaveLength(1);
+      expect(bodies(fetchMock).filter(m => m.method === 'tools/call')).toHaveLength(3);
     });
 
-    it('JSON-parses single text/type content item when structured_content absent', async () => {
-      global.fetch = vi.fn().mockResolvedValue({
-        ok: true,
-        json: async () => ({
-          server: 's', tool: 't', is_error: false,
-          content: [{ type: 'text', text: '{"state":"idle"}' }],
-          structured_content: null,
-        }),
+    it('re-initializes once when the server forgets the session (404)', async () => {
+      const server = fakeServer({ structuredContent: { ok: true } });
+      let expired = false;
+      const fetchMock = vi.fn(async (url: unknown, init?: RequestInit) => {
+        const msg = JSON.parse(init!.body as string);
+        if (msg.method === 'tools/call' && !expired) {
+          expired = true;
+          return new Response('session not found', { status: 404 });
+        }
+        return server(url, init);
+      });
+      global.fetch = fetchMock;
+
+      const client = new MCPClient(URL_, 'tok');
+      await expect(client.callTool('t')).resolves.toEqual({ ok: true });
+      expect(bodies(fetchMock).filter(m => m.method === 'initialize')).toHaveLength(2);
+    });
+
+    it('accepts a plain JSON response instead of SSE', async () => {
+      global.fetch = vi.fn(async (_url: unknown, init?: RequestInit) => {
+        const msg = JSON.parse(init!.body as string);
+        if (msg.method === 'notifications/initialized') return new Response(null, { status: 202 });
+        const result = msg.method === 'initialize' ? { protocolVersion: '2025-06-18' } : { structuredContent: { via: 'json' } };
+        return json({ jsonrpc: '2.0', id: msg.id, result }, { 'mcp-session-id': 's' });
       });
 
-      const client = new MCPClient();
-      const result = await client.callTool('s', 't');
-      expect(result).toEqual({ state: 'idle' });
+      await expect(new MCPClient(URL_, 'tok').callTool('t')).resolves.toEqual({ via: 'json' });
+    });
+
+    it('falls back to content array when structuredContent is absent and no type field', async () => {
+      global.fetch = fakeServer({ content: [{ text: 'hello' }] });
+      await expect(new MCPClient(URL_, 't').callTool('t')).resolves.toEqual([{ text: 'hello' }]);
+    });
+
+    it('JSON-parses a single text content item when structuredContent is absent', async () => {
+      global.fetch = fakeServer({ content: [{ type: 'text', text: '{"state":"idle"}' }], structuredContent: null });
+      await expect(new MCPClient(URL_, 't').callTool('t')).resolves.toEqual({ state: 'idle' });
     });
 
     it('returns raw string when single text item is not valid JSON', async () => {
-      global.fetch = vi.fn().mockResolvedValue({
-        ok: true,
-        json: async () => ({
-          server: 's', tool: 't', is_error: false,
-          content: [{ type: 'text', text: 'not json' }],
-          structured_content: null,
-        }),
-      });
-
-      const client = new MCPClient();
-      const result = await client.callTool('s', 't');
-      expect(result).toBe('not json');
+      global.fetch = fakeServer({ content: [{ type: 'text', text: 'not json' }] });
+      await expect(new MCPClient(URL_, 't').callTool('t')).resolves.toBe('not json');
     });
 
-    it('throws when is_error is true', async () => {
-      global.fetch = vi.fn().mockResolvedValue({
-        ok: true,
-        json: async () => ({
-          server: 's', tool: 't', is_error: true,
-          content: [{ text: 'something went wrong' }],
-        }),
-      });
-
-      const client = new MCPClient();
-      await expect(client.callTool('s', 't')).rejects.toThrow(/Tool error.*something went wrong/);
+    it('throws when the tool result has isError', async () => {
+      global.fetch = fakeServer({ isError: true, content: [{ type: 'text', text: 'something went wrong' }] });
+      await expect(new MCPClient(URL_, 't').callTool('t')).rejects.toThrow(/Tool error.*something went wrong/);
     });
 
-    it('throws on HTTP error', async () => {
-      global.fetch = vi.fn().mockResolvedValue({
-        ok: false, status: 401, statusText: 'Unauthorized',
+    it('throws on a JSON-RPC error', async () => {
+      const server = fakeServer({});
+      global.fetch = vi.fn(async (url: unknown, init?: RequestInit) => {
+        const msg = JSON.parse(init!.body as string);
+        if (msg.method === 'tools/call') {
+          return sse({ jsonrpc: '2.0', id: msg.id, error: { code: -32602, message: 'Unknown tool: nope' } });
+        }
+        return server(url, init);
       });
+      await expect(new MCPClient(URL_, 't').callTool('nope')).rejects.toThrow(/MCP tool call failed \(nope\).*Unknown tool/);
+    });
 
-      const client = new MCPClient();
-      await expect(client.callTool('s', 't')).rejects.toThrow(/HTTP 401/);
+    it('throws on HTTP error and retries the handshake next time', async () => {
+      const fetchMock = vi.fn().mockResolvedValueOnce(new Response('no', { status: 401, statusText: 'Unauthorized' }));
+      global.fetch = fetchMock;
+
+      const client = new MCPClient(URL_, 'bad');
+      await expect(client.callTool('t')).rejects.toThrow(/HTTP 401/);
+
+      fetchMock.mockImplementation(fakeServer({ structuredContent: { ok: 1 } }));
+      await expect(client.callTool('t')).resolves.toEqual({ ok: 1 });
     });
 
     it('throws on network failure', async () => {
       global.fetch = vi.fn().mockRejectedValue(new Error('Connection refused'));
-
-      const client = new MCPClient();
-      await expect(client.callTool('s', 't')).rejects.toThrow(/Connection refused/);
+      await expect(new MCPClient(URL_, 't').callTool('t')).rejects.toThrow(/Connection refused/);
     });
 
     it('wraps non-Error throws', async () => {
       global.fetch = vi.fn().mockRejectedValue('string error');
-
-      const client = new MCPClient();
-      await expect(client.callTool('s', 't')).rejects.toThrow(/Unknown error/);
-    });
-
-    it('handles HTTP 500 errors', async () => {
-      global.fetch = vi.fn().mockResolvedValue({
-        ok: false, status: 500, statusText: 'Internal Server Error',
-      });
-
-      const client = new MCPClient();
-      await expect(client.callTool('s', 't')).rejects.toThrow(/HTTP 500/);
+      await expect(new MCPClient(URL_, 't').callTool('t')).rejects.toThrow(/Unknown error/);
     });
   });
 
-  describe('getServers', () => {
-    it('calls GET /v1/servers and returns server list', async () => {
-      const fetchMock = vi.fn().mockResolvedValue({
-        ok: true,
-        json: async () => ({
-          servers: [
-            { name: 'homelab-data', url: 'http://homelab-data-mcp:3220/mcp/', healthy: true, tool_count: 19, error: null },
-            { name: 't5610', url: 'http://100.104.222.123:3210/mcp/', healthy: true, tool_count: 7, error: null },
-          ],
-        }),
-      });
-      global.fetch = fetchMock;
-
-      const client = new MCPClient('http://localhost:8000', 'tok');
-      const servers = await client.getServers();
-
-      const [url, opts] = fetchMock.mock.calls[0];
-      expect(url).toBe('http://localhost:8000/v1/servers');
-      expect(opts?.method).toBeUndefined(); // GET by default
-      expect(servers).toHaveLength(2);
-      expect(servers[0]).toMatchObject({ name: 'homelab-data', healthy: true, tool_count: 19 });
-    });
-
-    it('throws on HTTP error', async () => {
-      global.fetch = vi.fn().mockResolvedValue({ ok: false, status: 503, statusText: 'Service Unavailable' });
-
-      const client = new MCPClient();
-      await expect(client.getServers()).rejects.toThrow(/HTTP 503/);
-    });
-  });
-
-  describe('getAgentStatus', () => {
-    it('returns state string from structured result', async () => {
-      global.fetch = vi.fn().mockResolvedValue({
-        ok: true,
-        json: async () => ({
-          server: 't5610', tool: 'get_status', is_error: false,
-          content: [{ type: 'text', text: '{"state":"running"}' }],
-          structured_content: null,
-        }),
-      });
-
-      const client = new MCPClient('http://localhost:8000', 'tok');
-      const state = await client.getAgentStatus('t5610');
-      expect(state).toBe('running');
-    });
-
-    it('returns idle on tool failure', async () => {
-      global.fetch = vi.fn().mockRejectedValue(new Error('timeout'));
-
-      const client = new MCPClient('http://localhost:8000', 'tok');
-      await expect(client.getAgentStatus('t5610')).rejects.toThrow();
+  describe('parseSseMessages', () => {
+    it('joins multi-line data and skips non-JSON events', () => {
+      const body = 'event: ping\ndata: keepalive\n\nevent: message\ndata: {"jsonrpc":"2.0",\ndata: "id":3}\n\n';
+      expect(parseSseMessages(body)).toEqual([{ jsonrpc: '2.0', id: 3 }]);
     });
   });
 });

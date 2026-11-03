@@ -20,7 +20,6 @@ import { BotsView } from './components/bots/BotsView';
 import { LogsView } from './components/logs/LogsView';
 import { SettingsView } from './components/settings/SettingsView';
 import { ErrorView } from './components/shared/ErrorView';
-import { BotConsole } from './components/chat/BotConsole';
 
 // Build package Sidebar sections from nav tree + live cluster data
 function buildNavSections(
@@ -76,7 +75,6 @@ const AppContent: React.FC = () => {
 
   const [sidebarCollapsed, setSidebarCollapsed] = usePersistedState('sidebarCollapsed', false);
   const [darkCanvas] = usePersistedState('darkCanvas', false);
-  const [chatVisible, setChatVisible] = usePersistedState('chatVisible', true);
   const [activeRoute, setActiveRoute] = usePersistedState('activeRoute', '/cluster/overview');
   const [density] = usePersistedState('density', 'regular');
   const [showAlerts] = usePersistedState('showAlerts', true);
@@ -156,7 +154,7 @@ const AppContent: React.FC = () => {
 
   return (
     <div className="desktop">
-      <div className={`app-shell${chatVisible ? ' with-chat' : ' no-chat'}`}>
+      <div className="app-shell">
 
         {/* Sidebar — package component, wrapped with brand row + footer */}
         <aside className={`shell-rail${sidebarCollapsed ? ' collapsed' : ''}`}>
@@ -241,14 +239,6 @@ const AppContent: React.FC = () => {
             >
               <Icon name="reload" size={15} />
             </button>
-            <button
-              className={`topbar-ico${chatVisible ? ' active' : ''}`}
-              title={chatVisible ? 'Close bot console' : 'Open bot console'}
-              aria-label={chatVisible ? 'Close bot console' : 'Open bot console'}
-              onClick={() => setChatVisible(!chatVisible)}
-            >
-              <Icon name="bot" size={15} />
-            </button>
             <span className="env-pill">
               <span className="dot" />
               main
@@ -280,10 +270,6 @@ const AppContent: React.FC = () => {
             </div>
           </main>
         </div>
-
-        {chatVisible && (
-          <BotConsole onClose={() => setChatVisible(false)} />
-        )}
       </div>
 
       {/* Statusbar — package component with left/right content slots */}
