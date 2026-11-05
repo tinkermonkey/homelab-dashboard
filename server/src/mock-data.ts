@@ -62,8 +62,6 @@ export function getLabData(): LAB_DATA {
       vpnPeersActive: 0,  // GAP: WireGuard API not connected
     },
     apps: [],
-    bots: [],
-    threadByBot: {},
   };
 }
 
@@ -72,7 +70,7 @@ export function getDockerData(): DOCKER_DATA {
 }
 
 export function getTopologyData(): TOPOLOGY_DATA {
-  return { hosts: [], bots: [] };
+  return { hosts: [] };
 }
 
 export function getStatusData(): STATUS_DATA {

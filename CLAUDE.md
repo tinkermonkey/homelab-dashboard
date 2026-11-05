@@ -20,7 +20,7 @@ The design reference is the canonical source of truth for:
 - Data shapes for every entity (see `design/README.md` → "Data Shape" section)
 - Interaction behaviour (persisted UI state, polling cadences, etc.)
 
-All ten sidebar routes are fully implemented. The design reference (`design/app/`) covers Overview, Containers, Topology, and a combined view-other file for the remaining seven.
+All nine sidebar routes are fully implemented. The design reference (`design/app/`) covers Overview, Containers, Topology, and a combined view-other file for the rest; its Bots view and bot console are no longer built (the agents they showed were retired with the phone-home control plane).
 
 ## Architecture Intent
 
@@ -109,7 +109,7 @@ These must survive page reloads (localStorage or equivalent):
 - `density: "compact" | "regular"`
 - `showAlerts: boolean`
 - Active route
-- Active bot in topology
+- Selected host in topology
 
 ## Polling Cadences
 
@@ -119,7 +119,7 @@ These must survive page reloads (localStorage or equivalent):
 
 ## Sibling Repo Context
 
-The phone-home control plane (chat endpoint, agent roster, `/v1/servers/.../tools/...` proxy) was retired in 2026-11, and with it the bot console chat rail. phone-home is now MCP servers on t5610; the dashboard calls `homelab-data-mcp` directly over MCP Streamable HTTP. That server binds loopback by default, so the dashboard host (hp7052) can reach it only if it is bound to a LAN address — see the homelab `homelab-dashboard` and `phone-home` roles.
+The phone-home control plane (chat endpoint, agent roster, `/v1/servers/.../tools/...` proxy) was retired in 2026-11, and with it the bot console chat rail and the Bots view. phone-home is now MCP servers on t5610; the dashboard calls `homelab-data-mcp` directly over MCP Streamable HTTP. homelab-data-mcp binds t5610's LAN IP on port 3220, firewalled to hp7052, and the homelab `homelab-dashboard` role sets `HOMELAB_DATA_MCP_URL` and `HOMELAB_DATA_MCP_TOKEN`.
 
 ## Browser Testing & Screenshots
 
@@ -130,12 +130,11 @@ When using browser automation (Playwright MCP or similar), save all screenshots 
 ```
 overview      /cluster/overview       — OverviewView (hosts, gateway, apps)
 containers    /cluster/containers     — ContainersView (docker inventory, networks, volumes)
-topology      /cluster/topology       — TopologyView (agent mesh, inspector)
+topology      /cluster/topology       — TopologyView (cluster hosts, inspector)
 servers       /cluster/servers        — ServersView (host table with metrics)
 network       /cluster/network        — NetworkView (WAN, DNS, VPN, published services)
 apps          /cluster/applications   — ApplicationsView (service list with category filter)
 storage       /cluster/storage        — StorageView (volumes, pools, quick-access)
-bots          /cluster/bots           — BotsView (agent cards with MCP/project details)
 logs          /cluster/logs           — LogsView (log stream with host/level filter)
 settings      /cluster/configuration  — SettingsView (dashboard preferences)
 ```

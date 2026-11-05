@@ -41,7 +41,7 @@ describe('MCP Transformer', () => {
 
       const result = await transformDockerData(mockLogger);
 
-      expect(mcpClient.callTool).toHaveBeenCalledWith('list_containers');
+      expect(mcpClient.callTool).toHaveBeenCalledWith('list_containers', {}, { timeoutMs: 60000 });
       expect(result.data).toEqual({ hosts });
       expect(result.degraded).toEqual([]);
       expect(result.source).toBe('real');
@@ -73,13 +73,12 @@ describe('MCP Transformer', () => {
   });
 
   describe('transformTopologyData', () => {
-    it('returns the registry hosts and no bots, without calling MCP', async () => {
+    it('returns the registry hosts without calling MCP', async () => {
       const result = await transformTopologyData();
 
       expect(result.source).toBe('real');
       expect(result.degraded).toEqual([]);
       expect(result.data.hosts.length).toBeGreaterThan(0);
-      expect(result.data.bots).toEqual([]);
       expect(mcpClient.callTool).not.toHaveBeenCalled();
     });
   });

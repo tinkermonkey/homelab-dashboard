@@ -1,5 +1,9 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
+import { createServer, type Server } from 'node:http';
+import type { AddressInfo } from 'node:net';
 import { MCPClient, parseSseMessages } from './mcp-client.js';
+
+const realFetch = globalThis.fetch;
 
 const URL_ = 'http://t5610:3220/mcp/';
 
@@ -50,12 +54,13 @@ const bodies = (fetchMock: ReturnType<typeof vi.fn>) =>
 describe('MCPClient', () => {
   afterEach(() => {
     vi.restoreAllMocks();
+    globalThis.fetch = realFetch;
   });
 
   describe('callTool', () => {
     it('initializes a session, then calls the tool with its arguments', async () => {
       const fetchMock = fakeServer({ structuredContent: { data: 'test' }, content: [] });
-      global.fetch = fetchMock;
+      globalThis.fetch = fetchMock;
 
       const client = new MCPClient(URL_, 'tok');
       const result = await client.callTool('my_tool', { foo: 'bar' });
@@ -69,7 +74,7 @@ describe('MCPClient', () => {
 
     it('sends bearer auth, Accept for JSON and SSE, and the session id after initialize', async () => {
       const fetchMock = fakeServer({ structuredContent: {} }, { sessionId: 'abc' });
-      global.fetch = fetchMock;
+      globalThis.fetch = fetchMock;
 
       await new MCPClient(URL_, 'secret-token').callTool('t');
 
@@ -83,7 +88,7 @@ describe('MCPClient', () => {
 
     it('omits auth header when no token configured', async () => {
       const fetchMock = fakeServer({ structuredContent: {} });
-      global.fetch = fetchMock;
+      globalThis.fetch = fetchMock;
 
       await new MCPClient(URL_, '').callTool('t');
 
@@ -93,7 +98,7 @@ describe('MCPClient', () => {
 
     it('reuses one session across calls, including concurrent ones', async () => {
       const fetchMock = fakeServer({ structuredContent: {} });
-      global.fetch = fetchMock;
+      globalThis.fetch = fetchMock;
 
       const client = new MCPClient(URL_, 'tok');
       await Promise.all([client.callTool('a'), client.callTool('b')]);
@@ -114,15 +119,58 @@ describe('MCPClient', () => {
         }
         return server(url, init);
       });
-      global.fetch = fetchMock;
+      globalThis.fetch = fetchMock;
 
       const client = new MCPClient(URL_, 'tok');
       await expect(client.callTool('t')).resolves.toEqual({ ok: true });
       expect(bodies(fetchMock).filter(m => m.method === 'initialize')).toHaveLength(2);
     });
 
+    it('recovers every concurrent call after a server restart with one handshake', async () => {
+      // Sessions live in the server; a restart forgets them all and the old id gets 404.
+      let generation = 1;
+      const live = new Set<string>();
+      const tick = () => new Promise(r => setTimeout(r, 2));
+      const fetchMock = vi.fn(async (_url: unknown, init?: RequestInit) => {
+        await tick();
+        const msg = JSON.parse(init!.body as string);
+        const sent = (init!.headers as Record<string, string>)['Mcp-Session-Id'];
+        if (msg.method === 'initialize') {
+          const id = `gen-${generation}`;
+          live.add(id);
+          return new Response(
+            `data: ${JSON.stringify({ jsonrpc: '2.0', id: msg.id, result: { protocolVersion: '2025-06-18' } })}\n\n`,
+            { status: 200, headers: { 'Content-Type': 'text/event-stream', 'mcp-session-id': id } },
+          );
+        }
+        if (!sent || !live.has(sent)) return new Response('Session not found', { status: 404 });
+        if (msg.method === 'notifications/initialized') return new Response(null, { status: 202 });
+        return sse({ jsonrpc: '2.0', id: msg.id, result: { structuredContent: { session: sent } } });
+      });
+      globalThis.fetch = fetchMock;
+
+      const client = new MCPClient(URL_, 'tok');
+      await expect(client.callTool('t')).resolves.toEqual({ session: 'gen-1' });
+
+      generation = 2;
+      live.clear();
+      const after = await Promise.all([1, 2, 3].map(() => client.callTool('list_containers')));
+
+      expect(after).toEqual([{ session: 'gen-2' }, { session: 'gen-2' }, { session: 'gen-2' }]);
+      expect(bodies(fetchMock).filter(m => m.method === 'initialize')).toHaveLength(2);
+    });
+
+    it('cancels the body of an error response', async () => {
+      const cancelled = vi.fn();
+      const body = new ReadableStream({ cancel: cancelled });
+      globalThis.fetch = vi.fn().mockResolvedValue(new Response(body, { status: 500, statusText: 'Internal Server Error' }));
+
+      await expect(new MCPClient(URL_, 't').callTool('t')).rejects.toThrow(/HTTP 500/);
+      expect(cancelled).toHaveBeenCalled();
+    });
+
     it('accepts a plain JSON response instead of SSE', async () => {
-      global.fetch = vi.fn(async (_url: unknown, init?: RequestInit) => {
+      globalThis.fetch = vi.fn(async (_url: unknown, init?: RequestInit) => {
         const msg = JSON.parse(init!.body as string);
         if (msg.method === 'notifications/initialized') return new Response(null, { status: 202 });
         const result = msg.method === 'initialize' ? { protocolVersion: '2025-06-18' } : { structuredContent: { via: 'json' } };
@@ -133,28 +181,28 @@ describe('MCPClient', () => {
     });
 
     it('falls back to content array when structuredContent is absent and no type field', async () => {
-      global.fetch = fakeServer({ content: [{ text: 'hello' }] });
+      globalThis.fetch = fakeServer({ content: [{ text: 'hello' }] });
       await expect(new MCPClient(URL_, 't').callTool('t')).resolves.toEqual([{ text: 'hello' }]);
     });
 
     it('JSON-parses a single text content item when structuredContent is absent', async () => {
-      global.fetch = fakeServer({ content: [{ type: 'text', text: '{"state":"idle"}' }], structuredContent: null });
+      globalThis.fetch = fakeServer({ content: [{ type: 'text', text: '{"state":"idle"}' }], structuredContent: null });
       await expect(new MCPClient(URL_, 't').callTool('t')).resolves.toEqual({ state: 'idle' });
     });
 
     it('returns raw string when single text item is not valid JSON', async () => {
-      global.fetch = fakeServer({ content: [{ type: 'text', text: 'not json' }] });
+      globalThis.fetch = fakeServer({ content: [{ type: 'text', text: 'not json' }] });
       await expect(new MCPClient(URL_, 't').callTool('t')).resolves.toBe('not json');
     });
 
     it('throws when the tool result has isError', async () => {
-      global.fetch = fakeServer({ isError: true, content: [{ type: 'text', text: 'something went wrong' }] });
+      globalThis.fetch = fakeServer({ isError: true, content: [{ type: 'text', text: 'something went wrong' }] });
       await expect(new MCPClient(URL_, 't').callTool('t')).rejects.toThrow(/Tool error.*something went wrong/);
     });
 
     it('throws on a JSON-RPC error', async () => {
       const server = fakeServer({});
-      global.fetch = vi.fn(async (url: unknown, init?: RequestInit) => {
+      globalThis.fetch = vi.fn(async (url: unknown, init?: RequestInit) => {
         const msg = JSON.parse(init!.body as string);
         if (msg.method === 'tools/call') {
           return sse({ jsonrpc: '2.0', id: msg.id, error: { code: -32602, message: 'Unknown tool: nope' } });
@@ -166,7 +214,7 @@ describe('MCPClient', () => {
 
     it('throws on HTTP error and retries the handshake next time', async () => {
       const fetchMock = vi.fn().mockResolvedValueOnce(new Response('no', { status: 401, statusText: 'Unauthorized' }));
-      global.fetch = fetchMock;
+      globalThis.fetch = fetchMock;
 
       const client = new MCPClient(URL_, 'bad');
       await expect(client.callTool('t')).rejects.toThrow(/HTTP 401/);
@@ -176,13 +224,59 @@ describe('MCPClient', () => {
     });
 
     it('throws on network failure', async () => {
-      global.fetch = vi.fn().mockRejectedValue(new Error('Connection refused'));
+      globalThis.fetch = vi.fn().mockRejectedValue(new Error('Connection refused'));
       await expect(new MCPClient(URL_, 't').callTool('t')).rejects.toThrow(/Connection refused/);
     });
 
     it('wraps non-Error throws', async () => {
-      global.fetch = vi.fn().mockRejectedValue('string error');
+      globalThis.fetch = vi.fn().mockRejectedValue('string error');
       await expect(new MCPClient(URL_, 't').callTool('t')).rejects.toThrow(/Unknown error/);
+    });
+  });
+
+  // Real fetch against a local server that sends SSE headers at once and the
+  // tool result after `delayMs`, the way FastMCP does for a slow tool.
+  describe('timeouts', () => {
+    let server: Server;
+
+    async function slowServer(delayMs: number): Promise<string> {
+      server = createServer((req, res) => {
+        let raw = '';
+        req.on('data', chunk => { raw += chunk; });
+        req.on('end', () => {
+          const msg = JSON.parse(raw);
+          if (msg.method === 'notifications/initialized') {
+            res.writeHead(202).end();
+            return;
+          }
+          res.writeHead(200, { 'Content-Type': 'text/event-stream', 'mcp-session-id': 's1' });
+          res.flushHeaders();
+          const result = msg.method === 'initialize' ? { protocolVersion: '2025-06-18' } : { structuredContent: { done: true } };
+          const wait = msg.method === 'tools/call' ? delayMs : 0;
+          const timer = setTimeout(() => res.end(`data: ${JSON.stringify({ jsonrpc: '2.0', id: msg.id, result })}\n\n`), wait);
+          res.on('close', () => clearTimeout(timer));
+        });
+      });
+      await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve));
+      return `http://127.0.0.1:${(server.address() as AddressInfo).port}/mcp/`;
+    }
+
+    afterEach(async () => {
+      server.closeAllConnections();
+      await new Promise(resolve => server.close(resolve));
+    });
+
+    it('times out while the tool is still running, after the headers arrived', async () => {
+      const url = await slowServer(5000);
+      const started = Date.now();
+      await expect(new MCPClient(url, 't').callTool('slow', {}, { timeoutMs: 200 }))
+        .rejects.toThrow(/MCP tool call failed \(slow\): tools\/call timed out after 200 ms/);
+      expect(Date.now() - started).toBeLessThan(2000);
+    });
+
+    it('waits for a slow tool within a longer budget', async () => {
+      const url = await slowServer(300);
+      await expect(new MCPClient(url, 't').callTool('slow', {}, { timeoutMs: 2000 })).resolves.toEqual({ done: true });
     });
   });
 

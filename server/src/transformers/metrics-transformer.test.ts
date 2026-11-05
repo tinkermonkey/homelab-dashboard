@@ -226,8 +226,6 @@ describe('transformMetrics', () => {
       dnsResolved: 0, dnsBlocked: 0, vpnPeers: 0, vpnPeersActive: 0,
     },
     apps: [],
-    bots: [],
-    threadByBot: {},
   };
 
   beforeEach(() => { vi.clearAllMocks(); });

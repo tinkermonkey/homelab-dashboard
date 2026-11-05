@@ -80,8 +80,6 @@ const mockLabData: LAB_DATA = {
     vpnPeersActive: 0,
   },
   apps: [],
-  bots: [],
-  threadByBot: {},
 };
 
 const mockDockerData: DOCKER_DATA = {
@@ -117,7 +115,6 @@ const mockNetworkData: NETWORK_DATA = {
 
 const mockTopologyData: TOPOLOGY_DATA = {
   hosts: [],
-  bots: [],
 };
 
 const mockStatusData: STATUS_DATA = {
