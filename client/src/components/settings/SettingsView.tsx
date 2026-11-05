@@ -15,7 +15,6 @@ export const SettingsView: React.FC = () => {
   const [darkCanvas, setDarkCanvas] = usePersistedState('darkCanvas', false);
   const [density, setDensity] = usePersistedState<string>('density', 'regular');
   const [showAlerts, setShowAlerts] = usePersistedState('showAlerts', true);
-  const [chatVisible, setChatVisible] = usePersistedState('chatVisible', true);
 
   return (
     <>
@@ -81,15 +80,6 @@ export const SettingsView: React.FC = () => {
               Show the alerts strip on the overview
             </label>
           </Field>
-          <Field label="Bot console">
-            <label className="row" style={{ gap: 8, fontSize: 13, color: 'rgb(var(--canvas-fg-2))' }}>
-              <TriState
-                checked={chatVisible}
-                onChange={e => setChatVisible((e.target as HTMLInputElement).checked)}
-              />
-              Keep the bot console rail open
-            </label>
-          </Field>
           <div className="row" style={{ gap: 8 }}>
             <Button
               variant="ghost"
@@ -98,7 +88,6 @@ export const SettingsView: React.FC = () => {
                 setDarkCanvas(false);
                 setDensity('regular');
                 setShowAlerts(true);
-                setChatVisible(true);
               }}
             >
               Reset to defaults

@@ -16,17 +16,14 @@ import { NetworkView } from './components/network/NetworkView';
 import { ServersView } from './components/servers/ServersView';
 import { ApplicationsView } from './components/applications/ApplicationsView';
 import { StorageView } from './components/storage/StorageView';
-import { BotsView } from './components/bots/BotsView';
 import { LogsView } from './components/logs/LogsView';
 import { SettingsView } from './components/settings/SettingsView';
 import { ErrorView } from './components/shared/ErrorView';
-import { BotConsole } from './components/chat/BotConsole';
 
 // Build package Sidebar sections from nav tree + live cluster data
 function buildNavSections(
   servers: { id: string; role: string; containers: number }[] = [],
   apps: { id: string }[] = [],
-  bots: { id: string; label: string; role: string }[] = [],
 ) {
   const totalContainers = servers.reduce((n, s) => n + s.containers, 0);
 
@@ -34,18 +31,16 @@ function buildNavSections(
     title: '',
     items: NAV_TREE.map(item => {
       switch (item.id) {
-        // Keep Servers/Bots/Containers as leaf items: the package Sidebar makes
+        // Keep Servers/Containers as leaf items: the package Sidebar makes
         // any parent-with-children expand-only (it never emits onSelectItem), so
         // injecting children would make these rows un-navigable. Drill-down into
-        // a specific host/bot lives inside the respective view.
+        // a specific host lives inside the respective view.
         case 'servers':
           return { ...item, count: servers.length || undefined };
         case 'containers':
           return { ...item, count: totalContainers || undefined };
         case 'apps':
           return { ...item, count: apps.length || undefined };
-        case 'bots':
-          return { ...item, count: bots.length || undefined };
         default:
           return { ...item };
       }
@@ -57,7 +52,6 @@ function buildNavSections(
 function resolveNavPath(id: string): string {
   if (NAV_ID_TO_PATH[id]) return NAV_ID_TO_PATH[id];
   if (id.startsWith('servers/')) return '/cluster/servers';
-  if (id.startsWith('bots/')) return '/cluster/bots';
   if (id.startsWith('containers/')) return '/cluster/containers';
   return '/cluster/overview';
 }
@@ -76,7 +70,6 @@ const AppContent: React.FC = () => {
 
   const [sidebarCollapsed, setSidebarCollapsed] = usePersistedState('sidebarCollapsed', false);
   const [darkCanvas] = usePersistedState('darkCanvas', false);
-  const [chatVisible, setChatVisible] = usePersistedState('chatVisible', true);
   const [activeRoute, setActiveRoute] = usePersistedState('activeRoute', '/cluster/overview');
   const [density] = usePersistedState('density', 'regular');
   const [showAlerts] = usePersistedState('showAlerts', true);
@@ -89,7 +82,7 @@ const AppContent: React.FC = () => {
   const activeNavId = PATH_TO_NAV_ID[location.pathname] ?? 'overview';
 
   const navSections = useMemo(
-    () => buildNavSections(clusterData?.servers, clusterData?.apps, clusterData?.bots),
+    () => buildNavSections(clusterData?.servers, clusterData?.apps),
     [clusterData],
   );
 
@@ -156,7 +149,7 @@ const AppContent: React.FC = () => {
 
   return (
     <div className="desktop">
-      <div className={`app-shell${chatVisible ? ' with-chat' : ' no-chat'}`}>
+      <div className="app-shell">
 
         {/* Sidebar — package component, wrapped with brand row + footer */}
         <aside className={`shell-rail${sidebarCollapsed ? ' collapsed' : ''}`}>
@@ -222,7 +215,7 @@ const AppContent: React.FC = () => {
             </div>
             <button className="topbar-palette" onClick={() => setCommandPaletteOpen(true)}>
               <Icon name="search" size={13} />
-              <span className="label">Search hosts, containers, apps, bots… or run a command</span>
+              <span className="label">Search hosts, containers, apps… or run a command</span>
               <span className="kbd">⌘K</span>
             </button>
             <button
@@ -240,14 +233,6 @@ const AppContent: React.FC = () => {
               onClick={() => refetch()}
             >
               <Icon name="reload" size={15} />
-            </button>
-            <button
-              className={`topbar-ico${chatVisible ? ' active' : ''}`}
-              title={chatVisible ? 'Close bot console' : 'Open bot console'}
-              aria-label={chatVisible ? 'Close bot console' : 'Open bot console'}
-              onClick={() => setChatVisible(!chatVisible)}
-            >
-              <Icon name="bot" size={15} />
             </button>
             <span className="env-pill">
               <span className="dot" />
@@ -271,7 +256,6 @@ const AppContent: React.FC = () => {
                 <Route path="/cluster/network" element={<NetworkView />} />
                 <Route path="/cluster/applications" element={<ApplicationsView />} />
                 <Route path="/cluster/storage" element={<StorageView />} />
-                <Route path="/cluster/bots" element={<BotsView />} />
                 <Route path="/cluster/logs" element={<LogsView />} />
                 <Route path="/cluster/configuration" element={<SettingsView />} />
                 <Route path="/cluster/apps" element={<Navigate to="/cluster/applications" replace />} />
@@ -280,10 +264,6 @@ const AppContent: React.FC = () => {
             </div>
           </main>
         </div>
-
-        {chatVisible && (
-          <BotConsole onClose={() => setChatVisible(false)} />
-        )}
       </div>
 
       {/* Statusbar — package component with left/right content slots */}

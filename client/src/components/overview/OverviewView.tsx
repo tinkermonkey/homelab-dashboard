@@ -55,10 +55,6 @@ export const OverviewView: React.FC<OverviewViewProps> = ({ data, showAlerts = t
               <Icon name="reload" size={13} />
               Refresh
             </Button>
-            <Button variant="primary" size="sm">
-              <Icon name="bot" size={13} />
-              Ask the bots
-            </Button>
           </div>
         }
       />

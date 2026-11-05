@@ -89,38 +89,6 @@ export interface Alert {
   labels: Record<string, string>;
 }
 
-export interface Bot {
-  id: string;
-  label: string;
-  role: string;
-  avatar: string;
-  status: 'ok' | 'busy' | 'idle';
-  desc: string;
-  model: string;
-}
-
-export interface ThreadDivider {
-  kind: 'divider';
-  label: string;
-}
-
-export interface ThreadMessage {
-  kind: 'msg';
-  who: 'user' | string;
-  name?: string;
-  when: string;
-  body: { p: string }[];
-  thinking?: { content: string };
-  tool?: {
-    name: string;
-    status: string;
-    lines: Array<{ k?: string; v: string }>;
-  };
-  suggestions?: { t: string }[];
-}
-
-export type ThreadItem = ThreadDivider | ThreadMessage;
-
 export interface LAB_DATA {
   cluster: {
     name: string;
@@ -138,8 +106,6 @@ export interface LAB_DATA {
   servers: Server[];
   gateway: Gateway;
   apps: App[];
-  bots: Bot[];
-  threadByBot: Record<string, ThreadItem[]>;
   degraded?: string[];
   source?: 'real' | 'mock';
 }
@@ -203,31 +169,8 @@ export interface DOCKER_DATA {
 }
 
 // Topology data
-export interface MCP {
-  id: string;
-  label: string;
-  ver: string;
-  kind: 'native' | 'remote';
-  desc: string;
-}
-
-export interface TopologyBot {
-  id: string;
-  label: string;
-  role: string;
-  host: string;
-  model: string;
-  desc: string;
-  avatar: string;
-  status: 'ok' | 'busy' | 'idle';
-  mcps: MCP[];
-  delegates: string[];
-  manages: Array<{ name: string; host: string; port: string }>;
-}
-
 export interface TOPOLOGY_DATA {
   hosts: string[];
-  bots: TopologyBot[];
   degraded?: string[];
   source?: 'real' | 'unavailable';
 }
@@ -279,32 +222,6 @@ export interface STORAGE_DATA {
   filesystems: StorageFilesystem[];
   degraded?: string[];
   source?: 'real' | 'unavailable';
-}
-
-// Chat threads (phone-home control-plane conversations)
-export interface ThreadSummary {
-  id: string;
-  title: string;
-  state: string;
-  agent: string;
-  message_count: number;
-  last_message_preview?: string;
-  last_active_at?: number;
-  created_at?: number;
-  source?: string;
-}
-
-export interface THREADS_DATA {
-  threads: ThreadSummary[];
-}
-
-export interface ThreadDetailMessage {
-  role: string;
-  content: string;
-}
-
-export interface ThreadDetail extends ThreadSummary {
-  messages: ThreadDetailMessage[];
 }
 
 // Network data

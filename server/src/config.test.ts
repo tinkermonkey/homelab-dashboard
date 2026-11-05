@@ -75,22 +75,22 @@ describe('config', () => {
     expect(config.elastiflowPassword).toBe('secret');
   });
 
-  it('reads phone-home URLs and token from environment', async () => {
-    process.env.PHONE_HOME_URL = 'http://phone-home:8000';
-    process.env.PHONE_HOME_CHAT_URL = 'http://phone-home:8000/chat';
-    process.env.PHONE_HOME_CHAT_TOKEN = 'my-bearer-token';
+  it('reads homelab-data MCP URL and token from environment', async () => {
+    process.env.HOMELAB_DATA_MCP_URL = 'http://192.168.0.10:3220/mcp/';
+    process.env.HOMELAB_DATA_MCP_TOKEN = 'my-bearer-token';
     vi.resetModules();
     const { config } = await import('./config.js');
-    expect(config.phoneHomeUrl).toBe('http://phone-home:8000');
-    expect(config.phoneHomeChatUrl).toBe('http://phone-home:8000/chat');
-    expect(config.phoneHomeChatToken).toBe('my-bearer-token');
+    expect(config.homelabDataMcpUrl).toBe('http://192.168.0.10:3220/mcp/');
+    expect(config.homelabDataMcpToken).toBe('my-bearer-token');
   });
 
-  it('defaults phone-home chat token to empty string', async () => {
-    process.env.PHONE_HOME_CHAT_TOKEN = '';
+  it('defaults homelab-data MCP URL to localhost and token to empty', async () => {
+    process.env.HOMELAB_DATA_MCP_URL = '';
+    process.env.HOMELAB_DATA_MCP_TOKEN = '';
     vi.resetModules();
     const { config } = await import('./config.js');
-    expect(config.phoneHomeChatToken).toBe('');
+    expect(config.homelabDataMcpUrl).toBe('http://localhost:3220/mcp/');
+    expect(config.homelabDataMcpToken).toBe('');
   });
 
   it('reads LOG_LEVEL from environment', async () => {
@@ -113,9 +113,8 @@ describe('config', () => {
       'elastiflowUrl',
       'elastiflowUser',
       'elastiflowPassword',
-      'phoneHomeUrl',
-      'phoneHomeChatUrl',
-      'phoneHomeChatToken',
+      'homelabDataMcpUrl',
+      'homelabDataMcpToken',
       'logLevel',
     ];
 

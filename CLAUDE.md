@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 A monitoring & control dashboard for a 4-host homelab cluster (`asgard`: nyx, helios, aether, vega). It will be a frontend SPA backed by a lightweight server that proxies data from MCP servers in two sibling repos:
 
-- `../phone-home` — FastAPI server; also exposes an MCP endpoint at `http://agent:3210/mcp/`
+- `../phone-home` — MCP servers on t5610; the dashboard calls `homelab-data-mcp` (MCP Streamable HTTP, port 3220, bearer token) for UDM, container and log data
 - `../homelab` — Ansible-managed homelab; the real infrastructure described by the dashboard
 
 No production app exists yet. The `design/` directory contains the full design reference as runnable HTML/JSX prototypes.
@@ -20,19 +20,19 @@ The design reference is the canonical source of truth for:
 - Data shapes for every entity (see `design/README.md` → "Data Shape" section)
 - Interaction behaviour (persisted UI state, polling cadences, etc.)
 
-All ten sidebar routes are fully implemented. The design reference (`design/app/`) covers Overview, Containers, Topology, and a combined view-other file for the remaining seven.
+All nine sidebar routes are fully implemented. The design reference (`design/app/`) covers Overview, Containers, Topology, and a combined view-other file for the rest; its Bots view and bot console are no longer built (the agents they showed were retired with the phone-home control plane).
 
 ## Architecture Intent
 
 ```
 Browser SPA
   ├── App shell: titlebar / sidebar (256px) / topbar / statusbar
-  ├── Canvas area: routed views (Overview, Containers, Topology, + 7 more)
-  └── Bot console rail (380px, collapsible) — chat with homelab agents
+  └── Canvas area: routed views (Overview, Containers, Topology, + 7 more)
 
 Server (thin, to be built)
-  └── Proxies data from MCP servers in ../phone-home and ../homelab
-      via the MCP HTTP endpoint: http://agent:3210/mcp/
+  ├── Direct clients: SigNoz, ntopng, Elasticsearch (Metricbeat/ElastiFlow)
+  └── homelab-data-mcp (../phone-home) via MCP Streamable HTTP:
+      HOMELAB_DATA_MCP_URL + HOMELAB_DATA_MCP_TOKEN (server/src/clients/mcp-client.ts)
 ```
 
 ## CSS Architecture (three-layer stack)
@@ -61,7 +61,6 @@ because the package has no equivalent or the design requires a custom layout:
 |---|---|---|
 | Host metric card | `.srv-grid`, `.srv-head`, `.srv-body`, `.srv-foot`, `.role-mark` | `overview/HostCard.tsx` |
 | Gateway panel | `.gw-split`, `.gw-left`, `.gw-right`, `.gw-strip` | `overview/GatewayPanel.tsx` |
-| Bot console | `.lab-chat`, `.lab-chat__head`, `.bc-ico` | `chat/BotConsole.tsx` |
 
 ### Package Component Integration Pattern
 
@@ -79,7 +78,7 @@ import { PageHeader, Panel, Table, Chip, Button, AlertStrip } from '@tinkermonke
 ## Visual Language (non-negotiable from design)
 
 The dashboard is a **two-surface** layout:
-1. **Shell** — always dark (`#0B0F14` family): titlebar, sidebar, topbar, statusbar, bot console
+1. **Shell** — always dark (`#0B0F14` family): titlebar, sidebar, topbar, statusbar
 2. **Canvas** — dark by default (`#14191F` family), light mode available. The 8px top-left radius seam where canvas meets shell is a visual signature.
 
 Accent: amber (`#FBBF24`). Used for: active nav indicator, brand mark, primary CTAs, and all `--accent-primary` token references. Cyan (`#22D3EE`) is a semantic/status color only (updating, info, compute).
@@ -106,12 +105,11 @@ Status:     ok/running=emerald  warn/degraded=amber  err/failed=rose  updating=c
 
 These must survive page reloads (localStorage or equivalent):
 - `sidebarCollapsed: boolean`
-- `chatVisible: boolean`
 - `darkCanvas: boolean` (default `false`)
 - `density: "compact" | "regular"`
 - `showAlerts: boolean`
 - Active route
-- Active bot in topology/console
+- Selected host in topology
 
 ## Polling Cadences
 
@@ -121,12 +119,7 @@ These must survive page reloads (localStorage or equivalent):
 
 ## Sibling Repo Context
 
-`../phone-home/mcp-config.json` shows the MCP server endpoint used by agents:
-```json
-{ "mcpServers": { "austinsand-macbook": { "type": "http", "url": "http://agent:3210/mcp/" } } }
-```
-
-The server component for this dashboard should consume the same MCP endpoint to fetch live homelab data, translating it into the data shapes documented in `design/README.md`.
+The phone-home control plane (chat endpoint, agent roster, `/v1/servers/.../tools/...` proxy) was retired in 2026-11, and with it the bot console chat rail and the Bots view. phone-home is now MCP servers on t5610; the dashboard calls `homelab-data-mcp` directly over MCP Streamable HTTP. homelab-data-mcp binds t5610's LAN IP on port 3220, firewalled to hp7052, and the homelab `homelab-dashboard` role sets `HOMELAB_DATA_MCP_URL` and `HOMELAB_DATA_MCP_TOKEN`.
 
 ## Browser Testing & Screenshots
 
@@ -137,12 +130,11 @@ When using browser automation (Playwright MCP or similar), save all screenshots 
 ```
 overview      /cluster/overview       — OverviewView (hosts, gateway, apps)
 containers    /cluster/containers     — ContainersView (docker inventory, networks, volumes)
-topology      /cluster/topology       — TopologyView (agent mesh, inspector)
+topology      /cluster/topology       — TopologyView (cluster hosts, inspector)
 servers       /cluster/servers        — ServersView (host table with metrics)
 network       /cluster/network        — NetworkView (WAN, DNS, VPN, published services)
 apps          /cluster/applications   — ApplicationsView (service list with category filter)
 storage       /cluster/storage        — StorageView (volumes, pools, quick-access)
-bots          /cluster/bots           — BotsView (agent cards with MCP/project details)
 logs          /cluster/logs           — LogsView (log stream with host/level filter)
 settings      /cluster/configuration  — SettingsView (dashboard preferences)
 ```

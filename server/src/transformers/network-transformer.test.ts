@@ -86,7 +86,7 @@ describe('transformNetworkData', () => {
   };
 
   function setupAllMocks() {
-    vi.mocked(mcpClient.callTool).mockImplementation(async (_server, tool) => {
+    vi.mocked(mcpClient.callTool).mockImplementation(async (tool) => {
       if (tool === 'udm_get_network_health') return healthResponse;
       if (tool === 'udm_get_connected_clients') return clientsResponse;
       if (tool === 'udm_get_ips_events') return ipsResponse;
@@ -196,7 +196,7 @@ describe('transformNetworkData', () => {
 
   it('degrades udm-health independently when health call fails', async () => {
     setupAllMocks();
-    vi.mocked(mcpClient.callTool).mockImplementation(async (_server, tool) => {
+    vi.mocked(mcpClient.callTool).mockImplementation(async (tool) => {
       if (tool === 'udm_get_network_health') throw new Error('timeout');
       if (tool === 'udm_get_connected_clients') return clientsResponse;
       if (tool === 'udm_get_ips_events') return ipsResponse;
@@ -214,7 +214,7 @@ describe('transformNetworkData', () => {
 
   it('degrades udm-ips gracefully when IPS returns 404 (site-slug bug)', async () => {
     setupAllMocks();
-    vi.mocked(mcpClient.callTool).mockImplementation(async (_server, tool) => {
+    vi.mocked(mcpClient.callTool).mockImplementation(async (tool) => {
       if (tool === 'udm_get_ips_events') throw new Error('HTTP 404');
       if (tool === 'udm_get_network_health') return healthResponse;
       if (tool === 'udm_get_connected_clients') return clientsResponse;
@@ -230,7 +230,7 @@ describe('transformNetworkData', () => {
 
   it('returns empty ipsEvents and events arrays when both fail', async () => {
     setupAllMocks();
-    vi.mocked(mcpClient.callTool).mockImplementation(async (_server, tool) => {
+    vi.mocked(mcpClient.callTool).mockImplementation(async (tool) => {
       if (tool === 'udm_get_ips_events') throw new Error('404');
       if (tool === 'udm_get_events') throw new Error('404');
       if (tool === 'udm_get_network_health') return healthResponse;

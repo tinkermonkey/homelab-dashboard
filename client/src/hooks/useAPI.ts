@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import type {
   LAB_DATA, DOCKER_DATA, TOPOLOGY_DATA, STATUS_DATA, ALERTS_DATA, NETWORK_DATA, Alert,
-  LOGS_DATA, STORAGE_DATA, THREADS_DATA, ThreadDetail,
+  LOGS_DATA, STORAGE_DATA,
 } from '@homelab/shared';
 
 const API_BASE = import.meta.env.VITE_API_BASE || '/api';
@@ -204,28 +204,6 @@ export function useStorage() {
     queryFn: async () => (await fetchJSON<STORAGE_DATA>(`${API_BASE}/storage`)).data,
     refetchInterval: 30000,
     staleTime: 10000,
-    gcTime: 10 * 60 * 1000,
-  });
-}
-
-// Chat threads roster (10s polling) — phone-home conversation threads
-export function useThreads() {
-  return useQuery({
-    queryKey: ['threads'],
-    queryFn: async () => (await fetchJSON<THREADS_DATA>(`${API_BASE}/threads`)).data,
-    refetchInterval: 10000,
-    staleTime: 3000,
-    gcTime: 10 * 60 * 1000,
-  });
-}
-
-// Single thread detail incl. message history (on-demand)
-export function useThread(id: string | null) {
-  return useQuery({
-    queryKey: ['thread', id],
-    queryFn: async () => (await fetchJSON<ThreadDetail>(`${API_BASE}/threads/${id}`)).data,
-    enabled: !!id,
-    staleTime: 2000,
     gcTime: 10 * 60 * 1000,
   });
 }
